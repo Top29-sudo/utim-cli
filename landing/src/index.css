@@ -1,0 +1,193 @@
+:root {
+  --bg-primary: #000000;
+  --bg-secondary: #1d1d1f;
+  --accent-primary: #f5f5f7;
+  --accent-secondary: rgba(255, 255, 255, 0.95);
+  --text-primary: #f5f5f7;
+  --text-secondary: #ffffff;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --grid-color: rgba(255, 255, 255, 0.03);
+  --nav-height: 80px;
+
+  --font-primary: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", "Fira Code", monospace;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
+  letter-spacing: -0.02em;
+}
+
+::selection {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+}
+
+/* Custom Scrollbar - Invisible */
+::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+* {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Markdown Page Styling */
+.markdown-page h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  background: linear-gradient(135deg, var(--accent-primary) 0%, rgba(255, 255, 255, 0.4) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.markdown-page h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.markdown-page h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.markdown-page p {
+  color: var(--text-secondary);
+  margin-bottom: 1.25rem;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.markdown-page ul {
+  padding-left: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.markdown-page li {
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.markdown-page strong {
+  color: var(--text-primary);
+}
+
+.markdown-page a {
+  color: #5bc0de;
+  text-decoration: underline;
+  transition: opacity 0.2s;
+}
+
+.markdown-page a:hover {
+  opacity: 0.8;
+}
+
+/* ===================================================
+   GLOBAL GREY TEXT OVERRIDES (TO PURE WHITE)
+   =================================================== */
+
+/* Override any inline style tags with grey values to white */
+[style*="color: #bbb"] { color: #ffffff !important; }
+[style*="color:#bbb"] { color: #ffffff !important; }
+[style*="color: #aaa"] { color: #ffffff !important; }
+[style*="color:#aaa"] { color: #ffffff !important; }
+[style*="color: #999"] { color: #ffffff !important; }
+[style*="color:#999"] { color: #ffffff !important; }
+[style*="color: #888"] { color: #ffffff !important; }
+[style*="color:#888"] { color: #ffffff !important; }
+[style*="color: #777"] { color: #ffffff !important; }
+[style*="color:#777"] { color: #ffffff !important; }
+[style*="color: #666"] { color: #ffffff !important; }
+[style*="color:#666"] { color: #ffffff !important; }
+[style*="color: #555"] { color: #ffffff !important; }
+[style*="color:#555"] { color: #ffffff !important; }
+[style*="color: #444"] { color: #ffffff !important; }
+[style*="color:#444"] { color: #ffffff !important; }
+[style*="color: #ccc"] { color: #ffffff !important; }
+[style*="color:#ccc"] { color: #ffffff !important; }
+[style*="color: #4a4a4a"] { color: #ffffff !important; }
+[style*="color:#4a4a4a"] { color: #ffffff !important; }
+[style*="color: #cccccc"] { color: #ffffff !important; }
+[style*="color:#cccccc"] { color: #ffffff !important; }
+[style*="color: #86868b"] { color: #ffffff !important; }
+[style*="color:#86868b"] { color: #ffffff !important; }
+
+/* Override CSS class selectors that use grey text colors */
+.term-wrapper,
+.term-tab,
+.term-tab-add,
+.term-tab-chevron,
+.term-ctrl,
+.term-line,
+.term-box,
+.term-status-bottom,
+.td-desc,
+.term-loading,
+.term-codeblock-header,
+.term-codeblock-copy-btn,
+.term-codeblock-pre,
+.ts-gear,
+.ts-gray,
+.tw-help-desc,
+.tw-about-desc,
+.tw-pricing-card-desc,
+.tw-pricing-feature,
+.tw-pricing-btn,
+.tw-changelog-ver,
+.tw-changelog-date,
+.tw-changelog-desc,
+.tw-about-text strong,
+.preset-amounts span,
+.amount-prefix,
+.topup-info,
+.topup-form div,
+.markdown-page p,
+.markdown-page li {
+  color: #ffffff !important;
+}

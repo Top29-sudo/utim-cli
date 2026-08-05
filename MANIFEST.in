@@ -1,0 +1,45 @@
+# MANIFEST.in — controls what's included in the Python source distribution (sdist)
+# The goal: ship only the utim_cli core package, not server code, tests, or landing site.
+
+# ── Include essentials ─────────────────────────────────────────────────────────
+include README.md
+include LICENSE
+include CHANGELOG.md
+include pyproject.toml
+
+# ── Include the JSON data file bundled with the package ───────────────────────
+include utim_cli/mcp_registry.json
+
+# ── Exclude server sub-package (NO LONGER EXCLUDED - REQUIRED BY CLI HISTORY) ─────────
+
+# ── Exclude tests, landing site, build artifacts ──────────────────────────────
+prune tests
+prune landing
+prune build
+prune scripts
+prune .git
+prune .agents
+prune .utim
+prune .utim_backup
+prune .utim_tmp
+prune .antigravitycli
+prune __pycache__
+prune utim_cli/__pycache__
+
+# ── Exclude environment / CI files ────────────────────────────────────────────
+exclude *.db
+exclude *.log
+exclude *.png
+exclude *.jpg
+exclude *.jpeg
+exclude Dockerfile
+exclude Procfile
+exclude railway.toml
+exclude railway.json
+exclude scrapy.cfg
+exclude todo.py
+exclude todo_gui.py
+exclude test_or.py
+exclude test_prompt.py
+exclude bin/utim.cmd
+exclude bin/utim1.cmd

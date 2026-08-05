@@ -1,0 +1,45 @@
+# =============================================================================
+# UTIM AI — Google Search Console Indexing Checklist
+# =============================================================================
+# Submit each URL below via GSC → URL Inspection → Request Indexing.
+# Rate limit: 10–12 requests/day. Space them ~1 hour apart.
+# =============================================================================
+
+# ── PRIORITY 1: Static SEO pages (already have static HTML + JSON-LD) ──────
+https://utim.dev/                          # root homepage
+https://utim.dev/marketplace               # NEW - sell miniagent keyword page
+https://utim.dev/sell                      # vanity URL → /marketplace
+https://utim.dev/features                  # static HTML
+https://utim.dev/pricing                   # static HTML
+https://utim.dev/docs                      # static HTML
+https://utim.dev/about                     # static HTML
+
+# ── PRIORITY 2: SPA routes (need JS to render, but GSC can still index) ────
+https://utim.dev/changelog                 # version history
+https://utim.dev/support                   # support page
+https://utim.dev/contacts                  # contact page
+https://utim.dev/connect                   # connect page
+https://utim.dev/terms                     # terms of service
+https://utim.dev/privacy                   # privacy policy
+https://utim.dev/license                   # license
+https://utim.dev/refund                    # refund policy
+https://utim.dev/team                      # team page
+https://utim.dev/referral                  # referral program
+https://utim.dev/referrals                 # referrals (alt URL)
+https://utim.dev/auth                      # auth page (less SEO value)
+https://utim.dev/activate                  # activation page
+
+# ── NOT FOR INDEXING (user-specific, login-gated, or non-canonical) ───────
+# https://utim.dev/auth/callback            # OAuth callback - exclude
+# https://utim.dev/profile                  # user-specific - exclude
+# https://utim.dev/pricing-checkout         # checkout flow - exclude
+
+# ── BOTS-ONLY FILES ─────────────────────────────────────────────────────────
+# Submit via GSC Sitemaps menu, not URL Inspection:
+# https://utim.dev/sitemap.xml
+# https://utim.dev/robots.txt
+
+# =============================================================================
+# Total URLs to request indexing: 19 (over 2 days, 10/day limit)
+# Plus 2 sitemaps/bots files submitted via Sitemaps menu.
+# =============================================================================

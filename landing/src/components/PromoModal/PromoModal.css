@@ -1,0 +1,325 @@
+/* Promotional Offers Modal Popup Window - Terminal Aesthetic */
+.promo-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(5, 5, 10, 0.88);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20000;
+}
+
+.promo-modal-box {
+  background: #0a0a10;
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  border-radius: 6px;
+  width: 560px;
+  max-width: 92%;
+  box-shadow: 0 0 35px rgba(0, 240, 255, 0.12), 0 16px 40px rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+  animation: promo-modal-in 0.2s ease-out;
+  font-family: 'Cascadia Code', 'JetBrains Mono', 'Consolas', monospace;
+}
+
+@keyframes promo-modal-in {
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.promo-modal-header {
+  background: #0f0f18;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.15);
+}
+
+.promo-header-title {
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #00F0FF;
+  letter-spacing: 0.5px;
+}
+
+.promo-prompt {
+  color: #10b981;
+  font-weight: bold;
+  margin-right: 6px;
+}
+
+.promo-modal-close-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #6b7280;
+  font-family: 'Cascadia Code', monospace;
+  font-size: 0.82rem;
+  font-weight: bold;
+  cursor: pointer;
+  line-height: 1;
+  padding: 3px 8px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.promo-modal-close-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
+
+.promo-modal-body {
+  padding: 20px;
+}
+
+.promo-badge-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.promo-badge {
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  color: #00F0FF;
+  font-family: 'Cascadia Code', monospace;
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+}
+
+.promo-timer-pill {
+  font-family: 'Cascadia Code', monospace;
+  font-size: 0.78rem;
+  color: #f9e2af;
+  background: rgba(249, 226, 175, 0.08);
+  border: 1px solid rgba(249, 226, 175, 0.25);
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+
+.promo-timer-pill strong {
+  color: #fff;
+}
+
+.promo-details {
+  margin-bottom: 20px;
+}
+
+.promo-title {
+  font-family: 'Cascadia Code', monospace;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 6px 0;
+}
+
+.promo-desc {
+  font-family: 'Cascadia Code', monospace;
+  color: #8b92a5;
+  font-size: 0.83rem;
+  line-height: 1.5;
+  margin: 0 0 14px 0;
+}
+
+.promo-offers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.promo-offer-card {
+  background: #0d0d14;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.offer-tag {
+  font-family: 'Cascadia Code', monospace;
+  font-weight: 700;
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.offer-tag.green {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.offer-tag.amber {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.offer-info {
+  font-family: 'Cascadia Code', monospace;
+}
+
+.offer-name {
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.offer-sub {
+  color: #6b7280;
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+
+.promo-cli-section {
+  background: #06060a;
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: 4px;
+  padding: 14px;
+  margin-bottom: 20px;
+}
+
+.promo-cli-label {
+  font-family: 'Cascadia Code', monospace;
+  font-size: 0.75rem;
+  color: #00F0FF;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.promo-cli-box {
+  background: #0e0e16;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.promo-cli-box:hover {
+  border-color: #00F0FF;
+  background: #12121c;
+}
+
+.promo-cli-box code {
+  font-family: 'Cascadia Code', monospace;
+  color: #00F0FF;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.promo-copy-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #d1d5db;
+  font-family: 'Cascadia Code', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.promo-copy-btn:hover {
+  background: rgba(0, 240, 255, 0.15);
+  border-color: #00F0FF;
+  color: #00F0FF;
+}
+
+.promo-cli-hint {
+  font-family: 'Cascadia Code', monospace;
+  color: #6b7280;
+  font-size: 0.75rem;
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+.promo-code-inline {
+  font-family: 'Cascadia Code', monospace;
+  color: #f9e2af;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.promo-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.promo-btn-primary {
+  flex: 1;
+  background: rgba(0, 240, 255, 0.12);
+  border: 1px solid #00F0FF;
+  color: #00F0FF;
+  font-family: 'Cascadia Code', monospace;
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 10px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.3px;
+}
+
+.promo-btn-primary:hover {
+  background: #00F0FF;
+  color: #0a0a10;
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+}
+
+.promo-btn-secondary {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #d1d5db;
+  font-family: 'Cascadia Code', monospace;
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding: 10px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.promo-btn-secondary:hover {
+  border-color: #00F0FF;
+  color: #fff;
+  background: rgba(0, 240, 255, 0.06);
+}
+
+.promo-btn-dim {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #6b7280;
+  font-family: 'Cascadia Code', monospace;
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding: 10px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.promo-btn-dim:hover {
+  color: #d1d5db;
+  border-color: rgba(255, 255, 255, 0.2);
+}

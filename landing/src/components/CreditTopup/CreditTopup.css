@@ -1,0 +1,216 @@
+.credit-topup {
+    background: #0a0a0a;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 12px;
+    padding: 24px;
+    margin-top: 24px;
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+}
+
+.credit-topup-header {
+    margin-bottom: 20px;
+}
+
+.credit-topup-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #e8c97a;
+    margin: 0 0 8px 0;
+}
+
+.credit-topup-title svg {
+    width: 20px;
+    height: 20px;
+    stroke: #e8c97a;
+    fill: none;
+}
+
+.credit-topup-subtitle {
+    color: #555;
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.credit-balance-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 14px 20px;
+    margin-bottom: 20px;
+}
+
+.balance-label {
+    color: #555;
+    font-size: 0.9rem;
+}
+
+.balance-value {
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: #00F0FF;
+}
+
+.topup-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.topup-label {
+    color: #888;
+    font-size: 0.85rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.preset-amounts {
+    display: flex;
+    gap: 8px;
+}
+
+.preset-btn {
+    flex: 1;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    color: #888;
+    font-size: 0.85rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.preset-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.preset-btn.active {
+    background: rgba(0, 240, 255, 0.08);
+    border-color: #00F0FF;
+    color: #00F0FF;
+}
+
+.amount-input-wrapper {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.amount-prefix {
+    padding: 10px 14px;
+    color: #555;
+    font-size: 1rem;
+    font-weight: bold;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.amount-input {
+    flex: 1;
+    padding: 10px 14px;
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: bold;
+    outline: none;
+    font-family: inherit;
+}
+
+.topup-error {
+    color: #e74856;
+    font-size: 0.85rem;
+    margin: 0;
+    padding: 8px 12px;
+    background: rgba(231, 72, 86, 0.1);
+    border: 1px solid rgba(231, 72, 86, 0.2);
+    border-radius: 6px;
+}
+
+.topup-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 12px 24px;
+    background: #00F0FF;
+    border: none;
+    border-radius: 6px;
+    color: #000;
+    font-size: 0.95rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.topup-button:hover:not(:disabled) {
+    background: #fff;
+}
+
+.topup-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: #555;
+}
+
+.topup-button svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.topup-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #444;
+    font-size: 0.75rem;
+    margin: 4px 0 0 0;
+    justify-content: center;
+}
+
+.topup-info svg {
+    width: 14px;
+    height: 14px;
+}
+
+.spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 600px) {
+    .credit-topup {
+        padding: 20px;
+    }
+    
+    .preset-amounts {
+        flex-wrap: wrap;
+    }
+    
+    .preset-btn {
+        flex: 1 0 40%;
+    }
+}

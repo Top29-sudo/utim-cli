@@ -1,0 +1,44 @@
+{
+  "name": "@emend-ai/utim",
+  "version": "2.1.0",
+  "description": "UTIM AI CLI \u2013 Universal Terminal Intelligence Manager. An agentic AI coding assistant for your terminal.",
+  "keywords": [
+    "ai",
+    "agent",
+    "cli",
+    "coding-assistant",
+    "agentic",
+    "llm",
+    "mcp",
+    "utim"
+  ],
+  "homepage": "https://utim.dev",
+  "bugs": {
+    "url": "https://github.com/emendai/utim/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/emendai/utim.git"
+  },
+  "license": "MIT",
+  "author": "Emendai <support@emendai.com>",
+  "bin": {
+    "utim": "bin/utim.js"
+  },
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js"
+  },
+  "files": [
+    "bin/utim.js",
+    "scripts/postinstall.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

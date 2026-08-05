@@ -1,0 +1,1103 @@
+{
+  "sqlite": {
+    "name": "SQLite Server",
+    "desc": "Interact with SQLite databases - inspect schemas, query tables, and manage data.",
+    "pkg": "@mokei/mcp-sqlite",
+    "author": "modelcontextprotocol",
+    "fields": [
+      {
+        "type": "arg",
+        "key": "db_path",
+        "prompt": "  Enter path to SQLite database file: ",
+        "required": true
+      }
+    ]
+  },
+  "postgres": {
+    "name": "PostgreSQL Server",
+    "desc": "Connect to PostgreSQL databases to query tables and inspect schemas.",
+    "pkg": "@modelcontextprotocol/server-postgres",
+    "author": "modelcontextprotocol",
+    "fields": [
+      {
+        "type": "arg",
+        "key": "postgres_uri",
+        "prompt": "  Enter PostgreSQL connection URI (e.g. postgresql://user:pass@host:port/db): ",
+        "required": true
+      }
+    ]
+  },
+  "github": {
+    "name": "GitHub Server",
+    "desc": "Manage repositories, issues, PRs, and workflows through natural language.",
+    "pkg": "@modelcontextprotocol/server-github",
+    "author": "modelcontextprotocol",
+    "fields": [
+      {
+        "type": "env",
+        "key": "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "prompt": "  Enter GITHUB_PERSONAL_ACCESS_TOKEN: ",
+        "required": true
+      }
+    ]
+  },
+  "gitlab": {
+    "name": "GitLab Server",
+    "desc": "Interact with GitLab repositories, issues, merge requests, and pipelines.",
+    "pkg": "@modelcontextprotocol/server-gitlab",
+    "author": "modelcontextprotocol",
+    "fields": [
+      {
+        "type": "env",
+        "key": "GITLAB_PERSONAL_ACCESS_TOKEN",
+        "prompt": "  Enter GITLAB_PERSONAL_ACCESS_TOKEN: ",
+        "required": true
+      },
+      {
+        "type": "env",
+        "key": "GITLAB_API_URL",
+        "prompt": "  Enter GitLab API URL (optional, e.g. https://gitlab.example.com/api/v4): ",
+        "required": false
+      }
+    ]
+  },
+  "filesystem": {
+    "name": "Filesystem Server",
+    "desc": "Securely read, write, search, and list files inside designated directories.",
+    "pkg": "@modelcontextprotocol/server-filesystem",
+    "author": "modelcontextprotocol",
+    "fields": [
+      {
+        "type": "arg_list",
+        "key": "allowed_paths",
+        "prompt": "  Enter comma-separated absolute directory paths allowed for access: ",
+        "required": true
+      }
+    ]
+  },
+  "brave-search": {
+    "name": "Brave Search Server",
+    "desc": "Perform web search queries and retrieve web links/snippets using Brave Search API.",
+    "pkg": "@modelcontextprotocol/server-brave-search",
+    "author": "modelcontextprotocol",
+    "fields": [
+      {
+        "type": "env",
+        "key": "BRAVE_API_KEY",
+        "prompt": "  Enter BRAVE_API_KEY: ",
+        "required": true
+      }
+    ]
+  },
+  "google-maps": {
+    "name": "Google Maps Server",
+    "desc": "Access Google Maps services including geocoding, search, and routing.",
+    "pkg": "@modelcontextprotocol/server-google-maps",
+    "author": "modelcontextprotocol",
+    "fields": [
+      {
+        "type": "env",
+        "key": "GOOGLE_MAPS_API_KEY",
+        "prompt": "  Enter GOOGLE_MAPS_API_KEY: ",
+        "required": true
+      }
+    ]
+  },
+  "google-drive": {
+    "name": "Google Drive Server",
+    "desc": "Search, read, and write files in your Google Drive storage.",
+    "pkg": "@piotr-agier/google-drive-mcp",
+    "author": "modelcontextprotocol",
+    "fields": [
+      {
+        "type": "env",
+        "key": "CLIENT_ID",
+        "prompt": "  Enter Google Cloud OAuth CLIENT_ID: ",
+        "required": true
+      },
+      {
+        "type": "env",
+        "key": "CLIENT_SECRET",
+        "prompt": "  Enter Google Cloud OAuth CLIENT_SECRET: ",
+        "required": true
+      }
+    ]
+  },
+  "slack": {
+    "name": "Slack Server",
+    "desc": "Connect to Slack channels to post messages and retrieve history.",
+    "pkg": "@modelcontextprotocol/server-slack",
+    "author": "modelcontextprotocol",
+    "fields": [
+      {
+        "type": "env",
+        "key": "SLACK_BOT_TOKEN",
+        "prompt": "  Enter SLACK_BOT_TOKEN: ",
+        "required": true
+      }
+    ]
+  },
+  "notion": {
+    "name": "Notion Server",
+    "desc": "Interact with Notion databases, pages, and blocks locally via API.",
+    "pkg": "notion-mcp-server",
+    "author": "community",
+    "fields": [
+      {
+        "type": "env",
+        "key": "NOTION_API_KEY",
+        "prompt": "  Enter NOTION_API_KEY: ",
+        "required": true
+      }
+    ]
+  },
+  "supabase": {
+    "name": "Supabase Server",
+    "desc": "Interact with the Supabase platform and database services.",
+    "pkg": "@supabase/mcp-server-supabase",
+    "author": "supabase",
+    "fields": [
+      {
+        "type": "env",
+        "key": "SUPABASE_URL",
+        "prompt": "  Enter SUPABASE_URL: ",
+        "required": true
+      },
+      {
+        "type": "env",
+        "key": "SUPABASE_SERVICE_ROLE_KEY",
+        "prompt": "  Enter SUPABASE_SERVICE_ROLE_KEY: ",
+        "required": true
+      }
+    ]
+  },
+  "playwright": {
+    "name": "Playwright Server",
+    "desc": "Automate web browsers using accessibility trees for testing and data extraction.",
+    "pkg": "@playwright/mcp",
+    "author": "microsoft",
+    "fields": []
+  },
+  "puppeteer": {
+    "name": "Puppeteer Server",
+    "desc": "Automated headless browser control, screenshot generation, and page interaction.",
+    "pkg": "@modelcontextprotocol/server-puppeteer",
+    "author": "modelcontextprotocol",
+    "fields": []
+  },
+  "sentry": {
+    "name": "Sentry Server",
+    "desc": "Expose Sentry issue tracking and error monitoring tools.",
+    "pkg": "@sentry/mcp-server",
+    "author": "sentry",
+    "fields": [
+      {
+        "type": "env",
+        "key": "SENTRY_AUTH_TOKEN",
+        "prompt": "  Enter SENTRY_AUTH_TOKEN: ",
+        "required": true
+      }
+    ]
+  },
+  "fetch": {
+    "name": "Fetch Server",
+    "desc": "Retrieve web page text content and convert HTML/JSON for LLM reasoning.",
+    "pkg": "@h16rkim/mcp-fetch-server",
+    "author": "modelcontextprotocol",
+    "fields": []
+  },
+  "memory": {
+    "name": "Memory Server",
+    "desc": "Knowledge graph-based persistent agent memory for context storage.",
+    "pkg": "@modelcontextprotocol/server-memory",
+    "author": "modelcontextprotocol",
+    "fields": []
+  },
+  "everything": {
+    "name": "Everything Server",
+    "desc": "Reference server showcasing all MCP tool features, schemas, and resource types.",
+    "pkg": "@modelcontextprotocol/server-everything",
+    "author": "modelcontextprotocol",
+    "fields": []
+  },
+  "markitdown": {
+    "name": "Markitdown",
+    "desc": "Convert various file formats (PDF, Word, Excel, images, audio) to Markdown.",
+    "pkg": "markitdown-mcp-npx",
+    "author": "microsoft",
+    "fields": []
+  },
+  "netdata": {
+    "name": "Netdata",
+    "desc": "Real-time infrastructure monitoring with metrics, logs, alerts, and ML-based anomaly detection.",
+    "pkg": "@netdata/netdata-ui",
+    "author": "netdata",
+    "fields": []
+  },
+  "context7": {
+    "name": "Context7",
+    "desc": "Up-to-date code docs for any prompt",
+    "pkg": "@upstash/context7-mcp",
+    "author": "upstash",
+    "fields": []
+  },
+  "chrome-devtools-mcp": {
+    "name": "Chrome DevTools MCP",
+    "desc": "MCP server for Chrome DevTools",
+    "pkg": "chrome-devtools-mcp",
+    "author": "ChromeDevTools",
+    "fields": []
+  },
+  "serena": {
+    "name": "Serena",
+    "desc": "Semantic code retrieval & editing tools for coding agents.",
+    "pkg": "serena-slim",
+    "author": "oraios",
+    "fields": []
+  },
+  "unity": {
+    "name": "Unity",
+    "desc": "Control the Unity Editor from MCP clients via a Unity bridge + local Python server.",
+    "pkg": "unity-mcp-server",
+    "author": "CoplayDev",
+    "fields": []
+  },
+  "firecrawl": {
+    "name": "Firecrawl",
+    "desc": "Extract web data with Firecrawl",
+    "pkg": "firecrawl-mcp",
+    "author": "firecrawl",
+    "fields": [
+      {
+        "type": "env",
+        "key": "FIRECRAWL_API_KEY",
+        "prompt": "  Enter FIRECRAWL_API_KEY: ",
+        "required": true
+      }
+    ]
+  },
+  "desktop-commander": {
+    "name": "Desktop Commander",
+    "desc": "MCP server for terminal commands, file operations, and process management",
+    "pkg": "@wonderwhy-er/desktop-commander",
+    "author": "wonderwhy-er",
+    "fields": []
+  },
+  "azure-mcp-server": {
+    "name": "Azure MCP Server",
+    "desc": "All Azure MCP tools to create a seamless connection between AI agents and Azure services.",
+    "pkg": "@azure/mcp",
+    "author": "microsoft",
+    "fields": []
+  },
+  "microsoft-fabric-mcp-server": {
+    "name": "Microsoft Fabric MCP Server",
+    "desc": "MCP tools for interacting with Microsoft Fabric",
+    "pkg": "@playwright/mcp",
+    "author": "microsoft",
+    "fields": []
+  },
+  "dbhub": {
+    "name": "DBHub",
+    "desc": "Minimal, token-efficient Database MCP Server for PostgreSQL, MySQL, SQL Server, SQLite, MariaDB",
+    "pkg": "@bytebase/dbhub",
+    "author": "bytebase",
+    "fields": []
+  },
+  "brightdata": {
+    "name": "Brightdata",
+    "desc": "Bright Data's Web MCP server enabling AI agents to search, extract & navigate the web",
+    "pkg": "@brightdata/mcp",
+    "author": "brightdata",
+    "fields": [
+      {
+        "type": "env",
+        "key": "BRIGHTDATA_API_KEY",
+        "prompt": "  Enter BRIGHTDATA_API_KEY: ",
+        "required": true
+      }
+    ]
+  },
+  "tavily": {
+    "name": "Tavily",
+    "desc": "MCP server for advanced web search using Tavily",
+    "pkg": "tavily-mcp",
+    "author": "tavily-ai",
+    "fields": [
+      {
+        "type": "env",
+        "key": "TAVILY_API_KEY",
+        "prompt": "  Enter TAVILY_API_KEY: ",
+        "required": true
+      }
+    ]
+  },
+  "azure-devops": {
+    "name": "Azure DevOps",
+    "desc": "Interact with Azure DevOps services like repositories, work items, builds, releases, test plans, and code search.",
+    "pkg": "@ax-ado-mcp/mcp-server-azure-devops-enhanced",
+    "author": "microsoft",
+    "fields": [
+      {
+        "type": "env",
+        "key": "AZURE_DEVOPS_EXT_PAT",
+        "prompt": "  Enter AZURE_DEVOPS_EXT_PAT (Personal Access Token): ",
+        "required": true
+      }
+    ]
+  },
+  "microsoft-learn": {
+    "name": "Microsoft Learn",
+    "desc": "Enables clients like GitHub Copilot and other AI agents to bring trusted and up-to-date information directly from Microsoft's official documentation.",
+    "pkg": "@microsoft/learn-cli",
+    "author": "MicrosoftDocs",
+    "fields": []
+  },
+  "figma-mcp-server": {
+    "name": "Figma MCP Server",
+    "desc": "The Figma MCP server brings Figma design context directly into your AI workflow.",
+    "pkg": "figma-developer-mcp",
+    "args": ["--stdio"],
+    "author": "Community",
+    "fields": [
+      {
+        "type": "env",
+        "key": "FIGMA_API_KEY",
+        "prompt": "  Enter FIGMA_API_KEY: ",
+        "required": true
+      }
+    ]
+  },
+  "stripe": {
+    "name": "Stripe",
+    "desc": "MCP server integrating with Stripe - tools for customers, products, payments, and more.",
+    "pkg": "mcp-server-stripe",
+    "author": "stripe",
+    "fields": [
+      {
+        "type": "env",
+        "key": "STRIPE_API_KEY",
+        "prompt": "  Enter STRIPE_API_KEY: ",
+        "required": true
+      }
+    ]
+  },
+  "microsoft-nuget": {
+    "name": "Microsoft Nuget",
+    "desc": "A Model Context Protocol (MCP) server for NuGet.",
+    "pkg": "@playwright/mcp",
+    "author": "NuGet",
+    "fields": []
+  },
+  "terraform": {
+    "name": "Terraform",
+    "desc": "Generate more accurate Terraform and automate workflows for HCP Terraform and Terraform Enterprise",
+    "pkg": "terraform-mcp-server",
+    "author": "hashicorp",
+    "fields": []
+  },
+  "apify": {
+    "name": "Apify",
+    "desc": "Extract data from any website with thousands of scrapers, crawlers, and automations on Apify Store ⚡",
+    "pkg": "@apify/actors-mcp-server",
+    "author": "apify",
+    "fields": [
+      {
+        "type": "env",
+        "key": "APIFY_TOKEN",
+        "prompt": "  Enter APIFY_TOKEN: ",
+        "required": true
+      }
+    ]
+  },
+  "mongodb": {
+    "name": "Mongodb",
+    "desc": "MongoDB Model Context Protocol Server",
+    "pkg": "@mongodb-js/mcp-types",
+    "author": "mongodb-js",
+    "fields": [
+      {
+        "type": "env",
+        "key": "MONGODB_URI",
+        "prompt": "  Enter MONGODB_URI: ",
+        "required": true
+      }
+    ]
+  },
+  "searxng-search": {
+    "name": "SearXNG Search",
+    "desc": "MCP server for SearXNG — privacy-respecting web search with pagination, URL reading",
+    "pkg": "mcp-searxng",
+    "author": "ihor-sokoliuk",
+    "fields": []
+  },
+  "nuxt": {
+    "name": "Nuxt",
+    "desc": "MCP server helping models understand your Vite/Nuxt app.",
+    "pkg": "nuxt-mcp-dev",
+    "author": "antfu",
+    "fields": []
+  },
+  "atlassian": {
+    "name": "Atlassian",
+    "desc": "Atlassian Rovo MCP Server",
+    "pkg": "atlassian",
+    "author": "atlassian",
+    "fields": []
+  },
+  "vercel-next-dev-tools": {
+    "name": "Vercel Next Dev Tools",
+    "desc": "Next.js development tools MCP server with stdio transport",
+    "pkg": "@ai-sdk/mcp",
+    "author": "vercel",
+    "fields": []
+  },
+  "elasticsearch": {
+    "name": "Elasticsearch",
+    "desc": "MCP server for connecting to Elasticsearch data and indices. Supports search queries, mappings, ES|QL, and shard information through natural language interactions.",
+    "pkg": "banza-mcp",
+    "author": "elastic",
+    "fields": []
+  },
+  "neon": {
+    "name": "Neon",
+    "desc": "MCP server for interacting with Neon Management API and databases",
+    "pkg": "neon",
+    "author": "neondatabase",
+    "fields": []
+  },
+  "sonarsource-sonarqube": {
+    "name": "SonarSource Sonarqube",
+    "desc": "An MCP server that enables integration with SonarQube Server or Cloud for code quality and security.",
+    "pkg": "@modelcontextprotocol/server-sonarsource-sonarqube",
+    "author": "SonarSource",
+    "fields": []
+  },
+  "chroma": {
+    "name": "Chroma",
+    "desc": "Provides data retrieval capabilities powered by Chroma, enabling AI models to create collections over generated data and user inputs, and retrieve that data using vector search, full text search, metadata filtering, and more.",
+    "pkg": "chroma",
+    "author": "chroma-core",
+    "fields": []
+  },
+  "todoist": {
+    "name": "Todoist",
+    "desc": "A set of tools to connect to AI agents, to allow them to use Todoist on a user's behalf.",
+    "pkg": "@doist/todoist-mcp",
+    "author": "Doist",
+    "fields": [
+      {
+        "type": "env",
+        "key": "TODOIST_API_TOKEN",
+        "prompt": "  Enter TODOIST_API_TOKEN: ",
+        "required": true
+      }
+    ]
+  },
+  "monday": {
+    "name": "Monday",
+    "desc": "MCP server for monday.com integration.",
+    "pkg": "monday-mcp-server",
+    "author": "mondaycom",
+    "fields": [
+      {
+        "type": "env",
+        "key": "MONDAY_API_TOKEN",
+        "prompt": "  Enter MONDAY_API_TOKEN: ",
+        "required": true
+      }
+    ]
+  },
+  "mapbox": {
+    "name": "Mapbox",
+    "desc": "Geospatial intelligence with Mapbox APIs like geocoding, POI search, directions, isochrones, etc.",
+    "pkg": "@mapbox/mcp-server",
+    "author": "mapbox",
+    "fields": [
+      {
+        "type": "env",
+        "key": "MAPBOX_ACCESS_TOKEN",
+        "prompt": "  Enter MAPBOX_ACCESS_TOKEN: ",
+        "required": true
+      }
+    ]
+  },
+  "imagesorcery": {
+    "name": "Imagesorcery",
+    "desc": "Local image processing with computer vision capabilities including object detection, OCR, image editing, and transformations.",
+    "pkg": "@modelcontextprotocol/server-imagesorcery",
+    "author": "sunriseapps",
+    "fields": []
+  },
+  "zapier": {
+    "name": "Zapier",
+    "desc": "Zapier MCP is a remote MCP server that gives your AI direct access to 8,000+ apps and 30,000+ actions—no complex API integrations required.",
+    "pkg": "zapier",
+    "author": "zapier",
+    "fields": []
+  },
+  "svelte-mcp": {
+    "name": "Svelte MCP",
+    "desc": "The official Svelte MCP server providing docs and autofixing tools for Svelte development",
+    "pkg": "@orval/mcp",
+    "author": "sveltejs",
+    "fields": []
+  },
+  "postman": {
+    "name": "Postman",
+    "desc": "A basic MCP server to operate on the Postman API.",
+    "pkg": "postman",
+    "author": "postmanlabs",
+    "fields": [
+      {
+        "type": "env",
+        "key": "POSTMAN_API_KEY",
+        "prompt": "  Enter POSTMAN_API_KEY: ",
+        "required": true
+      }
+    ]
+  },
+  "hugging-face": {
+    "name": "Hugging Face",
+    "desc": "Access Hugging Face models, datasets, Spaces, papers, collections via MCP.",
+    "pkg": "@huggingface/mcp-server",
+    "author": "huggingface",
+    "fields": [
+      {
+        "type": "env",
+        "key": "HF_TOKEN",
+        "prompt": "  Enter HF_TOKEN: ",
+        "required": true
+      }
+    ]
+  },
+  "azure-ai-foundry": {
+    "name": "Azure AI Foundry",
+    "desc": "An experimental MCP server implementation for Azure AI Foundry that exposes unified tools for models, knowledge, evaluation and deployment.",
+    "pkg": "nascoder-azure-ai-mcp-server",
+    "author": "microsoft-foundry",
+    "fields": []
+  },
+  "crowdstrike-falcon-mcp-server": {
+    "name": "CrowdStrike Falcon MCP Server",
+    "desc": "Connects AI agents with CrowdStrike Falcon for security analysis and automation.",
+    "pkg": "mcp-proxy",
+    "author": "CrowdStrike",
+    "fields": []
+  },
+  "awesome-copilot-mcp-server": {
+    "name": "Awesome Copilot MCP Server",
+    "desc": "An MCP server that stores Copilot customizations from the Awesome Copilot repository",
+    "pkg": "@modelcontextprotocol/server-awesome-copilot-mcp-server",
+    "author": "microsoft",
+    "fields": []
+  },
+  "glean-remote-mcp-server": {
+    "name": "Glean Remote MCP Server",
+    "desc": "Remote MCP Server that securely connects Glean Enterprise Knowledge with your IDE, LLM, or agents.",
+    "pkg": "@modelcontextprotocol/server-glean-remote-mcp-server",
+    "author": "gleanwork",
+    "fields": []
+  },
+  "logfire": {
+    "name": "Logfire",
+    "desc": "Provides access to OpenTelemetry traces and metrics through Logfire.",
+    "pkg": "logfire",
+    "author": "pydantic",
+    "fields": []
+  },
+  "sap-fiori": {
+    "name": "SAP Fiori",
+    "desc": "SAP Fiori - Model Context Protocol (MCP) server",
+    "pkg": "@modelcontextprotocol/server-sap-fiori",
+    "author": "SAP",
+    "fields": []
+  },
+  "serpapi": {
+    "name": "Serpapi",
+    "desc": "Official SerpApi MCP server for Google, Bing, and other search engines.",
+    "pkg": "serpapi",
+    "author": "serpapi",
+    "fields": [
+      {
+        "type": "env",
+        "key": "SERPAPI_API_KEY",
+        "prompt": "  Enter SERPAPI_API_KEY: ",
+        "required": true
+      }
+    ]
+  },
+  "azure-kubernetes-service": {
+    "name": "Azure Kubernetes Service",
+    "desc": "Interact with Azure Kubernetes Service (AKS) from MCP clients.",
+    "pkg": "@modelcontextprotocol/server-azure-kubernetes-service",
+    "author": "Azure",
+    "fields": []
+  },
+  "webflow": {
+    "name": "Webflow",
+    "desc": "AI-powered design and management for Webflow Sites",
+    "pkg": "@webflow/webflow-cli",
+    "author": "webflow",
+    "fields": []
+  },
+  "dynatrace": {
+    "name": "Dynatrace",
+    "desc": "Access Dynatrace observability data: logs, metrics, problems, vulnerabilities via DQL and Davis AI",
+    "pkg": "@dynatrace-oss/dynatrace-mcp-server",
+    "author": "dynatrace-oss",
+    "fields": [
+      {
+        "type": "env",
+        "key": "DT_ENVIRONMENT",
+        "prompt": "  Enter Dynatrace Environment URL (Platform URL): ",
+        "required": true
+      },
+      {
+        "type": "env",
+        "key": "DT_PLATFORM_TOKEN",
+        "prompt": "  Enter Dynatrace Platform Token: ",
+        "required": true
+      }
+    ]
+  },
+  "fabric-real-time-intelligence": {
+    "name": "Fabric Real-Time Intelligence",
+    "desc": "Query Eventhouse/ADX with KQL and manage Eventstreams.",
+    "pkg": "@mapbox/mcp-server",
+    "author": "microsoft",
+    "fields": []
+  },
+  "miro": {
+    "name": "Miro",
+    "desc": "Official Miro MCP server - Supports context to code and creating diagrams, docs, and data tables.",
+    "pkg": "@mirohq/miro-api",
+    "author": "miroapp",
+    "fields": []
+  },
+  "cap-js": {
+    "name": "Cap JS",
+    "desc": "Model Context Protocol (MCP) server for AI-assisted development of CAP applications.",
+    "pkg": "@cap-js/mcp-server",
+    "author": "cap-js",
+    "fields": []
+  },
+  "octopus-deploy": {
+    "name": "Octopus Deploy",
+    "desc": "Deliver software to Kubernetes, multi-cloud, on-prem infrastructure, and anywhere else",
+    "pkg": "@octopusdeploy/mcp-server",
+    "author": "OctopusDeploy",
+    "fields": []
+  },
+  "ui5": {
+    "name": "UI5",
+    "desc": "MCP server for SAPUI5/OpenUI5 development",
+    "pkg": "@ui5/mcp-server",
+    "author": "UI5",
+    "fields": []
+  },
+  "clarity": {
+    "name": "Clarity",
+    "desc": "Fetch Clarity analytics via MCP clients.",
+    "pkg": "@microsoft/clarity-mcp-server",
+    "author": "microsoft",
+    "fields": []
+  },
+  "scrapegraphai-scrapegraph": {
+    "name": "ScrapeGraphAI Scrapegraph",
+    "desc": "AI-powered web scraping and data extraction capabilities through ScrapeGraph API",
+    "pkg": "mcp-proxy",
+    "author": "ScrapeGraphAI",
+    "fields": []
+  },
+  "arm-mcp-server": {
+    "name": "Arm MCP Server",
+    "desc": "Official Arm MCP server for code migration, optimization, and Arm architecture guidance",
+    "pkg": "mcp-proxy",
+    "author": "arm",
+    "fields": []
+  },
+  "deepwiki": {
+    "name": "DeepWiki",
+    "desc": "Devin-generated docs for any public repo",
+    "pkg": "mcp-deepwiki",
+    "author": "CognitionAI",
+    "fields": []
+  },
+  "sonatype-dependency-management": {
+    "name": "Sonatype Dependency Management",
+    "desc": "Sonatype component intelligence: versions, security analysis, and Trust Score recommendations",
+    "pkg": "mcp-proxy",
+    "author": "sonatype",
+    "fields": []
+  },
+  "pagerduty": {
+    "name": "PagerDuty",
+    "desc": "PagerDuty's official MCP server which provides tools to interact with your PagerDuty account.",
+    "pkg": "mcp-proxy",
+    "author": "PagerDuty",
+    "fields": [
+      {
+        "type": "env",
+        "key": "PAGERDUTY_API_KEY",
+        "prompt": "  Enter PAGERDUTY_API_KEY: ",
+        "required": true
+      }
+    ]
+  },
+  "codacy": {
+    "name": "Codacy",
+    "desc": "MCP Server for the Codacy API, enabling access to repositories, files, quality, coverage, security and more.",
+    "pkg": "@codacy/codacy-mcp",
+    "author": "codacy",
+    "fields": []
+  },
+  "mapbox-mcp-devkit-server": {
+    "name": "Mapbox MCP Devkit Server",
+    "desc": "Provides AI assistants with direct access to Mapbox developer APIs and documentation.",
+    "pkg": "mcp-proxy",
+    "author": "mapbox",
+    "fields": [
+      {
+        "type": "env",
+        "key": "MAPBOX_ACCESS_TOKEN",
+        "prompt": "  Enter MAPBOX_ACCESS_TOKEN: ",
+        "required": true
+      }
+    ]
+  },
+  "snyk": {
+    "name": "Snyk",
+    "desc": "Easily find and fix security issues in your applications leveraging Snyk platform capabilities.",
+    "pkg": "snyk",
+    "author": "snyk",
+    "fields": [
+      {
+        "type": "env",
+        "key": "SNYK_TOKEN",
+        "prompt": "  Enter SNYK_TOKEN: ",
+        "required": true
+      }
+    ]
+  },
+  "amplitude": {
+    "name": "Amplitude",
+    "desc": "Search, access, and get insights on your Amplitude data",
+    "pkg": "amplitude",
+    "author": "amplitude",
+    "fields": [
+      {
+        "type": "env",
+        "key": "AMPLITUDE_API_KEY",
+        "prompt": "  Enter AMPLITUDE_API_KEY: ",
+        "required": true
+      }
+    ]
+  },
+  "microsoft-mcp-server-for-enterprise": {
+    "name": "Microsoft MCP Server for Enterprise",
+    "desc": "Official Microsoft MCP Server to query Microsoft Entra data using natural language",
+    "pkg": "@playwright/mcp",
+    "author": "microsoft",
+    "fields": []
+  },
+  "zscaler-zero-trust-exchange": {
+    "name": "Zscaler Zero Trust Exchange",
+    "desc": "Manage Zscaler Zero Trust Exchange via 280+ tools — ZPA, ZIA, ZDX, ZCC, EASM, and more.",
+    "pkg": "@modelcontextprotocol/server-zscaler-zero-trust-exchange",
+    "author": "zscaler",
+    "fields": []
+  },
+  "smartbear-mcp": {
+    "name": "SmartBear MCP",
+    "desc": "MCP server for AI access to SmartBear tools, including BugSnag, Reflect, Swagger, PactFlow, QTM4J.",
+    "pkg": "@modelcontextprotocol/server-smartbear-mcp",
+    "author": "SmartBear",
+    "fields": []
+  },
+  "contextstream-mcp-server": {
+    "name": "ContextStream MCP Server",
+    "desc": "ContextStream MCP server for code context, memory, search, and AI tools.",
+    "pkg": "@modelcontextprotocol/server-contextstream-mcp-server",
+    "author": "contextstream",
+    "fields": []
+  },
+  "promptschat-mcp-server": {
+    "name": "prompts.chat MCP Server",
+    "desc": "Search and retrieve AI prompts from prompts.chat, the social platform for AI prompts.",
+    "pkg": "@modelcontextprotocol/server-promptschat-mcp-server",
+    "author": "f",
+    "fields": []
+  },
+  "pubnub-mcp-server": {
+    "name": "PubNub MCP Server",
+    "desc": "PubNub Model Context Protocol MCP Server for Cursor and Claude",
+    "pkg": "@modelcontextprotocol/server-pubnub-mcp-server",
+    "author": "pubnub",
+    "fields": []
+  },
+  "justcall-mcp-server": {
+    "name": "JustCall MCP Server",
+    "desc": "JustCall MCP Server enables LLMs and AI agents to make voice calls and send SMS via JustCall APIs.",
+    "pkg": "@modelcontextprotocol/server-justcall-mcp-server",
+    "author": "saaslabsco",
+    "fields": []
+  },
+  "the-mcp-server-for-goreleaser": {
+    "name": "The MCP server for GoReleaser",
+    "desc": "GoReleaser MCP server",
+    "pkg": "@modelcontextprotocol/server-the-mcp-server-for-goreleaser",
+    "author": "goreleaser",
+    "fields": []
+  },
+  "dynatrace-managed": {
+    "name": "Dynatrace Managed",
+    "desc": "MCP server for Dynatrace Managed to access logs, events, and metrics.",
+    "pkg": "@modelcontextprotocol/server-dynatrace-managed",
+    "author": "dynatrace-oss",
+    "fields": [
+      {
+        "type": "env",
+        "key": "DT_ENVIRONMENT",
+        "prompt": "  Enter Dynatrace Managed Environment URL: ",
+        "required": true
+      },
+      {
+        "type": "env",
+        "key": "DT_PLATFORM_TOKEN",
+        "prompt": "  Enter Dynatrace Platform Token: ",
+        "required": true
+      }
+    ]
+  },
+  "rigour": {
+    "name": "Rigour",
+    "desc": "Quality gates for AI agents. Lint, test, build checks with memory persistence.",
+    "pkg": "rigour",
+    "author": "rigour-labs",
+    "fields": []
+  },
+  "launchdarkly": {
+    "name": "Launchdarkly",
+    "desc": "Official LaunchDarkly MCP Server for feature flag management and experimentation. Enables AI agents to interact with LaunchDarkly APIs for managing feature flags, AI configs, targeting rules, and gradual rollouts across multiple environments.",
+    "pkg": "@launchdarkly/mcp-server",
+    "author": "launchdarkly",
+    "fields": [
+      {
+        "type": "env",
+        "key": "LAUNCHDARKLY_ACCESS_TOKEN",
+        "prompt": "  Enter LAUNCHDARKLY_ACCESS_TOKEN: ",
+        "required": true
+      }
+    ]
+  },
+  "venomseven-nslookup": {
+    "name": "Venomseven Nslookup",
+    "desc": "DNS lookups, health reports, SSL certs, security scans, GEO scoring, uptime checks",
+    "pkg": "mcp-proxy",
+    "author": "NsLookup-io",
+    "fields": []
+  },
+  "ui5-webcomponents": {
+    "name": "UI5 Webcomponents",
+    "desc": "MCP server for UI5 Web Components development assistance",
+    "pkg": "@ui5/webcomponents-mcp-server",
+    "author": "UI5",
+    "fields": []
+  },
+  "stack-overflow-mcp-server": {
+    "name": "Stack Overflow MCP Server",
+    "desc": "Access Stack Overflow's trusted and verified technical questions and answers.",
+    "pkg": "@stackexchange/mcp-server",
+    "author": "StackExchange",
+    "fields": []
+  },
+  "port": {
+    "name": "Port",
+    "desc": "Port.io mcp server",
+    "pkg": "port",
+    "author": "port-labs",
+    "fields": []
+  },
+  "wix": {
+    "name": "Wix",
+    "desc": "A Model Context Protocol server for Wix AI tools",
+    "pkg": "wix",
+    "author": "wix",
+    "fields": []
+  },
+  "sourcegraph-mcp-server": {
+    "name": "Sourcegraph MCP Server",
+    "desc": "Sourcegraph code search, semantic search, go-to-definition, find-references, and diff search.",
+    "pkg": "sourcegraph-mcp-server",
+    "author": "sourcegraph-community",
+    "fields": []
+  },
+  "axiom": {
+    "name": "Axiom",
+    "desc": "List datasets, schemas, run APL queries, and use prompts for exploration, anomalies, and monitoring.",
+    "pkg": "axiom",
+    "author": "axiomhq",
+    "fields": [
+      {
+        "type": "env",
+        "key": "AXIOM_TOKEN",
+        "prompt": "  Enter AXIOM_TOKEN: ",
+        "required": true
+      },
+      {
+        "type": "env",
+        "key": "AXIOM_ORG_ID",
+        "prompt": "  Enter AXIOM_ORG_ID (optional): ",
+        "required": false
+      }
+    ]
+  },
+  "dev-box": {
+    "name": "Dev Box",
+    "desc": "This server enables natural language interactions for developer-focused operations like managing Dev Boxes, configurations, and pools.",
+    "pkg": "@microsoft/devbox-mcp",
+    "author": "microsoft",
+    "fields": []
+  },
+  "vercel": {
+    "name": "Vercel",
+    "desc": "An MCP server for Vercel",
+    "pkg": "mcp-server-vercel",
+    "author": "vercel",
+    "fields": []
+  },
+  "jfrog-remote-mcp-server": {
+    "name": "JFrog Remote MCP Server",
+    "desc": "MCP Server for JFrog, providing tools for development and artifact management.",
+    "pkg": "mcp-remote",
+    "author": "jfrog",
+    "fields": []
+  },
+  "stackhawk": {
+    "name": "Stackhawk",
+    "desc": "An MCP server that provides interaction with StackHawk's security scanning platform.",
+    "pkg": "@modelcontextprotocol/sdk",
+    "author": "stackhawk",
+    "fields": []
+  },
+  "intercom": {
+    "name": "Intercom",
+    "desc": "Enable AI agents to securely access and interact with your Intercom data whenever helpful.",
+    "pkg": "@intercom/messenger-js-sdk",
+    "author": "intercom",
+    "fields": [
+      {
+        "type": "env",
+        "key": "INTERCOM_ACCESS_TOKEN",
+        "prompt": "  Enter INTERCOM_ACCESS_TOKEN: ",
+        "required": true
+      }
+    ]
+  },
+  "anima-mcp-server": {
+    "name": "Anima MCP Server",
+    "desc": "Connect AI coding agents to Anima Playground, Figma, and your design system.",
+    "pkg": "@modelcontextprotocol/sdk",
+    "author": "AnimaApp",
+    "fields": []
+  },
+  "box": {
+    "name": "Box",
+    "desc": "Securely connect AI agents to your enterprise content in Box",
+    "pkg": "mcp-box-minimal",
+    "author": "box",
+    "fields": [
+      {
+        "type": "env",
+        "key": "BOX_DEVELOPER_TOKEN",
+        "prompt": "  Enter BOX_DEVELOPER_TOKEN: ",
+        "required": true
+      }
+    ]
+  },
+  "holomodular-servicebricks": {
+    "name": "Holomodular Servicebricks",
+    "desc": "Generate a ServiceBricks C# .NET microservice as a ZIP file.",
+    "pkg": "@modelcontextprotocol/sdk",
+    "author": "holomodular",
+    "fields": []
+  },
+  "livecheck-ai": {
+    "name": "LiveCheck AI",
+    "desc": "Secure MCP runtime server for scanning and autofixing code issues",
+    "pkg": "@ai-sdk/mcp",
+    "author": "qualityclouds",
+    "fields": []
+  },
+  "wopee": {
+    "name": "Wopee",
+    "desc": "AI testing agents for web apps — dispatch test runs, crawls, fetch artifacts and status.",
+    "pkg": "wopee-mcp",
+    "author": "Wopee-io",
+    "fields": []
+  },
+  "shipstatic": {
+    "name": "ShipStatic",
+    "desc": "Deploy websites from AI agents. Free at mcp.shipstatic.com. Install for the full toolset.",
+    "pkg": "@shipstatic/mcp",
+    "author": "shipstatic",
+    "fields": []
+  },
+  "guru-remote-mcp-server": {
+    "name": "Guru Remote MCP Server",
+    "desc": "Guru MCP Server - Connect AI tools to your Guru knowledge base",
+    "pkg": "mcp-remote",
+    "author": "guruhq",
+    "fields": []
+  },
+  "microsoft-sentinel-data-exploration": {
+    "name": "Microsoft Sentinel Data Exploration",
+    "desc": "Find relevant security data from Sentinel data lake for building effective agents. More:aka.ms/s/de",
+    "pkg": "@playwright/mcp",
+    "author": "microsoft",
+    "fields": []
+  },
+  "oakallow": {
+    "name": "Oakallow",
+    "desc": "Runtime permission, approval, and audit layer for AI agent tool execution.",
+    "pkg": "mcp-proxy",
+    "author": "oakallow",
+    "fields": []
+  },
+  "shipbook": {
+    "name": "Shipbook",
+    "desc": "Debug production issues using Shipbook logs and Loglytics error insights.",
+    "pkg": "mcp-proxy",
+    "author": "ShipBook",
+    "fields": []
+  },
+  "lucid": {
+    "name": "Lucid",
+    "desc": "Lucid’s connector creates diagrams, searches, edits, shares, and retrieves docs to summarize.",
+    "pkg": "mcp-proxy",
+    "author": "lucidsoftware",
+    "fields": []
+  },
+  "git": {
+    "name": "Git",
+    "desc": "Read, search, and manipulate Git repositories.",
+    "pkg": "mcp-server-git",
+    "author": "modelcontextprotocol",
+    "fields": []
+  },
+  "time": {
+    "name": "Time",
+    "desc": "Get current time, convert timezones, and display local times.",
+    "pkg": "@guanxiong/mcp-server-time",
+    "author": "modelcontextprotocol",
+    "fields": []
+  },
+  "sequentialthinking": {
+    "name": "Sequential Thinking",
+    "desc": "A thinking tool for LLMs to think through problem solving steps sequentially.",
+    "pkg": "@modelcontextprotocol/server-sequential-thinking",
+    "author": "modelcontextprotocol",
+    "fields": []
+  }
+}

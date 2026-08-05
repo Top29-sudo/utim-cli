@@ -1,0 +1,23 @@
+# UTIM Production Server — Python dependencies
+# Install with: pip install -r utim_cli/server/requirements.txt
+
+# fastapi>=0.112.0 is required — it's the first version that properly handles
+# Starlette's removal of on_startup from Router.__init__
+fastapi>=0.112.0
+uvicorn[standard]>=0.29.0
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.9
+openai>=1.30.0
+python-dotenv>=1.0.1
+# Keep Pydantic on v1 for mobile/Termux-style environments. Pydantic v2 pulls
+# pydantic-core, which requires a matching native wheel or a Rust build.
+pydantic>=1.10.13,<2.0.0
+aiohttp>=3.9.5
+requests>=2.31.0
+PyJWT[crypto]>=2.8.0
+cryptography>=41.0.0
+python-multipart>=0.0.7
+slowapi>=0.1.9
+# Optional: CAPTCHA verification (reCAPTCHA v2/v3, Cloudflare Turnstile, hCaptcha)
+# Used by /auth/register, /auth/send-reset-otp, /auth/reset-password
+# requests is already listed above; no extra dep needed

@@ -1,0 +1,52 @@
+# ─── Images & Screenshots ────────────────────────────────────────────────────
+*.png
+*.jpg
+*.jpeg
+*.gif
+screenshots/
+Pictures/
+landing/
+
+# ─── Infrastructure (server runs on Railway, not on user machines) ────────────
+Dockerfile
+Procfile
+railway.json
+railway.toml
+railway.exe
+requirements.txt
+
+# ─── Server code — excluded entirely from the npm package ────────────────────
+utim_cli/server/
+utim_cli/server/**
+
+# ─── Database & Local State ───────────────────────────────────────────────────
+*.db
+utim_server.db
+utim_state.json
+todos.json
+utim_conversations/
+
+# ─── Python Build Artifacts ───────────────────────────────────────────────────
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+build/
+dist/
+*.egg-info/
+utim_cli.egg-info/
+
+# ─── Git ──────────────────────────────────────────────────────────────────────
+.git/
+.gitignore
+
+# ─── Dev / Test Scripts ───────────────────────────────────────────────────────
+todo.py
+todo_gui.py
+test_or.py
+test_prompt.py

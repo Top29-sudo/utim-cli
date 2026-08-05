@@ -1,0 +1,5 @@
+Active Objective**: {obj}..."
+
+        system_msg["content"] += active_context
+
+        # ── 2. PASSIVE MEMORY SUMMARY (Whole memory rollup) ─────────

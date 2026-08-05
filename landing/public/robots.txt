@@ -1,0 +1,7 @@
+# UTIM AI Web Crawling Rules
+User-agent: *
+Allow: /
+
+# Directives
+Host: https://utim.dev
+Sitemap: https://utim.dev/sitemap.xml
