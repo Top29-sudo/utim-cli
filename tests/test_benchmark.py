@@ -1213,7 +1213,7 @@ class TestMultiAgent:
         results = [
             SubAgentResult(task_id="t1", role="A", success=True,
                            output="Result from A", iterations=3, elapsed_s=1.2, depth=1),
-            SubAgentResult(task_id="t2", role="B", success=False,
+            SubAgentResult(task_id="t2", role="B", success=False, output="",
                            error="Something went wrong", iterations=1, elapsed_s=0.5, depth=1),
         ]
         formatted = format_subagent_results(results)
@@ -1338,7 +1338,7 @@ class TestEfficiency:
             {"role": "user",      "content": "ok"},
             {"role": "assistant", "content": "Done, the bug is fixed."},
         ]
-        scores  = score_message_importance(sample_messages)
+        scores  = [score_message_importance(m) for m in sample_messages]
         pruned  = sanitize_message_sequence(sample_messages)
         passed  = (
             isinstance(scores, list)
