@@ -3536,37 +3536,60 @@ class Orchestrator:
                         self.console.print("[bold red]✗ Execution cancelled by user.[/bold red]")
                         return f"[User rejected {func_name}. Do NOT retry this action — ask the user what they want instead.]"
 
-        # ── invoke_subagents — parallel subagent execution ────────────────────
-        # Needs session context (model_id, console, cancel_event, depth), so
-        # it's dispatched here rather than via the generic tool_functions table.
+        # ── invoke_subagents — parallel nested subagent execution ─────────────
+        # Dispatched here (not via the generic tool table) because it needs
+        # session context: model_id, console, cancel_event, current depth.
+        #
+        # Nesting is now SUPPORTED up to MAX_NEST_DEPTH (default 4).
+        # Each subagent can have its own:
+        #   model, context window, system prompt, tools, permissions,
+        #   MCP servers, and persistent ChromaDB memory collection.
         if func_name == "invoke_subagents":
-            # Guard: subagents cannot spawn their own subagents (max depth = 1)
+            from utim_cli.subagent_manager import (
+                SubAgentTask, SubAgentManager, format_subagent_results, MAX_NEST_DEPTH
+            )
+
             current_depth = getattr(self, "_subagent_depth", 0)
-            if current_depth >= 1:
+            max_depth     = getattr(self, "_subagent_max_depth", MAX_NEST_DEPTH)
+
+            # Hard ceiling guard
+            if current_depth >= MAX_NEST_DEPTH:
                 return (
-                    "[invoke_subagents blocked] Subagents cannot spawn their own "
-                    "subagents. Maximum nesting depth is 1. Complete your task "
-                    "using the tools available to you directly."
+                    f"[invoke_subagents blocked] Maximum nesting depth ({MAX_NEST_DEPTH}) reached. "
+                    f"Complete your task directly using the tools available to you."
+                )
+
+            # Per-agent configurable depth guard
+            if current_depth >= max_depth:
+                return (
+                    f"[invoke_subagents blocked] This subagent's max_depth ({max_depth}) "
+                    f"does not permit further nesting. Complete your task directly."
                 )
 
             tasks_raw = arguments.get("tasks", [])
             if not isinstance(tasks_raw, list) or not tasks_raw:
                 return "[invoke_subagents error] 'tasks' must be a non-empty array."
 
-            from utim_cli.subagent_manager import SubAgentTask, SubAgentManager, format_subagent_results
-
             tasks = []
             for t in tasks_raw:
                 if not isinstance(t, dict):
                     continue
                 tasks.append(SubAgentTask(
-                    task_id         = str(t.get("task_id", f"task-{len(tasks)+1}")),
-                    role            = str(t.get("role", "Subagent")),
-                    system_prompt   = str(t.get("system_prompt", "")),
-                    user_prompt     = str(t.get("user_prompt", "")),
-                    model_id        = str(t.get("model_id", "") or self.model_id),
-                    max_iterations  = int(t.get("max_iterations", 20)),
-                    timeout_seconds = int(t.get("timeout_seconds", 300)),
+                    task_id           = str(t.get("task_id", f"task-{len(tasks)+1}")),
+                    role              = str(t.get("role", "Subagent")),
+                    system_prompt     = str(t.get("system_prompt", "")),
+                    user_prompt       = str(t.get("user_prompt", "")),
+                    model_id          = str(t.get("model_id", "") or self.model_id),
+                    max_iterations    = int(t.get("max_iterations", 20)),
+                    timeout_seconds   = int(t.get("timeout_seconds", 300)),
+                    # Per-agent capabilities (new in v2.3.0)
+                    allowed_tools     = list(t.get("allowed_tools", [])),
+                    blocked_tools     = list(t.get("blocked_tools", [])),
+                    permission        = str(t.get("permission", "full")),
+                    mcp_servers       = list(t.get("mcp_servers", [])),
+                    memory_collection = str(t.get("memory_collection", "")),
+                    max_depth         = int(t.get("max_depth", MAX_NEST_DEPTH)),
+                    context_limit     = int(t.get("context_limit", 0)),
                 ))
 
             if not tasks:
@@ -3576,7 +3599,7 @@ class Orchestrator:
                 parent_model=self.model_id,
                 console=self.console,
                 cancel_event=self.cancel_event,
-                depth=current_depth,
+                current_depth=current_depth,
             )
             results = manager.run_parallel(tasks)
             return format_subagent_results(results)

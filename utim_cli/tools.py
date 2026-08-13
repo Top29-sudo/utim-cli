@@ -4725,17 +4725,23 @@ _BASE_UTIM_TOOLS = [
         "function": {
             "name": "invoke_subagents",
             "description": (
-                "Spawn one or more parallel subagents, each with their OWN designated task, system prompt, "
-                "and user prompt — written by you (the main agent). All subagents run concurrently and "
-                "their results are returned to you as a single structured block when ALL complete.\n\n"
+                "Spawn one or more parallel subagents. Each subagent has its OWN:\n"
+                "  • context window  (isolated message history — no bleed from parent)\n"
+                "  • system_prompt   (fully custom, not inherited)\n"
+                "  • model           (any UTIM-supported model, can differ from parent)\n"
+                "  • tools           (allowlist/denylist — restrict or expand access)\n"
+                "  • permissions     (full | read_only | no_shell | no_write | isolated)\n"
+                "  • mcp_servers     (list of MCP server names; empty = inherit parent's)\n"
+                "  • memory          (ChromaDB collection for persistent RAG across runs)\n"
+                "  • max_depth       (how many further nesting levels it may spawn, 0=leaf)\n\n"
+                "All subagents run CONCURRENTLY. Results are returned when ALL complete.\n\n"
                 "Use this when:\n"
-                "  • A task can be decomposed into independent parallel workstreams (research + write + review)\n"
-                "  • You need multiple specialised agents to work simultaneously on sub-problems\n"
-                "  • Sequential execution would be unnecessarily slow\n\n"
+                "  • A task decomposes into independent parallel workstreams\n"
+                "  • You need specialised agents running simultaneously (researcher + writer + reviewer)\n"
+                "  • A subagent itself needs to spawn its own sub-team (nested orchestration)\n\n"
                 "Rules:\n"
-                "  • Write a full, specific system_prompt and user_prompt for EACH subagent — do not be vague\n"
-                "  • Each subagent has full tool access (read_file, write_file, run_command, web_search, etc.)\n"
-                "  • Subagents CANNOT spawn their own subagents (max depth = 1)\n"
+                "  • Write a full, specific system_prompt and user_prompt for EACH subagent\n"
+                "  • Nesting supported up to depth 4 (global hard ceiling)\n"
                 "  • Max 8 subagents per invocation\n"
                 "  • Results arrive in the same order as the tasks array"
             ),
@@ -4750,31 +4756,70 @@ _BASE_UTIM_TOOLS = [
                             "properties": {
                                 "task_id": {
                                     "type": "string",
-                                    "description": "Short unique identifier for this task, e.g. 'research-1', 'write-tests', 'code-review'."
+                                    "description": "Short unique identifier, e.g. 'research-1', 'write-tests', 'code-review'."
                                 },
                                 "role": {
                                     "type": "string",
-                                    "description": "Human-readable role label for this subagent, e.g. 'Researcher', 'Test Writer', 'Code Reviewer'."
+                                    "description": "Human-readable role label, e.g. 'Researcher', 'Test Writer', 'Code Reviewer'."
                                 },
                                 "system_prompt": {
                                     "type": "string",
-                                    "description": "Full system prompt for this subagent. Define its persona, scope, constraints, and output format. Be specific and detailed."
+                                    "description": "Full system prompt for this subagent. Define its persona, scope, constraints, output format. Be specific and detailed."
                                 },
                                 "user_prompt": {
                                     "type": "string",
-                                    "description": "The actual task/instruction for this subagent. This is what it will work on. Be precise and complete."
+                                    "description": "The actual task instruction for this subagent. Be precise and complete."
                                 },
                                 "model_id": {
                                     "type": "string",
-                                    "description": "Optional. Model to use for this subagent (e.g. 'anthropic/claude-sonnet-4.5'). Defaults to the parent model if omitted."
+                                    "description": "Optional. Model for this subagent (e.g. 'anthropic/claude-sonnet-4-5'). Defaults to parent model if omitted."
                                 },
                                 "max_iterations": {
                                     "type": "integer",
-                                    "description": "Optional. Max LLM iterations for this subagent (default: 20). Increase for complex tasks."
+                                    "description": "Optional. Max LLM iterations (default: 20). Increase for complex tasks."
                                 },
                                 "timeout_seconds": {
                                     "type": "integer",
-                                    "description": "Optional. Wall-clock timeout in seconds (default: 300). Subagent is cancelled if it exceeds this."
+                                    "description": "Optional. Wall-clock timeout in seconds (default: 300). Subagent is cancelled if exceeded."
+                                },
+                                "allowed_tools": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                    "description": "Optional. If non-empty, ONLY these tool names are visible to this subagent. Acts as an allowlist."
+                                },
+                                "blocked_tools": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                    "description": "Optional. Tool names to explicitly block for this subagent (stacks on top of the permission profile)."
+                                },
+                                "permission": {
+                                    "type": "string",
+                                    "enum": ["full", "read_only", "no_shell", "no_write", "isolated"],
+                                    "description": (
+                                        "Optional. Named permission profile (default: 'full'):\n"
+                                        "  full       — all tools available\n"
+                                        "  read_only  — may not write files, run commands, or delete\n"
+                                        "  no_shell   — may not run shell commands\n"
+                                        "  no_write   — may not modify files but can run read commands\n"
+                                        "  isolated   — only memory/analysis tools; no filesystem or shell"
+                                    )
+                                },
+                                "mcp_servers": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                    "description": "Optional. List of MCP server names to enable for this subagent. Empty = inherit parent's active MCP connections."
+                                },
+                                "memory_collection": {
+                                    "type": "string",
+                                    "description": "Optional. ChromaDB collection name for this subagent's persistent memory. Relevant past memories are injected into context; new outputs are stored. Empty = no persistent memory."
+                                },
+                                "max_depth": {
+                                    "type": "integer",
+                                    "description": "Optional. How many further nesting levels this subagent may spawn (0 = leaf node). Capped by the global ceiling of 4."
+                                },
+                                "context_limit": {
+                                    "type": "integer",
+                                    "description": "Optional. Max context tokens for this subagent's isolated context window (0 = use model default)."
                                 }
                             },
                             "required": ["task_id", "role", "system_prompt", "user_prompt"]
