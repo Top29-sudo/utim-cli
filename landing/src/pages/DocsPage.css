@@ -1,0 +1,268 @@
+/* Main Website Docs Page CSS — Scrollytelling Card Layout matching Screenshot 2026-08-09 221608 */
+
+.docs-main-page {
+  min-height: 100vh;
+  background-color: #FAFAF9;
+  background-image: radial-gradient(#CBD5E1 0.75px, transparent 0.75px);
+  background-size: 24px 24px;
+  color: #0F172A;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.docs-hero-section {
+  text-align: center;
+  padding: 60px 24px 40px 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.docs-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #0284C7;
+  margin-bottom: 16px;
+}
+
+.docs-hero-title {
+  font-family: "Georgia", "Playfair Display", serif;
+  font-size: 3rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #0F172A;
+  line-height: 1.15;
+  margin-bottom: 16px;
+}
+
+.docs-hero-desc {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: #475569;
+  max-width: 720px;
+  margin: 0 auto 28px auto;
+}
+
+.docs-portal-link-banner {
+  background: #0F172A;
+  color: #F8FAFC;
+  border-radius: 12px;
+  padding: 14px 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 36px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  text-align: left;
+  max-width: 780px;
+  width: 100%;
+}
+
+.docs-portal-link-banner span {
+  font-size: 0.9rem;
+  color: #CBD5E1;
+}
+
+.docs-portal-link-banner strong {
+  color: #FFFFFF;
+  display: block;
+}
+
+.docs-portal-btn {
+  background: #38BDF8;
+  color: #0F172A !important;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 6px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: opacity 0.15s ease;
+}
+
+.docs-portal-btn:hover {
+  opacity: 0.9;
+}
+
+/* Card Grid Layout */
+.docs-cards-container {
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 24px 100px 24px;
+}
+
+.docs-grid-3col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.docs-grid-2col {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.docs-grid-full {
+  margin-bottom: 24px;
+}
+
+.docs-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  padding: 28px 26px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.docs-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.docs-card-title {
+  font-family: "Georgia", "Playfair Display", serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #0F172A;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.docs-card-icon {
+  font-family: monospace;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #0284C7;
+}
+
+.docs-card-p {
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: #475569;
+  margin-bottom: 16px;
+}
+
+.docs-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+}
+
+.docs-checklist li {
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: #334155;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.docs-checklist li span.check {
+  color: #059669;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+/* Terminal Box Component inside Cards */
+.docs-terminal-snippet {
+  background: #090D16;
+  border: 1px solid #1E293B;
+  border-radius: 10px;
+  padding: 14px 18px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: #F8FAFC;
+  margin: 12px 0 16px 0;
+  position: relative;
+}
+
+.docs-terminal-prompt {
+  color: #4ADE80;
+  user-select: none;
+  margin-right: 8px;
+}
+
+.docs-terminal-comment {
+  color: #64748B;
+  display: block;
+}
+
+/* Tables inside Cards */
+.docs-card-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 0.88rem;
+}
+
+.docs-card-table th {
+  background: #F8FAFC;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 700;
+  color: #0F172A;
+  border-bottom: 2px solid #E2E8F0;
+}
+
+.docs-card-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #F1F5F9;
+  color: #334155;
+}
+
+@media (max-width: 1024px) {
+  .docs-grid-3col {
+    grid-template-columns: 1fr;
+  }
+  .docs-grid-2col {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .docs-hero-title {
+    font-size: 1.95rem;
+  }
+  .docs-cards-container {
+    padding: 0 16px 60px 16px;
+  }
+  .docs-portal-link-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+  .docs-card {
+    padding: 20px 18px;
+  }
+}
+
+.docs-terminal-snippet {
+  overflow-x: auto;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.docs-card-table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}

@@ -22,11 +22,39 @@ def forward_stream(source, dest, filter_json=False):
         pass
 
 def main():
+    import os
+    import shutil
+
     if len(sys.argv) < 2:
         sys.exit(1)
         
     cmd = sys.argv[1:]
     
+    # Shebang resolution for Termux/Unix script compatibility
+    if os.name != 'nt' and cmd:
+        executable = cmd[0]
+        if os.path.exists(executable) and os.path.isfile(executable):
+            try:
+                with open(executable, 'rb') as f:
+                    first_line = f.readline()
+                if first_line.startswith(b'#!'):
+                    shebang = first_line[2:].decode('utf-8', errors='ignore').strip()
+                    parts = shebang.split()
+                    if parts:
+                        interpreter = parts[0]
+                        interpreter_args = parts[1:]
+                        interpreter_name = os.path.basename(interpreter)
+                        
+                        if interpreter_name == 'env' and len(parts) > 1:
+                            real_interpreter = parts[1]
+                            resolved_interpreter = shutil.which(real_interpreter) or real_interpreter
+                            cmd = [resolved_interpreter] + parts[2:] + cmd
+                        else:
+                            resolved_interpreter = shutil.which(interpreter_name) or interpreter
+                            cmd = [resolved_interpreter] + interpreter_args + cmd
+            except Exception:
+                pass
+
     # On Windows, using shell=False is safer when commands are resolved to absolute paths,
     # as it prevents argument double-quoting bugs with cmd.exe command line construction.
     use_shell = False

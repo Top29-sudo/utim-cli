@@ -1,0 +1,132 @@
+Deepseek v4 flash 0731 | prompt/M=$0.0800 | completion/M=$0.1800
+
+North mini code | prompt/M=Free | completion/M=Free
+
+Deepseek v4 flash | prompt/M=$0.0800 | completion/M=$0.1800
+
+Ling 2.6 flash | prompt/M=$0.0100 | completion/M=$0.0300
+
+Kat coder air v2.5 | prompt/M=$0.1500 | completion/M=$0.6000
+
+Muse spark 1.1 | prompt/M=$1.25 | completion/M=$4.25
+
+Minimax m2.5 | prompt/M=$0.2200 | completion/M=$0.9000
+
+Nex n2 mini | prompt/M=$0.0250 | completion/M=$0.1000
+
+Laguna s 2.1 | prompt/M=Free | completion/M=Free
+
+Inkling | prompt/M=$0.9500 | completion/M=$4.05
+
+Mimo v2.5 | prompt/M=$0.1400 | completion/M=$0.2800
+
+Deepseek v4 pro | prompt/M=$0.4350 | completion/M=$0.8700
+
+Ling 2.6 1t | prompt/M=$0.0750 | completion/M=$0.6250
+
+Kat coder pro v2 | prompt/M=$0.3000 | completion/M=$1.20
+
+Kat coder pro v2.5 | prompt/M=$0.7400 | completion/M=$2.96
+
+Minimax m3 | prompt/M=$0.3000 | completion/M=$1.20
+
+Kimi k2.5 | prompt/M=$0.5700 | completion/M=$2.85
+
+Kimi k3 | prompt/M=$3.00 | completion/M=$15.00
+
+Gpt 5.4 mini | prompt/M=$0.7500 | completion/M=$4.50
+
+Qwen3.6 plus | prompt/M=$0.3250 | completion/M=$1.95
+
+Qwen3.7 plus | prompt/M=$0.3200 | completion/M=$1.28
+
+Step 3.7 flash | prompt/M=$0.2000 | completion/M=$1.15
+
+Glm 4.7 | prompt/M=$0.4000 | completion/M=$1.75
+
+Glm 5 | prompt/M=$0.9500 | completion/M=$2.55
+
+Glm 5.2 | prompt/M=$0.7600 | completion/M=$2.42
+
+Claude sonnet 5 | prompt/M=$2.00 | completion/M=$10.00
+
+Deepseek r1 | prompt/M=$0.2500 | completion/M=$0.9500
+
+gemini-3.1-pro-preview | prompt/M=$2.00 | completion/M=$12.00
+
+Gemini 3.6 flash | prompt/M=$1.50 | completion/M=$7.50
+
+Minimax m2.7 | prompt/M=$0.3000 | completion/M=$1.20
+
+Kimi k2.6 | prompt/M=$0.9500 | completion/M=$4.00
+
+Kimi k2.7 code | prompt/M=$0.7000 | completion/M=$3.50
+
+Nex n2 pro | prompt/M=$0.2500 | completion/M=$1.00
+
+Grok 4.20 | prompt/M=$1.25 | completion/M=$2.50
+
+Grok 4.3 | prompt/M=$1.25 | completion/M=$2.50
+
+Grok build 0.1 | prompt/M=$1.00 | completion/M=$2.00
+Mimo v2.5 pro | prompt/M=$0.4350 | completion/M=$0.8700
+
+Glm 5 turbo | prompt/M=$1.20 | completion/M=$4.00
+
+Glm 5.1 | prompt/M=$1.40 | completion/M=$4.40
+
+Claude opus 4.5 | prompt/M=$5.00 | completion/M=$25.00
+
+Claude opus 4.6 | prompt/M=$5.00 | completion/M=$25.00
+
+Claude opus 4.7 | prompt/M=$30.00 | completion/M=$150.00
+
+Claude opus 4.8 | prompt/M=$10.00 | completion/M=$50.00
+
+Claude sonnet 4.5 | prompt/M=$3.00 | completion/M=$15.00
+
+Claude sonnet 4.6 | prompt/M=$3.00 | completion/M=$15.00
+
+Gemini 3.5 flash | prompt/M=$1.50 | completion/M=$9.00
+
+Gpt 5.4 | prompt/M=$2.50 | completion/M=$15.00
+
+Qwen3.7 max | prompt/M=$1.48 | completion/M=$4.42
+
+Claude fable 5 | prompt/M=$10.00 | completion/M=$50.00
+
+Gpt 5.3 codex | prompt/M=$1.75 | completion/M=$14.00
+
+Gpt 5.5 | prompt/M=$5.00 | completion/M=$30.00
+
+Claude opus 5 | prompt/M=$10.00 | completion/M=$50.00
+
+
+Gemini 3.1 pro preview | prompt/M=$2.00 | completion/M=$12.00
+
+
+Gemma 4 26b a4b it | prompt/M=Free | completion/M=Free
+
+Gemma 4 31b it | prompt/M=Free | completion/M=Free
+Gpt 5.6 luna | prompt/M=$0.1000 | completion/M=$0.6000
+
+Gpt 5.6 luna pro | prompt/M=$0.1000 | completion/M=$0.6000
+
+Gpt 5.6 sol | prompt/M=$5.00 | completion/M=$30.00
+
+Gpt 5.6 sol pro | prompt/M=$5.00 | completion/M=$30.00
+
+Gpt 5.6 terra | prompt/M=$1.00 | completion/M=$6.00
+
+Gpt 5.6 terra pro | prompt/M=$1.00 | completion/M=$6.00
+Gpt oss 20b | prompt/M=Free | completion/M=Free
+
+Qwen3 Next 80B | prompt/M=$0.1170 | completion/M=$0.4550
+
+Qwen3.8 max | prompt/M=$2.00 | completion/M=$6.00
+
+Grok 4.5 | prompt/M=$2.00 | completion/M=$6.00
+
+Mimo v2 pro | prompt/M=$0.4350 | completion/M=$0.8700
+
+

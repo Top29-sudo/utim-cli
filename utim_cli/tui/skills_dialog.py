@@ -108,7 +108,7 @@ def _create_skill_interactive(console):
     skill_dir = _get_skills_dir() / skill_name
     skill_md = skill_dir / "SKILL.md"
     if skill_md.exists():
-        console.print(f"  [yellow]⚠ Skill '{skill_name}' already exists. Opening its folder.[/yellow]\n")
+        console.print(f"  [yellow]Skill '{skill_name}' already exists. Opening its folder.[/yellow]\n")
         return skill_name
 
     try:
@@ -164,7 +164,7 @@ def _dialog_skills(orchestrator=None):
         rows = []
 
         rows.append({
-            "name": "✅ Enable All Skills",
+            "name": "Enable All Skills",
             "desc": "Activate every skill in .utim_tmp/skills/",
             "action": "enable_all",
         })
@@ -174,17 +174,17 @@ def _dialog_skills(orchestrator=None):
             "action": "disable_all",
         })
         rows.append({
-            "name": "⚡ Create New Skill (with AI Prompt @skills)",
+            "name": "Create New Skill (with AI Prompt @skills)",
             "desc": "Closes dialog and appends @skills to prompt AI to design your skill",
             "action": "create",
         })
         rows.append({
-            "name": "📝 Create New Skill (Interactive Form)",
+            "name": "Create New Skill (Interactive Form)",
             "desc": "Scaffold a new SKILL.md manually in terminal",
             "action": "create_manual",
         })
         rows.append({
-            "name": "❌ Exit",
+            "name": "Exit",
             "desc": "Return to the chat screen",
             "action": "exit",
         })
@@ -196,7 +196,7 @@ def _dialog_skills(orchestrator=None):
                 "action": "header",
             })
             for sk in skills:
-                checkbox = "☑" if sk["enabled"] else "☐"
+                checkbox = "" if sk["enabled"] else ""
                 rows.append({
                     "name": f"  {checkbox}  {sk['name']}",
                     "desc": sk["description"],
@@ -205,7 +205,7 @@ def _dialog_skills(orchestrator=None):
                     "enabled": sk["enabled"],
                 })
                 rows.append({
-                    "name": f"       🗑  Delete '{sk['name']}'",
+                    "name": f"        Delete '{sk['name']}'",
                     "desc": "Permanently remove this skill from disk",
                     "action": "delete",
                     "skill_name": sk["name"],
@@ -219,7 +219,7 @@ def _dialog_skills(orchestrator=None):
 
         # ── Render function ───────────────────────────────────────────────────
         def render_row(idx, row, selected):
-            bg = "bg:#1e1e2e" if selected else ""
+            bg = "bg:#313244" if selected else ""
             act = row.get("action")
 
             if act == "exit":
@@ -231,13 +231,13 @@ def _dialog_skills(orchestrator=None):
             elif act == "header":
                 fg = "dim #585b70"
             elif act == "delete":
-                fg = ("bold #f38ba8 bg:#313244" if selected else "#f38ba8")
+                fg = ("bold white bg:#313244" if selected else "#6c7086")
             elif act == "toggle":
                 enabled = row.get("enabled", True)
                 if enabled:
-                    fg = ("bold #a6e3a1 bg:#313244" if selected else "#a6e3a1")
+                    fg = ("bold white bg:#313244" if selected else "#cdd6f4")
                 else:
-                    fg = ("fg:#cdd6f4 bg:#313244" if selected else "fg:#a6adc8")
+                    fg = ("fg:#ffffff bg:#313244" if selected else "fg:#6c7086")
             else:
                 fg = "fg:#cdd6f4" if selected else "fg:#a6adc8"
 

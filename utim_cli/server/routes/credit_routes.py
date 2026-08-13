@@ -272,6 +272,14 @@ def api_credits_verify(
         description=f"Online payment top-up of ${payment_order.amount:.2f}"
     )
     db.add(tx)
+
+    # Grant free spin for every $5 topped up
+    spins_to_add = int(payment_order.amount // 5.0)
+    if spins_to_add > 0:
+        from .rewards_routes import _get_or_create_spin_cycle
+        cycle = _get_or_create_spin_cycle(db, user.id)
+        cycle.spins_granted += spins_to_add
+
     db.commit()
     
     logger.info("payment_order_completed", extra={

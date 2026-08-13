@@ -21,12 +21,12 @@ def _dialog_consent_share_chat(run_list_dialog):
     consent_rows = [
         {
             "key": "allow",
-            "label": "✅  Allow  (Recommended)",
+            "label": "Allow  (Recommended)",
             "desc": "Share this session's chat history — helps UTIM improve responses",
         },
         {
             "key": "deny",
-            "label": "🚫  Don't Allow",
+            "label": "Don't Allow",
             "desc": "Submit only your star rating & comment — no chat data sent",
         },
         {
@@ -37,13 +37,13 @@ def _dialog_consent_share_chat(run_list_dialog):
     ]
 
     def _render_consent(idx, row, selected):
-        bg = "bg:#1e1e2e" if selected else ""
+        bg = "bg:#313244" if selected else ""
         if row["key"] == "cancel":
-            fg = "bold #f38ba8" if selected else "#f38ba8"
+            fg = "bold white" if selected else "#6c7086"
         elif row["key"] == "allow":
-            fg = "bold #a6e3a1" if selected else "#a6e3a1"
+            fg = "bold white" if selected else "#cdd6f4"
         else:
-            fg = "bold #f9e2af" if selected else "#f9e2af"
+            fg = "bold white" if selected else "#cdd6f4"
         return [
             (bg, "  ➔ " if selected else "    "),
             (bg or fg, f"{row['label']}\n"),
@@ -84,11 +84,11 @@ def _dialog_submit_feedback(orchestrator=None):
     ]
 
     def _render_rating(idx, row, selected):
-        bg = "bg:#1e1e2e" if selected else ""
+        bg = "bg:#313244" if selected else ""
         fg = (
-            ("bold #f38ba8" if selected else "#f38ba8")
+            ("bold white" if selected else "#6c7086")
             if row["key"] == "cancel"
-            else ("bold #a6e3a1" if selected else "#a6e3a1")
+            else ("bold white" if selected else "#cdd6f4")
         )
         return [
             (bg, "  ➔ " if selected else "    "),
@@ -109,11 +109,11 @@ def _dialog_submit_feedback(orchestrator=None):
 
     # ── Step 2: Optional comment (always shown) ──────────────────────────────
     console.print(
-        "\n  [bold #89b4fa]Write a comment about this response "
-        "(press Enter to leave blank):[/bold #89b4fa]"
+        "\n  [bold white]Write a comment about this response "
+        "(press Enter to leave blank):[/bold white]"
     )
     try:
-        comment = prompt("  ✍  Comment: ").strip() or None
+        comment = prompt("  Comment: ").strip() or None
     except (KeyboardInterrupt, EOFError):
         comment = None
 
@@ -155,8 +155,15 @@ def _dialog_submit_feedback(orchestrator=None):
                 f"(HTTP {resp.status_code}): {resp.text}[/bold red]\n"
             )
     except Exception as e:
+        # Show a clean error message without verbose connection pool details
+        error_msg = str(e)
+        # Strip verbose HTTPSConnectionPool details for cleaner UX
+        if "HTTPSConnectionPool" in error_msg or "Read timed out" in error_msg:
+            error_msg = "Connection timed out. Please check your network and try again."
+        elif "ConnectionError" in type(e).__name__:
+            error_msg = "Connection failed. Please check your network and try again."
         console.print(
-            f"  [bold red]✗ Network error while submitting feedback: {e}[/bold red]\n"
+            f"  [bold red]✗ Network error while submitting feedback: {error_msg}[/bold red]\n"
         )
 
 
@@ -170,19 +177,19 @@ def _dialog_submit_feedback_conditional(orchestrator=None):
 
     # ── Step 1: Thumbs Up / Down ─────────────────────────────────────────────
     thumbs_rows = [
-        {"key": "up",     "label": "👍  Thumbs Up",   "desc": "The response was good or average"},
-        {"key": "down",   "label": "👎  Thumbs Down", "desc": "The response was average, poor, or terrible"},
+        {"key": "up",     "label": "Thumbs Up",   "desc": "The response was good or average"},
+        {"key": "down",   "label": "Thumbs Down", "desc": "The response was average, poor, or terrible"},
         {"key": "cancel", "label": "Cancel",           "desc": "Skip feedback submission"},
     ]
 
     def _render_thumbs(idx, row, selected):
-        bg = "bg:#1e1e2e" if selected else ""
+        bg = "bg:#313244" if selected else ""
         if row["key"] == "cancel":
-            fg = "bold #f38ba8" if selected else "#f38ba8"
+            fg = "bold white" if selected else "#6c7086"
         elif row["key"] == "up":
-            fg = "bold #a6e3a1" if selected else "#a6e3a1"
+            fg = "bold white" if selected else "#cdd6f4"
         else:
-            fg = "bold #f9e2af" if selected else "#f9e2af"
+            fg = "bold white" if selected else "#cdd6f4"
         return [
             (bg, "  ➔ " if selected else "    "),
             (bg or fg, f"{row['label']}\n"),
@@ -215,11 +222,11 @@ def _dialog_submit_feedback_conditional(orchestrator=None):
     rows.append({"key": "cancel", "label": "Cancel", "desc": "Exit without submitting"})
 
     def _render_rating(idx, row, selected):
-        bg = "bg:#1e1e2e" if selected else ""
+        bg = "bg:#313244" if selected else ""
         fg = (
-            ("bold #f38ba8" if selected else "#f38ba8")
+            ("bold white" if selected else "#6c7086")
             if row["key"] == "cancel"
-            else ("bold #a6e3a1" if selected else "#a6e3a1")
+            else ("bold white" if selected else "#cdd6f4")
         )
         return [
             (bg, "  ➔ " if selected else "    "),
@@ -242,11 +249,11 @@ def _dialog_submit_feedback_conditional(orchestrator=None):
     comment = None
     if rating != 5:
         console.print(
-            "\n  [bold #89b4fa]Write a feedback comment describing the experience "
-            "(press Enter to leave blank):[/bold #89b4fa]"
+            "\n  [bold white]Write a feedback comment describing the experience "
+            "(press Enter to leave blank):[/bold white]"
         )
         try:
-            comment = prompt("  ✍  Comment: ").strip() or None
+            comment = prompt("  Comment: ").strip() or None
         except (KeyboardInterrupt, EOFError):
             comment = None
 
@@ -282,8 +289,15 @@ def _dialog_submit_feedback_conditional(orchestrator=None):
                 f"(HTTP {resp.status_code}): {resp.text}[/bold red]\n"
             )
     except Exception as e:
+        # Show a clean error message without verbose connection pool details
+        error_msg = str(e)
+        # Strip verbose HTTPSConnectionPool details for cleaner UX
+        if "HTTPSConnectionPool" in error_msg or "Read timed out" in error_msg:
+            error_msg = "Connection timed out. Please check your network and try again."
+        elif "ConnectionError" in type(e).__name__:
+            error_msg = "Connection failed. Please check your network and try again."
         console.print(
-            f"  [bold red]✗ Network error while submitting feedback: {e}[/bold red]\n"
+            f"  [bold red]✗ Network error while submitting feedback: {error_msg}[/bold red]\n"
         )
 
 
@@ -339,7 +353,7 @@ def _dialog_feedbacks(orchestrator=None):
         date_str = fb["created_at"].split(".")[0].replace("T", " ")
         email    = fb["user_email"]
         comment  = fb["comment"] or "(No comment)"
-        chat_tag = "  💬" if fb.get("chat_history") else ""
+        chat_tag = "  [Chat]" if fb.get("chat_history") else ""
         rows.append({
             "key":   str(idx),
             "label": f"{stars}{chat_tag}  by {email}  ({date_str})",
@@ -349,11 +363,11 @@ def _dialog_feedbacks(orchestrator=None):
     rows.append({"key": "back", "label": "Back to Chat", "desc": "Return to the main chat screen"})
 
     def _render(idx, row, selected):
-        bg = "bg:#1e1e2e" if selected else ""
+        bg = "bg:#313244" if selected else ""
         fg = (
-            ("bold #f38ba8" if selected else "#f38ba8")
+            ("bold white" if selected else "#6c7086")
             if row["key"] == "back"
-            else ("bold #cba6f7" if selected else "#cba6f7")
+            else ("bold white" if selected else "#cdd6f4")
         )
         return [
             (bg, "  ➔ " if selected else "    "),
@@ -365,7 +379,7 @@ def _dialog_feedbacks(orchestrator=None):
         action, idx = _run_list_dialog(
             rows, _render,
             title="User Feedbacks Dashboard",
-            legend="ENTER to view details · ESC/Q to return  |  💬 = includes chat history",
+            legend="ENTER to view details · ESC/Q to return  |  [Chat] = includes chat history",
         )
         if action != "select" or rows[idx]["key"] == "back":
             return
@@ -374,13 +388,13 @@ def _dialog_feedbacks(orchestrator=None):
 
         def print_chat_history(con, fb=selected_fb):
             from rich.markup import escape
-            con.print(f"\n  [bold #cba6f7]Feedback details:[/bold #cba6f7]")
+            con.print(f"\n  [bold white]Feedback details:[/bold white]")
             con.print(f"  [bold]User:[/bold]         {escape(str(fb['user_email']))}")
             con.print(f"  [bold]Date:[/bold]         {fb['created_at'].replace('T', ' ').split('.')[0]}")
             con.print(f"  [bold]Rating:[/bold]       {'⭐' * fb['rating']}")
             con.print(f"  [bold]Comment:[/bold]      {escape(str(fb['comment'] or '(None)'))}\n")
             con.print(Rule(style="dim"))
-            con.print(f"\n  [bold #89b4fa]Chat History:[/bold #89b4fa]\n")
+            con.print(f"\n  [bold white]Chat History:[/bold white]\n")
 
             chat = fb.get("chat_history")
             if isinstance(chat, str):
@@ -400,17 +414,17 @@ def _dialog_feedbacks(orchestrator=None):
                 role    = msg.get("role", "unknown") or "unknown"
                 content = msg.get("content") or ""
                 if role == "user":
-                    con.print(f"  [bold #42bcf5]👤 User:[/bold #42bcf5]")
+                    con.print(f"  [bold white]User:[/bold white]")
                     con.print(f"    {escape(str(content))}\n")
                 elif role == "assistant":
-                    con.print(f"  [bold #a6e3a1]🤖 Assistant:[/bold #a6e3a1]")
+                    con.print(f"  [bold white]Assistant:[/bold white]")
                     if isinstance(content, list):
                         content = "\n".join(
                             p.get("text", "") for p in content if isinstance(p, dict)
                         )
                     con.print(f"    {escape(str(content))}\n")
                 else:
-                    con.print(f"  [dim]⚙  {role.title()}:[/dim]")
+                    con.print(f"  [dim]{role.title()}:[/dim]")
                     con.print(f"    {escape(str(content))}\n")
 
         from utim_cli.utim import _run_captured_dialog

@@ -37,6 +37,22 @@ class PackageStorageProvider(abc.ABC):
         """Upload ZIP bytes to storage. Return dict with drive_file_id, size_bytes, sha256."""
         pass
 
+    def upload_stream(
+        self,
+        package_id: str,
+        filename: str,
+        size_bytes: int,
+        chunk_iter,          # Iterator[bytes] — yields raw bytes in any chunk size
+        sha256_hex: str = "",
+    ) -> dict:
+        """
+        Streaming upload: never buffers the full file in RAM.
+        Default implementation falls back to collecting chunks into bytes and
+        calling upload(). Subclasses SHOULD override with a true streaming path.
+        """
+        collected = b"".join(chunk_iter)
+        return self.upload(package_id, collected, filename)
+
     @abc.abstractmethod
     def stream_download(self, drive_file_id: str, chunk_size: int = 65536) -> Iterator[bytes]:
         """Stream ZIP archive bytes from storage in bounded chunks."""
@@ -105,7 +121,128 @@ class GoogleDriveStorageNode(PackageStorageProvider):
             logger.error(f"Failed to refresh Google Drive token for node {self.node_id}: {e}")
         return None
 
+    def upload_stream(
+        self,
+        package_id: str,
+        filename: str,
+        size_bytes: int,
+        chunk_iter,
+        sha256_hex: str = "",
+    ) -> dict:
+        """
+        True zero-RAM streaming upload via Google Drive Resumable Upload API.
+
+        Flow (per Google documentation for files > 5 MB):
+          1. POST /upload/resumable  → obtain a session URI (valid for 7 days)
+          2. PUT chunks with Content-Range headers until all bytes are sent
+          3. Final PUT response (200/201) returns the new Drive file ID
+
+        At any point the server holds only the current 8 MB chunk in memory.
+        The caller's `chunk_iter` is consumed lazily — FastAPI's UploadFile
+        implements it as an async generator that yields network-received data,
+        so even the HTTP request body never fully lands in RAM.
+        """
+        import requests as _req
+
+        token = self._get_access_token()
+        if not token:
+            # No OAuth token → fall back to local node storage (still streaming)
+            drive_file_id = f"gdrive_file_{uuid.uuid4().hex[:16]}"
+            file_path = self.storage_dir / f"{drive_file_id}.zip"
+            sha256_h = hashlib.sha256()
+            written = 0
+            with open(file_path, "wb") as fout:
+                for chunk in chunk_iter:
+                    fout.write(chunk)
+                    sha256_h.update(chunk)
+                    written += len(chunk)
+            return {
+                "drive_file_id": drive_file_id,
+                "size_bytes": written,
+                "sha256": sha256_hex or sha256_h.hexdigest(),
+            }
+
+        # ── Step 1: Initiate resumable session ────────────────────────────
+        metadata = {"name": filename, "mimeType": "application/zip"}
+        init_resp = _req.post(
+            "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json; charset=UTF-8",
+                "X-Upload-Content-Type": "application/zip",
+                "X-Upload-Content-Length": str(size_bytes),
+            },
+            json=metadata,
+            timeout=30,
+        )
+        if init_resp.status_code not in (200, 201):
+            raise RuntimeError(
+                f"Drive resumable upload init failed: {init_resp.status_code} {init_resp.text[:200]}"
+            )
+        session_uri = init_resp.headers.get("Location")
+        if not session_uri:
+            raise RuntimeError("Drive resumable session URI missing from response headers.")
+
+        # ── Step 2: Upload chunks ─────────────────────────────────────────
+        CHUNK_SIZE = 8 * 1024 * 1024   # 8 MB (must be multiple of 256 KB per Drive spec)
+        offset = 0
+        sha256_h = hashlib.sha256()
+        drive_file_id = None
+        leftover = b""
+
+        def _send_chunk(data: bytes, is_last: bool) -> None:
+            nonlocal offset, drive_file_id
+            end = offset + len(data) - 1
+            total = str(size_bytes) if is_last else "*"
+            resp = _req.put(
+                session_uri,
+                headers={
+                    "Content-Range": f"bytes {offset}-{end}/{total}",
+                    "Content-Type": "application/zip",
+                },
+                data=data,
+                timeout=(10, 300),   # 10s connect, 5 min for chunk write
+            )
+            # 308 = Resume Incomplete (more chunks expected)
+            # 200/201 = Upload complete
+            if resp.status_code == 308:
+                offset += len(data)
+            elif resp.status_code in (200, 201):
+                offset += len(data)
+                drive_file_id = resp.json().get("id")
+            else:
+                raise RuntimeError(
+                    f"Drive chunk upload failed at offset {offset}: "
+                    f"{resp.status_code} {resp.text[:300]}"
+                )
+
+        for raw_chunk in chunk_iter:
+            sha256_h.update(raw_chunk)
+            leftover += raw_chunk
+            # Flush complete 8 MB blocks (not last)
+            while len(leftover) >= CHUNK_SIZE:
+                block = leftover[:CHUNK_SIZE]
+                leftover = leftover[CHUNK_SIZE:]
+                _send_chunk(block, is_last=False)
+
+        # Send the final (possibly partial) chunk marked as last
+        if leftover or offset == 0:
+            _send_chunk(leftover, is_last=True)
+
+        if not drive_file_id:
+            raise RuntimeError("Drive resumable upload completed but returned no file ID.")
+
+        return {
+            "drive_file_id": drive_file_id,
+            "size_bytes": offset,
+            "sha256": sha256_hex or sha256_h.hexdigest(),
+        }
+
     def upload(self, package_id: str, zip_bytes: bytes, filename: str) -> dict:
+        """Upload ZIP bytes to storage (legacy path — fine for small payloads <200MB)."""
+        if not zip_bytes:
+            raise ValueError(f"Cannot upload empty package '{filename}' to storage node {self.node_id}.")
+
         sha256 = hashlib.sha256(zip_bytes).hexdigest()
         size_bytes = len(zip_bytes)
         token = self._get_access_token()
@@ -146,6 +283,7 @@ class GoogleDriveStorageNode(PackageStorageProvider):
             "size_bytes": size_bytes,
             "sha256": sha256,
         }
+
 
     def stream_download(self, drive_file_id: str, chunk_size: int = 65536) -> Iterator[bytes]:
         token = self._get_access_token()

@@ -87,6 +87,7 @@ def get_max_output_tokens(model_id: MODEL_ID, fallback: int = 128_000) -> int:
 
 MODEL_REGISTRY: dict[MODEL_ID, ModelEntry] = {
     "inclusionai/ling-3.0-flash:free": ModelEntry(
+
         model_id="inclusionai/ling-3.0-flash:free",
         provider="openrouter",
         cost_input_per_1k=0.000000,
@@ -97,6 +98,7 @@ MODEL_REGISTRY: dict[MODEL_ID, ModelEntry] = {
         max_output_tokens=32_768,
         description="InclusionAI Ling 3.0 Flash — ultra-fast free model for lightweight miniagents (<100KB).",
     ),
+
     "nvidia/nemotron-3-ultra-550b-a55b:free": ModelEntry(
         model_id="nvidia/nemotron-3-ultra-550b-a55b:free",
         provider="openrouter",
@@ -221,8 +223,8 @@ MODEL_REGISTRY: dict[MODEL_ID, ModelEntry] = {
         capabilities=["chat", "vision"],
         tags=["free"],
     ),
-    "qwen/qwen3-next-80b-a3b-instruct:free": ModelEntry(
-        model_id="qwen/qwen3-next-80b-a3b-instruct:free",
+    "qwen/qwen3-next-80b-a3b-instruct": ModelEntry(
+        model_id="qwen/qwen3-next-80b-a3b-instruct",
         provider="openrouter",
         cost_input_per_1k=0.0002,
         cost_output_per_1k=0.0003,
@@ -1424,13 +1426,145 @@ def _load_all_openrouter_models():
 _load_all_openrouter_models()
 
 
+def _load_utimmodel_txt():
+    import os, re
+    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    utim_txt_path = os.path.join(root_dir, "utimmodel.txt")
+    if not os.path.exists(utim_txt_path):
+        utim_txt_path = "utimmodel.txt"
+        
+    if not os.path.exists(utim_txt_path):
+        return
 
-def sync_models_to_db():
+    try:
+        with open(utim_txt_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        
+        explicit_map = {
+            'deepseek v4 flash 0731': 'deepseek/deepseek-v4-flash-0731',
+            'north mini code': 'cohere/north-mini-code:free',
+            'deepseek v4 flash': 'deepseek/deepseek-v4-flash',
+            'ling 2.6 flash': 'inclusionai/ling-2.6-flash:free',
+            'kat coder air v2.5': 'kwaipilot/kat-coder-air-v2.5',
+            'muse spark 1.1': 'muses/muse-spark-1.1:free',
+            'minimax m2.5': 'minimax/minimax-m2.5',
+            'nex n2 mini': 'nex-agi/nex-n2-mini',
+            'laguna s 2.1': 'poolside/laguna-s-2.1:free',
+            'inkling': 'thinkingmachines/inkling-small:free',
+            'mimo v2.5': 'xiaomi/mimo-v2.5',
+            'deepseek v4 pro': 'deepseek/deepseek-v4-pro',
+            'ling 2.6 1t': 'inclusionai/ling-2.6-1t',
+            'kat coder pro v2': 'kwaipilot/kat-coder-pro-v2',
+            'kat coder pro v2.5': 'kwaipilot/kat-coder-pro-v2.5',
+            'minimax m3': 'minimax/minimax-m3',
+            'kimi k2.5': 'moonshot/kimi-k2.5',
+            'kimi k3': 'moonshot/kimi-k3',
+            'gpt 5.4 mini': 'openai/gpt-5.4-mini',
+            'qwen3.6 plus': 'qwen/qwen3.6-plus',
+            'qwen3.7 plus': 'qwen/qwen3.7-plus',
+            'step 3.7 flash': 'stepfun/step-3.7-flash',
+            'glm 4.7': 'z-ai/glm-4.7',
+            'glm 5': 'z-ai/glm-5',
+            'glm 5.2': 'z-ai/glm-5.2',
+            'claude sonnet 5': 'anthropic/claude-sonnet-5',
+            'deepseek r1': 'deepseek/deepseek-r1',
+            'gemini-3.1-pro-preview': 'google/gemini-3.1-pro-preview',
+            'gemini 3.6 flash': 'google/gemini-3.6-flash',
+            'minimax m2.7': 'minimax/minimax-m2.7',
+            'kimi k2.6': 'moonshot/kimi-k2.6',
+            'kimi k2.7 code': 'moonshot/kimi-k2.7-code',
+            'nex n2 pro': 'nex-agi/nex-n2-pro:free',
+            'grok 4.20': 'x-ai/grok-4.20',
+            'grok 4.3': 'x-ai/grok-4.3',
+            'grok build 0.1': 'x-ai/grok-build-0.1',
+            'mimo v2.5 pro': 'xiaomi/mimo-v2.5-pro',
+            'glm 5 turbo': 'z-ai/glm-5-turbo',
+            'glm 5.1': 'z-ai/glm-5.1',
+            'claude opus 4.5': 'anthropic/claude-opus-4.5',
+            'claude opus 4.6': 'anthropic/claude-opus-4.6',
+            'claude opus 4.7': 'anthropic/claude-opus-4.7',
+            'claude opus 4.8': 'anthropic/claude-opus-4.8',
+            'claude sonnet 4.5': 'anthropic/claude-sonnet-4.5',
+            'claude sonnet 4.6': 'anthropic/claude-sonnet-4.6',
+            'gemini 3.5 flash': 'google/gemini-3.5-flash',
+            'gpt 5.4': 'openai/gpt-5.4',
+            'qwen3.7 max': 'qwen/qwen3.7-max',
+            'claude fable 5': 'anthropic/claude-fable-5',
+            'gpt 5.3 codex': 'openai/gpt-5.3-codex',
+            'gpt 5.5': 'openai/gpt-5.5',
+            'claude opus 5': 'anthropic/claude-opus-5',
+            'gemini 3.1 pro preview': 'google/gemini-3.1-pro-preview-customtools',
+            'gemma 4 26b a4b it': 'google/gemma-4-26b-a4b-it:free',
+            'gemma 4 31b it': 'google/gemma-4-31b-it:free',
+            'gpt 5.6 luna': 'openai/gpt-5.6-luna',
+            'gpt 5.6 luna pro': 'openai/gpt-5.6-luna-pro',
+            'gpt 5.6 sol': 'openai/gpt-5.6-sol',
+            'gpt 5.6 sol pro': 'openai/gpt-5.6-sol-pro',
+            'gpt 5.6 terra': 'openai/gpt-5.6-terra',
+            'gpt 5.6 terra pro': 'openai/gpt-5.6-terra-pro',
+            'gpt oss 20b': 'openai/gpt-oss-20b:free',
+            'qwen3 next 80b': 'qwen/qwen3-next-80b-a3b-instruct',
+            'qwen3.8 max': 'qwen/qwen3.8-max',
+            'grok 4.5': 'x-ai/grok-4.5',
+            'mimo v2 pro': 'xiaomi/mimo-v2-pro'
+        }
+        
+        lines = [line.strip() for line in content.split("\n") if line.strip()]
+        for line in lines:
+            parts = [p.strip() for p in line.split("|")]
+            if len(parts) >= 3:
+                raw_name = parts[0]
+                prompt_str = parts[1]
+                completion_str = parts[2]
+                
+                matched_id = explicit_map.get(raw_name.lower())
+                if not matched_id:
+                    matched_id = f"utim/{raw_name.lower().replace(' ', '-')}"
+                
+                p_in = 0.0
+                p_out = 0.0
+                p_m = re.search(r'\$([0-9\.]+)', prompt_str)
+                if p_m:
+                    p_in = float(p_m.group(1)) / 1000.0
+                c_m = re.search(r'\$([0-9\.]+)', completion_str)
+                if c_m:
+                    p_out = float(c_m.group(1)) / 1000.0
+                    
+                is_free = "free" in prompt_str.lower() or "free" in completion_str.lower() or (p_in == 0 and p_out == 0)
+                
+                if matched_id in MODEL_REGISTRY:
+                    m_entry = MODEL_REGISTRY[matched_id]
+                    m_entry.cost_input_per_1k = p_in
+                    m_entry.cost_output_per_1k = p_out
+                    if is_free and "free" not in m_entry.tags:
+                        m_entry.tags = list(set(m_entry.tags + ["free"]))
+                    elif not is_free and "free" in m_entry.tags:
+                        m_entry.tags = [t for t in m_entry.tags if t != "free"]
+                else:
+                    MODEL_REGISTRY[matched_id] = ModelEntry(
+                        model_id=matched_id,
+                        provider="utim",
+                        cost_input_per_1k=p_in,
+                        cost_output_per_1k=p_out,
+                        context_window=128_000,
+                        capabilities=["chat", "coding"],
+                        tags=["free"] if is_free else ["premium"],
+                        description=f"{raw_name} - Main Agent Model on UTIM",
+                    )
+    except Exception:
+        pass
+
+
+_load_utimmodel_txt()
+
+
+
+def sync_models_to_db(db_session=None):
     """Sync all in-memory MODEL_REGISTRY entries into the ModelDB database table."""
     try:
-        from .db import SessionLocal, ModelDB, init_db
-        init_db()
-        db = SessionLocal()
+        from .db import SessionLocal, ModelDB
+        db = db_session if db_session is not None else SessionLocal()
+        close_after = db_session is None
         try:
             for mid, entry in MODEL_REGISTRY.items():
                 existing = db.query(ModelDB).filter(ModelDB.model_id == mid).first()
@@ -1465,9 +1599,63 @@ def sync_models_to_db():
         except Exception:
             db.rollback()
         finally:
-            db.close()
+            if close_after:
+                db.close()
     except Exception:
         pass
+
+
+def sync_live_openrouter_models():
+    """Fetch live model pricing and free model availability directly from OpenRouter API.
+    Dynamically updates MODEL_REGISTRY, strips outdated :free tags when OpenRouter stops providing a model for free,
+    and updates models.txt locally.
+    """
+    import requests, json, os
+    try:
+        resp = requests.get("https://openrouter.ai/api/v1/models", timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            items = data.get("data", []) if isinstance(data, dict) else data
+            
+            # Save fresh snapshot to models.txt
+            root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+            models_txt_path = os.path.join(root_dir, "models.txt")
+            with open(models_txt_path, "w", encoding="utf-8") as f:
+                json.dump({"data": items}, f, indent=2)
+
+            for m in items:
+                mid = m.get("id")
+                if not mid or mid.startswith("~"):
+                    continue
+
+                pricing = m.get("pricing", {}) or {}
+                try:
+                    p_in = float(pricing.get("prompt", 0)) * 1_000_000
+                    p_out = float(pricing.get("completion", 0)) * 1_000_000
+                except Exception:
+                    p_in, p_out = 1.0, 2.0
+
+                is_free_live = mid.endswith(":free") or (p_in == 0 and p_out == 0)
+
+                if mid in MODEL_REGISTRY:
+                    entry = MODEL_REGISTRY[mid]
+                    entry.cost_input_per_1k = p_in / 1000.0
+                    entry.cost_output_per_1k = p_out / 1000.0
+                    if is_free_live:
+                        if "free" not in entry.tags:
+                            entry.tags = list(set(entry.tags + ["free"]))
+                    else:
+                        if "free" in entry.tags:
+                            entry.tags = [t for t in entry.tags if t != "free"]
+
+            sync_models_to_db()
+            return True
+    except Exception:
+        pass
+    return False
+
+
+sync_models_to_db()
 
 # Default model used when the user does not specify one
 DEFAULT_MODEL: MODEL_ID = "cohere/north-mini-code:free"
@@ -1493,7 +1681,11 @@ def estimate_cost(
     output_tokens: int,
     is_upgraded: bool = False,
 ) -> float:
-    """Return estimated cost in credits for a request."""
+    """Return estimated cost in credits for a request.
+    UTIM Pricing Rules:
+    - Free models: $0.02 / 1M input, $0.03 / 1M output (0.02 credits/1K in, 0.03 credits/1K out).
+    - Paid users (is_upgraded=True): Receive a 10x discount across models.
+    """
     # Check if this is a free model (ends with :free, openrouter/free, or tagged free in registry)
     is_free = model_id.endswith(":free") or model_id == "openrouter/free"
     if not is_free:
@@ -1501,22 +1693,22 @@ def estimate_cost(
         if m and "free" in m.tags:
             is_free = True
             
+    discount_multiplier = 0.10 if is_upgraded else 1.0
+
     if is_free:
-        if is_upgraded:
-            # Upgraded pricing: $0.002 per 1M input, $0.003 per 1M output
-            # Mapped to credits (1 USD = 1,000 credits):
-            # 0.002 credits per 1,000 input tokens, 0.003 credits per 1,000 output tokens
-            return (input_tokens / 1_000) * 0.002 + (output_tokens / 1_000) * 0.003
-        else:
-            # Free models pricing: $0.2 per 1M input, $0.3 per 1M output
-            # Mapped to credits (1 USD = 1,000 credits):
-            # 0.2 credits per 1,000 input tokens, 0.3 credits per 1,000 output tokens
-            return (input_tokens / 1_000) * 0.2 + (output_tokens / 1_000) * 0.3
-        
+        cost_in_per_1k = 0.02 * discount_multiplier
+        cost_out_per_1k = 0.03 * discount_multiplier
+        return (input_tokens / 1000.0) * cost_in_per_1k + (output_tokens / 1000.0) * cost_out_per_1k
+
     m = get_model(model_id)
-    return (input_tokens / 1_000) * m.cost_input_per_1k + (
-        output_tokens / 1_000
+    usd_cost = (input_tokens / 1_000.0) * m.cost_input_per_1k + (
+        output_tokens / 1_000.0
     ) * m.cost_output_per_1k
+    # 1 USD Dollar = 1,000 UTIM Credits (apply 10x discount for paid plan members)
+    credits_cost = (usd_cost * 1000.0) * discount_multiplier
+    return credits_cost
+
+
 
 
 def route_model(task_description: str) -> MODEL_ID:
@@ -1734,14 +1926,21 @@ def get_model_catalog() -> dict:
     }
     """
     main_agent = []
+    plan_project = []
+    subagent_text = []
     analyze_image = []
     image_gen = []
     all_text = []
 
     seen_main: set[str] = set()
+    seen_plan: set[str] = set()
+    seen_subtext: set[str] = set()
     seen_vision: set[str] = set()
     seen_imggen: set[str] = set()
     seen_alltext: set[str] = set()
+
+    from .routes.rewards_routes import AUTHORITATIVE_66_MODEL_IDS
+    approved_main_ids = set(AUTHORITATIVE_66_MODEL_IDS)
 
     for mid, entry in MODEL_REGISTRY.items():
         # Skip OpenRouter alias models (start with ~)
@@ -1755,7 +1954,6 @@ def get_model_catalog() -> dict:
         is_target = _is_target_provider(mid)
 
         provider = mid.split("/")[0] if "/" in mid else "unknown"
-        # Use curated description, fallback to entry description or auto-name
         desc = _MODEL_DESCRIPTIONS.get(mid) or entry.description or mid.split("/")[-1].replace("-", " ").title()
         max_out = entry.max_output_tokens
         
@@ -1776,39 +1974,54 @@ def get_model_catalog() -> dict:
             "is_reasoning": is_reasoning,
         }
 
-        # main_agent / plan_project: text_chat models from whitelisted providers
-        if entry.text_chat and is_target and mid not in seen_main:
+        # 1. main_agent: strictly the official UTIM main agent models (utimmodel.txt list) + any free models in the registry
+        # Must support text chat AND (be in approved list OR be free) AND not be image gen
+        is_main_agent_approved = (mid in approved_main_ids) or is_free
+        if is_main_agent_approved and entry.text_chat and not is_img_gen and mid not in seen_main:
             seen_main.add(mid)
             main_agent.append(item)
 
-        # analyze_image: vision models from whitelisted providers
+        # 2. plan_project: planner subagent models (text_chat & reasoning models)
+        if entry.text_chat and is_target and mid not in seen_plan:
+            seen_plan.add(mid)
+            plan_project.append(item)
+
+        # 3. subagent_text: all text/code/search subagent models
+        if entry.text_chat and mid not in seen_subtext:
+            seen_subtext.add(mid)
+            subagent_text.append(item)
+
+        # 4. analyze_image: vision models (image input)
         if is_vision and is_target and mid not in seen_vision:
             seen_vision.add(mid)
             analyze_image.append(item)
 
-        # image_gen: image_generation models from whitelisted providers
+        # 5. image_gen: image generation models (image output)
         if is_img_gen and is_target and mid not in seen_imggen:
             seen_imggen.add(mid)
             image_gen.append(item)
 
-        # all_text: all text_chat models (for free-plan fallback)
+        # 6. all_text: complete text chat model catalog
         if entry.text_chat and mid not in seen_alltext:
             seen_alltext.add(mid)
             all_text.append(item)
 
-    # Sort by cost (ascending) then by model_id for determinism
+    # Sort each register deterministically by free status, cost, then model_id
     def _sort_key(x):
         free_first = 0 if x["is_free"] else 1
         return (free_first, x["cost_input_per_1k"], x["model_id"])
 
     main_agent.sort(key=_sort_key)
+    plan_project.sort(key=_sort_key)
+    subagent_text.sort(key=_sort_key)
     analyze_image.sort(key=_sort_key)
     image_gen.sort(key=lambda x: (x["cost_input_per_1k"] + x["cost_output_per_1k"], x["model_id"]))
     all_text.sort(key=_sort_key)
 
     return {
         "main_agent": main_agent,
-        "plan_project": main_agent,   # same set — plan_project needs text_chat
+        "plan_project": plan_project,
+        "subagent_text": subagent_text,
         "analyze_image": analyze_image,
         "image_gen": image_gen,
         "all_text": all_text,

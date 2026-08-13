@@ -5,7 +5,7 @@ try:
     from utim_cli._version import VERSION as __version__
 except ImportError:
     # Fallback during first-install / editable-install edge cases
-    __version__ = "2.1.0"
+    __version__ = "2.2.1"
 
 import builtins, os, pathlib, urllib.parse, re
 

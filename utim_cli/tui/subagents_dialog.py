@@ -153,7 +153,7 @@ def _create_subagent_interactive(console):
 
     existing_dir = _get_subagents_dir() / agent_id
     if (existing_dir / "agent.json").exists():
-        console.print(f"  [yellow]⚠ Subagent '{agent_id}' already exists.[/yellow]\n")
+        console.print(f"  [yellow]Subagent '{agent_id}' already exists.[/yellow]\n")
         return agent_id
 
     try:
@@ -192,17 +192,17 @@ def _dialog_subagents(orchestrator=None):
         rows = []
 
         rows.append({
-            "name": "⚡ Create New Subagent (with AI Prompt @subagents)",
+            "name": "Create New Subagent (with AI Prompt @subagents)",
             "desc": "Closes dialog and appends @subagents to prompt AI to design your subagent",
             "action": "create",
         })
         rows.append({
-            "name": "📝 Create New Subagent (Interactive Form)",
+            "name": "Create New Subagent (Interactive Form)",
             "desc": "Fill out ID & description manually in terminal",
             "action": "create_manual",
         })
         rows.append({
-            "name": "❌ Exit",
+            "name": "Exit",
             "desc": "Return to the chat screen",
             "action": "exit",
         })
@@ -215,14 +215,14 @@ def _dialog_subagents(orchestrator=None):
             })
             for ag in agents:
                 rows.append({
-                    "name": f"  🤖  @{ag['id']}",
+                    "name": f"   @{ag['id']}",
                     "desc": ag["description"],
                     "action": "view",
                     "agent_id": ag["id"],
                     "agent": ag,
                 })
                 rows.append({
-                    "name": f"       🗑  Delete '@{ag['id']}'",
+                    "name": f"        Delete '@{ag['id']}'",
                     "desc": "Permanently remove this subagent from disk",
                     "action": "delete",
                     "agent_id": ag["id"],
@@ -236,7 +236,7 @@ def _dialog_subagents(orchestrator=None):
 
         # ── Render function ───────────────────────────────────────────────────
         def render_row(idx, row, selected):
-            bg = "bg:#1e1e2e" if selected else ""
+            bg = "bg:#313244" if selected else ""
             act = row.get("action")
 
             if act == "exit":
@@ -246,9 +246,9 @@ def _dialog_subagents(orchestrator=None):
             elif act == "header":
                 fg = "dim #585b70"
             elif act == "delete":
-                fg = "bold #f38ba8 bg:#313244" if selected else "#f38ba8"
+                fg = "bold white bg:#313244" if selected else "#6c7086"
             elif act == "view":
-                fg = "bold #89b4fa bg:#313244" if selected else "#89b4fa"
+                fg = "bold white bg:#313244" if selected else "#cdd6f4"
             else:
                 fg = "fg:#cdd6f4" if selected else "fg:#a6adc8"
 

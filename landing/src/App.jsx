@@ -1,69 +1,69 @@
-import React, { useState } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
-import { useScroll } from 'framer-motion'
-import PowershellUI from './components/PowershellUI'
-import AuthPage from './pages/AuthPage'
-import ProfilePage from './pages/ProfilePage'
-import AuthCallback from './pages/AuthCallback'
-import IntroScene from './components/IntroScene'
-import ActivatePage from './pages/ActivatePage'
-import PricingPage from './pages/PricingPage'
-import SEOHead from './components/SEOHead'
-import VsClaudeCode from './pages/VsClaudeCode'
-import VsAntigravity from './pages/VsAntigravity'
+import React from 'react';
+import { Routes, Route } from 'react-router-dom';
+import HomePage from './pages/HomePage';
+import FeaturesPage from './pages/FeaturesPage';
+import DocsPage from './pages/DocsPage';
+import AboutPage from './pages/AboutPage';
+import SupportPage from './pages/SupportPage';
+import ChangelogPage from './pages/ChangelogPage';
+import LegalPage from './pages/LegalPage';
+import MarketplacePage from './pages/MarketplacePage';
+import CleanPricingPage from './pages/PricingPage/CleanPricingPage';
+import PricingPage from './pages/PricingPage';
+import VsClaudeCode from './pages/VsClaudeCode';
+import VsAntigravity from './pages/VsAntigravity';
+import VsCursor from './pages/VsCursor';
+import VsAider from './pages/VsAider';
+import AuthPage from './pages/AuthPage';
+import AuthCallback from './pages/AuthCallback';
+import ProfilePage from './pages/ProfilePage';
+import ActivatePage from './pages/ActivatePage';
+import ReferralPage from './pages/ReferralPage';
+import RewardsPage from './pages/RewardsPage';
+import ScrollToTop from './components/ScrollToTop';
 
 function App() {
-  const location = useLocation()
-  const { scrollYProgress } = useScroll()
-  const [introPlayed, setIntroPlayed] = useState(location.pathname !== '/')
-
-  const handleIntroComplete = () => {
-    setIntroPlayed(true);
-  };
-
-  if (!introPlayed) {
-    return <IntroScene onComplete={handleIntroComplete} />;
-  }
-
   return (
     <div className="App">
-      {/* Per-page SEO meta tags – updates <head> on every route change */}
-      <SEOHead path={location.pathname} />
-
+      <ScrollToTop />
       <Routes>
-        <Route path="/" element={<PowershellUI />} />
-        <Route path="/features" element={<PowershellUI />} />
-        <Route path="/about" element={<PowershellUI />} />
-        <Route path="/pricing" element={<PowershellUI />} />
-        <Route path="/support" element={<PowershellUI />} />
-        <Route path="/contacts" element={<PowershellUI />} />
-        <Route path="/connect" element={<PowershellUI />} />
-        <Route path="/docs" element={<PowershellUI />} />
-        <Route path="/terms" element={<PowershellUI />} />
-        <Route path="/privacy" element={<PowershellUI />} />
-        <Route path="/license" element={<PowershellUI />} />
-        <Route path="/refund" element={<PowershellUI />} />
-        <Route path="/changelog" element={<PowershellUI />} />
-        <Route path="/referral" element={<PowershellUI />} />
-        <Route path="/referrals" element={<PowershellUI />} />
-        <Route path="/marketplace" element={<PowershellUI />} />
+        {/* Core Product Pages */}
+        <Route path="/" element={<HomePage />} />
+        <Route path="/features" element={<FeaturesPage />} />
+        <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/pricing-checkout" element={<PricingPage />} />
+        <Route path="/rewards" element={<RewardsPage />} />
+        <Route path="/docs" element={<DocsPage />} />
+        <Route path="/marketplace" element={<MarketplacePage />} />
+        <Route path="/changelog" element={<ChangelogPage />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/support" element={<SupportPage />} />
 
-        {/* Comparison landing pages – crawlable static content for Google */}
+        {/* Legal & Policies Pages */}
+        <Route path="/terms" element={<LegalPage type="terms" />} />
+        <Route path="/privacy" element={<LegalPage type="privacy" />} />
+        <Route path="/refund" element={<LegalPage type="refund" />} />
+        <Route path="/license" element={<LegalPage type="license" />} />
+
+        {/* Dedicated Competitor Comparison Pages */}
         <Route path="/vs-claude-code" element={<VsClaudeCode />} />
         <Route path="/vs-antigravity" element={<VsAntigravity />} />
+        <Route path="/vs-cursor" element={<VsCursor />} />
+        <Route path="/vs-aider" element={<VsAider />} />
 
-        {/* Auth & account */}
+        {/* App & User Account Pages */}
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/activate" element={<ActivatePage />} />
-        <Route path="/pricing-checkout" element={<PricingPage />} />
+        <Route path="/referral" element={<ReferralPage />} />
+        <Route path="/referrals" element={<ReferralPage />} />
 
-        {/* Catch-all */}
-        <Route path="*" element={<PowershellUI />} />
+        {/* Fallback */}
+        <Route path="*" element={<HomePage />} />
       </Routes>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

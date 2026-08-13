@@ -11,10 +11,10 @@ def _dialog_rewind(orchestrator):
     rows = list(history) + [None]  # None = "stay here" sentinel
 
     def render_turn(i, row, sel):
-        bg = 'bg:#006622 bold white' if sel else ''
+        bg = 'bg:#313244 fg:#ffffff bold' if sel else ''
         if row is None:
             return [
-                (bg or 'bold #42bcf5', '  \u25cf Stay at current position\n'),
+                (bg or 'bold white', '  \u25cf Stay at current position\n'),
                 (bg or 'class:dim',          '  Cancel rewind and stay here\n'),
             ]
         user_text = row.get('user_msg', '')
@@ -53,7 +53,7 @@ def _dialog_rewind(orchestrator):
     ]
 
     def render_opt(i, row, sel):
-        bg = 'bg:#006622 bold white' if sel else ''
+        bg = 'bg:#313244 fg:#ffffff bold' if sel else ''
         return [(bg or 'white', f'  {row[1]}\n')]
 
     action2, idx2 = _run_list_dialog(
@@ -91,7 +91,7 @@ def _dialog_rewind(orchestrator):
     _clear_terminal_screen()
     _print_animated_banner(animated=False)
 
-    parts = ['[bold #a6e3a1]✓ Rewind complete.[/bold #a6e3a1]']
+    parts = ['[bold white]✓ Rewind complete.[/bold white]']
     if res.get('reverted'):
         parts.append(f"  [dim]Reverted: {', '.join(res['reverted'][:5])}[/dim]")
     if res.get('errors'):
@@ -114,10 +114,10 @@ def _dialog_undo(orchestrator):
     rows = list(history) + [None]  # None = cancel
 
     def render_turn(i, row, sel):
-        bg = 'bg:#800000 bold white' if sel else ''  # Red accent for undo
+        bg = 'bg:#313244 fg:#ffffff bold' if sel else ''  # Red accent for undo
         if row is None:
             return [
-                (bg or 'bold #42bcf5', '  ● Keep everything (Cancel)\n'),
+                (bg or 'bold white', '  ● Keep everything (Cancel)\n'),
                 (bg or 'class:dim',          '    Exit dialog and make no changes\n'),
             ]
         msg  = row['user_msg'][:80] + ('…' if len(row['user_msg']) > 80 else '')
@@ -144,7 +144,7 @@ def _dialog_undo(orchestrator):
     _clear_terminal_screen()
     _print_animated_banner(animated=False)
 
-    parts = [f'[bold #a6e3a1]✓ Undo complete ({n_reverted} turn(s) reverted).[/bold #a6e3a1]']
+    parts = [f'[bold white]✓ Undo complete ({n_reverted} turn(s) reverted).[/bold white]']
     if res.get('reverted'):
         parts.append(f"  [dim]Reverted: {', '.join(res['reverted'][:5])}[/dim]")
     if res.get('errors'):
@@ -167,10 +167,10 @@ def _dialog_redo(orchestrator):
     rows = list(redo_hist) + [None]
 
     def render_turn(i, row, sel):
-        bg = 'bg:#006622 bold white' if sel else ''  # Green accent for redo
+        bg = 'bg:#313244 fg:#ffffff bold' if sel else ''  # Green accent for redo
         if row is None:
             return [
-                (bg or 'bold #42bcf5', '  ● Keep current state (Cancel)\n'),
+                (bg or 'bold white', '  ● Keep current state (Cancel)\n'),
                 (bg or 'class:dim',          '    Exit dialog and make no changes\n'),
             ]
         msg  = row['user_msg'][:80] + ('…' if len(row['user_msg']) > 80 else '')
@@ -196,7 +196,7 @@ def _dialog_redo(orchestrator):
     _clear_terminal_screen()
     _print_animated_banner(animated=False)
 
-    parts = [f'[bold #a6e3a1]✓ Redo complete ({n_redone} turn(s) redone).[/bold #a6e3a1]']
+    parts = [f'[bold white]✓ Redo complete ({n_redone} turn(s) redone).[/bold white]']
     if res.get('redone_code'):
         parts.append(f"  [dim]Redone: {', '.join(res['redone_code'][:5])}[/dim]")
     if res.get('errors'):

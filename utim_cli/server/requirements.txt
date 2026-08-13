@@ -18,6 +18,8 @@ PyJWT[crypto]>=2.8.0
 cryptography>=41.0.0
 python-multipart>=0.0.7
 slowapi>=0.1.9
+llama-cpp-python>=0.2.70
+
 # Optional: CAPTCHA verification (reCAPTCHA v2/v3, Cloudflare Turnstile, hCaptcha)
 # Used by /auth/register, /auth/send-reset-otp, /auth/reset-password
 # requests is already listed above; no extra dep needed

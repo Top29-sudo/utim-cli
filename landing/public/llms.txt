@@ -1,0 +1,38 @@
+# UTIM AI CLI v2.2.1 (https://utim.dev)
+
+> UTIM AI v2.2.1 is an autonomous, high-agency CLI AI coding agent and Creators Ecosystem marketplace for terminal-first developers.
+
+## Key Features
+- **Free Tier Available**: Full-featured CLI agent with zero required subscription fees ($0.02/$0.03 per 1M tokens for free models like `cohere/north-mini-code:free`).
+- **66 Active Models**: Multi-provider support for Anthropic Claude 3.7 / 4.6, OpenAI GPT-5.6 / GPT-5.3 Codex, Google Gemini 3.5 / 3.6, DeepSeek V4 / R1, Qwen 3.8 / 3.7 Coder, KwaiPilot, Poolside Laguna, and local Ollama models.
+- **Model Context Protocol (MCP)**: Native, full support for stdio and SSE MCP tool servers (databases, web browsers, local filesystems, APIs).
+- **Executable Miniagents**: Script-based custom subagents that run in isolated scopes, publishable to the global marketplace.
+- **Creators Marketplace**: Global platform to discover, install, buy, sell, and monetize custom CLI tools and miniagents (up to 95% revenue share to creators).
+- **Vector Memory RAG**: Built-in ChromaDB persistent semantic memory across coding sessions.
+- **Dynamic Context Compression**: Model-aware context compression engine preventing token window bloat.
+- **Safety Sandboxing**: Dry-run preview (`/dry-run`), `/undo`, `/rewind`, and automated git safety checks.
+- **UTIM Rewards Wheel**: Earn 24-hour unlimited model access with probability recalculation engine and model omissions.
+- **Recalculation Engine**: Dynamic 5-hour quota slot refills, Rollover Quota Bank, and BYOK overrides.
+- **Cross-Platform**: Windows (PowerShell/CMD), macOS (Zsh/Bash), Linux, and Android (Termux official support).
+
+## Comparisons & Alternatives
+- **vs Cursor**: UTIM is 100% terminal-native (npm/pip installable), supports 95% creator marketplace sales, ChromaDB experience RAG, safe dry-run preview, and official Android Termux support.
+- **vs Claude Code**: UTIM offers a free agent tier, multi-provider model routing (OpenAI, Gemini, DeepSeek, Ollama), model-aware context compression, and open tool monetization.
+- **vs Google Antigravity**: UTIM provides 100% terminal-native flexibility without IDE dependencies, ChromaDB vector memory RAG, UTIM-style `/undo` & `/rewind` rollback, and 95% creator monetization.
+- **vs Aider**: UTIM includes native MCP tool support, executable miniagents system, built-in vector memory RAG, and an open marketplace ecosystem.
+
+## Installation
+- **npm**: `npm install -g @emend-ai/utim`
+- **pip**: `pip install utim`
+
+## Links
+- Homepage: https://utim.dev/
+- Pricing: https://utim.dev/pricing
+- Features: https://utim.dev/features
+- Rewards Hub: https://utim.dev/rewards
+- Documentation: https://utim.dev/docs
+- vs Claude Code: https://utim.dev/vs-claude-code
+- vs Antigravity: https://utim.dev/vs-antigravity
+- vs Cursor: https://utim.dev/vs-cursor
+- vs Aider: https://utim.dev/vs-aider
+- Creators Marketplace: https://utim.dev/marketplace

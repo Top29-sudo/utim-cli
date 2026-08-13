@@ -171,22 +171,10 @@ def _get_compression_threshold(model_id: str, context_window: int) -> int:
     return int(context_window * 0.90)
 
 
-def _get_compression_interval(context_window: int) -> int:
-    """Return the iteration gap for context compression based on model context window:
-    - < 200k context:        every 10th iteration
-    - 200k – 500k context:   every 20th iteration
-    - 500k – 1M context:     every 30th iteration
-    - 1M+ context:           every 45th iteration
-    """
-    cw = context_window or 128_000
-    if cw < 200_000:
-        return 10
-    elif cw < 500_000:
-        return 20
-    elif cw < 1_000_000:
-        return 30
-    else:
-        return 45
+def _get_compression_interval(context_window: int = 0) -> int:
+    """Return the iteration gap for model context compression (every 35 iterations)."""
+    return 35
+
 
 from utim_cli.config import get_utim_dir
 _utim_dir_posix = get_utim_dir().as_posix()
@@ -527,143 +515,66 @@ def _trigger_qwen_download_bg():
         t.start()
 
 def summarize_experiences_with_model(experiences: list[dict], existing_cache: str = "") -> str:
-    """Summarize list of experiences into a clean list of rules under 2000 tokens using local Qwen model first, falling back to LLM API."""
+    """Consolidate list of experiences into a clean list of rules deterministically without LLM calls."""
     if not experiences:
         return existing_cache
         
-    raw_texts = []
-    for idx, e in enumerate(experiences):
-        c = str(e.get("content", "")).strip().replace("\n", " ")
-        if c:
-            raw_texts.append(f"- {c}")
-            
-    if not raw_texts:
-        return existing_cache
-        
-    raw_block = "\n".join(raw_texts)
+    seen = set()
+    rules = []
     
     if existing_cache:
-        prompt = (
-            "You are an expert context compressor and rules merger.\n"
-            "You will be given a list of existing rules and a set of new technical learnings/preferences.\n"
-            "Your task is to merge the new learnings into the existing list of rules, removing redundancies "
-            "and keeping the output consolidated, action-oriented, and high-density.\n\n"
-            "Rules to follow:\n"
-            "1. Do NOT repeat similar rules; merge them into single clear guidelines.\n"
-            "2. Keep the rules action-oriented (e.g. 'Use semicolon instead of && in PowerShell').\n"
-            "3. Preserve critical syntax details, library name changes, and language preferences.\n"
-            "4. Categorize each rule by prefixing it with exactly one of these tags:\n"
-            "   - [SHELL_CONVENTION] for command execution, terminal operators, powershell rules.\n"
-            "   - [CODING_STYLE] for language preference, libraries, styling conventions.\n"
-            "   - [BUG_FIX] for error/failure corrections and debug tips.\n"
-            "   - [USER_PREF] for user likes and dislikes.\n"
-            "   - [GENERAL_RULE] for any other guidelines.\n"
-            "5. Format the output as a clean markdown list of tagged rules.\n\n"
-            f"Existing rules:\n{existing_cache}\n\n"
-            f"New learnings to merge:\n{raw_block}\n\n"
-            "Output ONLY the clean markdown list of merged rules (do not include introductory or concluding text):"
-        )
-    else:
-        prompt = (
-            "You are an expert context compressor. You will be given a list of technical learnings, "
-            "rules, and user preferences retrieved from our experience memory database. "
-            "Your task is to consolidate and summarize them into a clean, unified, high-density list of "
-            "rules (under 2000 tokens total) that the coding agent must strictly follow.\n\n"
-            "Rules to follow:\n"
-            "1. Do NOT repeat similar rules; merge them into single clear guidelines.\n"
-            "2. Keep the rules action-oriented (e.g. 'Use semicolon instead of && in PowerShell').\n"
-            "3. Preserve critical syntax details, library name changes, and language preferences.\n"
-            "4. Categorize each rule by prefixing it with exactly one of these tags:\n"
-            "   - [SHELL_CONVENTION] for command execution, terminal operators, powershell rules.\n"
-            "   - [CODING_STYLE] for language preference, libraries, styling conventions.\n"
-            "   - [BUG_FIX] for error/failure corrections and debug tips.\n"
-            "   - [USER_PREF] for user likes and dislikes.\n"
-            "   - [GENERAL_RULE] for any other guidelines.\n"
-            "5. Format the output as a clean markdown list of tagged rules.\n\n"
-            f"Input experiences:\n{raw_block}\n\n"
-            "Output ONLY the clean markdown list of rules (do not include introductory or concluding text):"
-        )
+        for line in existing_cache.splitlines():
+            line_str = line.strip()
+            if line_str and line_str not in seen:
+                seen.add(line_str)
+                rules.append(line_str)
 
-    # Proactively trigger Qwen local model download in a background thread if needed
-    _trigger_qwen_download_bg()
-
-    # 1. Attempt Cloud API completions (via UTIM completions server or direct OpenRouter)
-    import os
-    api_key = config.get("api_key")
-    llm_key = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("UTIM_API_KEY")
-    
-    if api_key or llm_key:
-        from utim_cli.reflection import REFLECTION_MODELS
-        from utim_cli.client_utils import proxy_openrouter_request
+    for e in experiences:
+        c = str(e.get("content", "")).strip().replace("\n", " ")
+        if not c:
+            continue
         
-        for model in REFLECTION_MODELS:
-            try:
-                resp = proxy_openrouter_request({
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": "You are a context compressor. Output rules list directly."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    "max_tokens": 1000
-                })
-                if resp.status_code == 200:
-                    content = resp.json()["choices"][0]["message"]["content"].strip()
-                    if content:
-                        return content
-            except Exception:
-                continue
+        c_lower = c.lower()
+        if any(kw in c_lower for kw in ["powershell", "cmd", "bash", "terminal", "command", "shell"]):
+            tag = "[SHELL_CONVENTION]"
+        elif any(kw in c_lower for kw in ["style", "format", "import", "type", "indent"]):
+            tag = "[CODING_STYLE]"
+        elif any(kw in c_lower for kw in ["error", "bug", "fail", "fix", "exception", "traceback"]):
+            tag = "[BUG_FIX]"
+        elif any(kw in c_lower for kw in ["like", "prefer", "dislike", "user"]):
+            tag = "[USER_PREF]"
+        else:
+            tag = "[GENERAL_RULE]"
 
-    # 2. Fallback to local execution using Qwen2.5-0.5B-Instruct if background loader has completed
-    global _qwen_model, _qwen_tokenizer
-    if _qwen_model is not None:
-        try:
-            import torch
-            messages = [
-                {"role": "system", "content": "You are a context compressor. Output rules list directly."},
-                {"role": "user", "content": prompt}
-            ]
-            
-            text = _qwen_tokenizer.apply_chat_template(
-                messages,
-                tokenize=False,
-                add_generation_prompt=True
-            )
-            model_inputs = _qwen_tokenizer([text], return_tensors="pt").to(_qwen_model.device)
-            
-            with torch.no_grad():
-                generated_ids = _qwen_model.generate(
-                    **model_inputs,
-                    max_new_tokens=1024,
-                    temperature=0.1,
-                    do_sample=False
-                )
-                
-            generated_ids = [
-                output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
-            ]
-            response = _qwen_tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
-            if response:
-                return response
-        except Exception:
-            pass
+        rule_entry = f"- {tag} {c}"
+        if rule_entry not in seen:
+            seen.add(rule_entry)
+            rules.append(rule_entry)
 
-    return existing_cache or "\n".join(raw_texts[:15])
+    return "\n".join(rules)
 
-def update_experience_summary_cache(user_prompt: str) -> str:
-    """Fetch relevant experiences, expand queries for potential tool usage,
+def update_experience_summary_cache(user_prompt: str, messages: Optional[List[Dict]] = None) -> str:
+    """Fetch relevant experiences using Qwen-expanded sub-queries + MiniLM re-ranking,
     summarize them using an LLM reflection model, and cache the result.
+    Cache is invalidated whenever the active task changes (prompt hash check).
     """
     if not user_prompt:
         return ""
         
     try:
         import os
+        import hashlib
         from utim_cli.vector_memory import fetch_relevant_experiences
         from utim_cli.situational_scoring import score_and_filter_context
         
         os.makedirs(".utim_tmp", exist_ok=True)
-        cache_path = ".utim_tmp/summarized_experiences_cache.txt"
-        dirty_path = ".utim_tmp/experience_cache_dirty.txt"
+        cache_path   = ".utim_tmp/summarized_experiences_cache.txt"
+        dirty_path   = ".utim_tmp/experience_cache_dirty.txt"
+        task_hash_path = ".utim_tmp/experience_cache_task_hash.txt"
+        
+        active_task = _get_active_task(user_prompt, messages=messages)
+        # Hash the active task to detect prompt changes
+        current_task_hash = hashlib.sha256(active_task.encode("utf-8")).hexdigest()[:16]
         
         existing_cache = ""
         if os.path.exists(cache_path):
@@ -672,33 +583,68 @@ def update_experience_summary_cache(user_prompt: str) -> str:
                     existing_cache = f.read().strip()
             except Exception:
                 pass
-                
-        # Feature 4: Incremental Memory Merging - Reuse cache if not dirty
-        if existing_cache and not os.path.exists(dirty_path):
-            return existing_cache
-            
-        active_task = _get_active_task(user_prompt)
         
-        # 1. Expand queries to cover ALL aspects of UTIM usage and experience:
-        # A. Task-Specific Context (semantic domain of current user task)
+        # Read the last cached task hash
+        last_task_hash = ""
+        if os.path.exists(task_hash_path):
+            try:
+                with open(task_hash_path, "r", encoding="utf-8") as f:
+                    last_task_hash = f.read().strip()
+            except Exception:
+                pass
+        
+        # Invalidate cache if: marked dirty OR task has changed since last cache build
+        task_changed = current_task_hash != last_task_hash
+        if existing_cache and not os.path.exists(dirty_path) and not task_changed:
+            return existing_cache
+        
+        # ── Stage 1: Seed query — fetch top-k memories directly relevant to the task ──
         task_exps = fetch_relevant_experiences(active_task, top_k=15)
         
-        # B. User Preferences, Likes, and Dislikes (what the user wants/prefers)
-        pref_exps = fetch_relevant_experiences("user preferences likes dislikes formatting styles language code constraints", top_k=8)
+        # ── Stage 2: Qwen sub-query expansion (brain.py pipeline) ─────────────────────
+        # Ask Qwen to decompose the active task into specific sub-queries so we
+        # retrieve more precise memories instead of generic static strings.
+        expanded_queries: list[str] = []
+        try:
+            from utim_cli.brain import _call_qwen_brain
+            preview = "\n".join(
+                f"- {str(e.get('content', ''))[:120]}"
+                for e in task_exps[:5]
+            )
+            sub_query_prompt = (
+                f"The user's active task is: \"{active_task[:300]}\"\n\n"
+                f"Top retrieved experiences so far:\n{preview}\n\n"
+                "Generate 3-4 SPECIFIC sub-queries (as a JSON array of strings) to retrieve "
+                "MORE precise and RELEVANT experiences from memory for this exact task. "
+                "Focus on: user style preferences, known corrections, task-specific conventions, "
+                "and past failures related to THIS domain only.\n"
+                "Return ONLY a JSON array like: [\"sub-query 1\", \"sub-query 2\"]"
+            )
+            import re as _re, json as _json
+            qwen_resp = _call_qwen_brain(
+                sub_query_prompt,
+                system="You are a memory retrieval optimizer. Return ONLY a JSON array of query strings.",
+                max_tokens=250,
+            )
+            if qwen_resp:
+                match = _re.search(r'\[.*?\]', qwen_resp, _re.DOTALL)
+                if match:
+                    expanded_queries = _json.loads(match.group())[:4]
+        except Exception:
+            pass
         
-        # C. General Architectural Conventions, Rules, and System Guidelines
-        rules_exps = fetch_relevant_experiences("architectural rules system conventions project guidelines failure corrections", top_k=8)
+        # ── Stage 3: Fetch memories for each Qwen-generated sub-query ─────────────────
+        # Always include user preferences as a stable sub-query (it's domain-agnostic
+        # and small enough not to pollute the results)
+        stable_queries = [
+            "user preferences communication style tone formatting language",
+        ]
+        all_exps = list(task_exps)
+        for q in (expanded_queries + stable_queries):
+            exps = fetch_relevant_experiences(q, top_k=6)
+            all_exps.extend(exps)
         
-        # D. Operational Command and Tool Execution Syntax (PowerShell, file operations)
-        op_exps = fetch_relevant_experiences("command syntax terminal execution operator file read write edit path", top_k=8)
-        
-        # E. Conceptual Pattern Matching (dot connections, analogies, object & relationship insights)
-        pattern_exps = fetch_relevant_experiences("object relationship patterns concept analogies dot connections matching", top_k=8)
-        
-        # Merge all
-        all_exps = task_exps + pref_exps + rules_exps + op_exps + pattern_exps
-        
-        # Deduplicate
+        # ── Stage 4: Deduplicate ───────────────────────────────────────────────────────
         seen_content = set()
         unique_exps = []
         for e in all_exps:
@@ -710,20 +656,38 @@ def update_experience_summary_cache(user_prompt: str) -> str:
                     continue
                 seen_content.add(c)
                 unique_exps.append(e)
-                
-        # Re-score using situational scoring
+        
+        # ── Stage 5: Situational re-scoring + raised relevance threshold ──────────────
+        # 0.62 threshold (was 0.45) prevents domain-mismatched lessons from slipping in.
+        # user_correction items are now also subject to the threshold (handled in
+        # score_and_filter_context) — the unconditional +2.0 source bonus has been
+        # adjusted in situational_scoring.py to be concept-gated.
         scored_exps = score_and_filter_context(unique_exps, active_task, limit=len(unique_exps))
+        # Apply 0.62 relevance floor — but always keep user corrections regardless of score
+        # (score_and_filter_context already gates corrections via concept-overlap boost,
+        # so we trust its judgment here rather than double-cutting with a hard floor).
+        def _is_correction(e):
+            meta = e.get("metadata") or {}
+            return (
+                meta.get("source") == "user_correction"
+                or meta.get("category") in ("knowledge_correction", "failure_correction")
+                or "correction" in str(meta.get("category", ""))
+            )
+        scored_exps = [e for e in scored_exps if e.get("situational_score", 1.0) >= 0.62 or _is_correction(e)]
         
-        # Feature 1: Semantic Relevance Filtering (Zero-Token Baseline)
-        # Drop experiences that fall below similarity threshold (situational_score < 0.45)
-        scored_exps = [e for e in scored_exps if e.get("situational_score", 1.0) >= 0.45]
+        # ── Stage 6: Summarize with model ─────────────────────────────────────────────
+        # Only merge with the existing cache when the task has NOT changed.
+        # When the active task changed, start fresh so lessons from unrelated
+        # past tasks don't leak into the current task's context. (Within the
+        # same task, merging is fine — it accumulates that task's own lessons.)
+        merge_cache = existing_cache if not task_changed else ""
+        summary = summarize_experiences_with_model(scored_exps, existing_cache=merge_cache)
         
-        # 2. Run model-based summarization (incremental merging if existing_cache exists)
-        summary = summarize_experiences_with_model(scored_exps, existing_cache=existing_cache)
-        
-        # 3. Cache the summary
+        # ── Stage 7: Write cache + task hash ──────────────────────────────────────────
         with open(cache_path, "w", encoding="utf-8") as f:
             f.write(summary)
+        with open(task_hash_path, "w", encoding="utf-8") as f:
+            f.write(current_task_hash)
             
         # Clear the dirty flag
         if os.path.exists(dirty_path):
@@ -738,9 +702,88 @@ def update_experience_summary_cache(user_prompt: str) -> str:
         log_error("orchestrator", "Failed to update experience summary cache", e)
         return ""
 
-def _get_active_task(user_prompt: str) -> str:
-    """Return the user prompt directly without reading any todo files."""
-    return (user_prompt or "").strip()
+# Cache keyed by hash of last-6-messages content. Qwen runs once per distinct
+# conversation state, then subsequent calls (line 936, 985, 1051 in get_system_prompt)
+# all return instantly without hitting the network.
+_active_task_cache: dict = {}  # {msg_hash: active_task_str}
+
+def _get_active_task(
+    user_prompt: str,
+    messages: Optional[List[Dict]] = None,
+) -> str:
+    """
+    Derive the active task from the full conversation history.
+
+    Strategy:
+    1. Hash the last 6 message contents → check module-level cache.
+       If hit: return immediately (no network call).
+    2. If miss and >= 3 turns: ask Qwen to summarize the ongoing task in
+       one sentence. Cache and return the result.
+    3. Fallback to latest user prompt.
+
+    The cache means the 3 call sites inside get_system_prompt (called every
+    model request iteration) only pay the Qwen cost ONCE per distinct message
+    state, not once per call site per iteration.
+    """
+    import hashlib
+    latest = (user_prompt or "").strip()
+
+    # Build cache key from last 6 messages
+    relevant = []
+    if messages:
+        relevant = [
+            m for m in messages
+            if m.get("role") in ("user", "assistant")
+        ][-6:]
+
+    if not relevant or len(relevant) < 2:
+        return latest
+
+    # Fast cache key — hash of message contents
+    key_src = "||".join(
+        str(m.get("content", ""))[:200] for m in relevant
+    )
+    cache_key = hashlib.sha256(key_src.encode("utf-8")).hexdigest()[:16]
+
+    if cache_key in _active_task_cache:
+        return _active_task_cache[cache_key]
+
+    # Cache miss — call Qwen once
+    try:
+        transcript_lines = []
+        for m in relevant:
+            role    = m.get("role", "")
+            content = m.get("content") or ""
+            if isinstance(content, list):
+                content = " ".join(
+                    p.get("text", "") for p in content
+                    if isinstance(p, dict) and p.get("type") == "text"
+                )
+            transcript_lines.append(f"{role.upper()}: {content[:300]}")
+
+        transcript = "\n".join(transcript_lines)
+
+        from utim_cli.brain import _call_qwen_brain
+        summary = _call_qwen_brain(
+            f"Conversation so far:\n{transcript}\n\n"
+            "In ONE sentence, what is the user's current ongoing task or goal? "
+            "Focus on the specific thing they are working on, not just the last message.",
+            system="You are a task summarizer. Reply with exactly one concise sentence.",
+            max_tokens=80,
+        )
+        if summary and len(summary.strip()) > 10:
+            result = summary.strip()
+            _active_task_cache[cache_key] = result
+            # Evict old entries — keep at most 20 cached states
+            if len(_active_task_cache) > 20:
+                oldest_key = next(iter(_active_task_cache))
+                del _active_task_cache[oldest_key]
+            return result
+    except Exception:
+        pass
+
+    _active_task_cache[cache_key] = latest
+    return latest
 
 def _get_dynamic_directives(is_compressed: bool, messages: Optional[List[Dict]] = None) -> str:
     from pathlib import Path
@@ -790,6 +833,50 @@ def _get_dynamic_directives(is_compressed: bool, messages: Optional[List[Dict]] 
 
     return "\n".join(directives)
 
+def _lesson_relevant_to_task(lesson_line: str, active_task: str) -> bool:
+    """Semantic relevance gate for a cached lesson line against the active task.
+
+    Uses lightweight concept-overlap (no network/embedding call) so it's cheap and
+    deterministic. A lesson is kept only if it shares meaningful concepts with the
+    active task OR is a user-preference (which is intentionally domain-agnostic).
+    """
+    if not lesson_line or not active_task:
+        return True
+    try:
+        from utim_cli.situational_scoring import extract_concepts, concept_overlap_score
+
+        # Strip the leading tag marker (e.g. "[USER_PREF]") before concept extraction
+        body = lesson_line
+        for tag in ("[SHELL_CONVENTION]", "[CODING_STYLE]", "[BUG_FIX]", "[USER_PREF]", "[GENERAL_RULE]"):
+            if tag in body:
+                body = body.replace(tag, " ")
+        body = body.strip().lstrip("-").strip()
+
+        task_concepts = extract_concepts(active_task)
+        lesson_concepts = extract_concepts(body)
+        if not task_concepts or not lesson_concepts:
+            return True
+
+        overlap = concept_overlap_score(task_concepts, lesson_concepts)
+
+        # User preferences are intentionally domain-agnostic — always keep them
+        # so the model remembers the user's communication/tone/formatting style.
+        if "[USER_PREF]" in lesson_line:
+            return True
+
+        # Generic rules with no specific domain vocabulary are low-risk; keep them
+        # only if they share at least one concept with the task.
+        if "[GENERAL_RULE]" in lesson_line:
+            return overlap > 0.0
+
+        # Domain-tagged lessons (shell/coding/bug) must share real concepts with
+        # the active task to be injected.
+        return overlap >= 0.12
+    except Exception:
+        # On any failure, be permissive (don't drop lessons due to a bug here)
+        return True
+
+
 def get_system_prompt(user_prompt: str = "", current_iteration: int = 0, elapsed_seconds: int = 0, turn_history: Optional[List[Dict]] = None, messages: Optional[List[Dict]] = None) -> str:
     """Gets the dynamic system prompt with active MCP servers and semantically fetched Hugging Face vector memories."""
     # If the user prompt is just a casual greeting/message, return a minimal prompt to save tokens
@@ -838,11 +925,11 @@ def get_system_prompt(user_prompt: str = "", current_iteration: int = 0, elapsed
                 
         # Synchronously generate if cache is missing
         if not cached_summary and user_prompt:
-            cached_summary = update_experience_summary_cache(user_prompt)
+            cached_summary = update_experience_summary_cache(user_prompt, messages=messages)
             
         if cached_summary:
             # 1. Feature 2: Adaptive Token Budgeting
-            active_task = _get_active_task(user_prompt) if user_prompt else ""
+            active_task = _get_active_task(user_prompt, messages=messages) if user_prompt else ""
             from utim_cli.situational_scoring import classify_task_type
             task_type = classify_task_type(active_task)
             
@@ -862,12 +949,17 @@ def get_system_prompt(user_prompt: str = "", current_iteration: int = 0, elapsed
             has_run_command = "run_command" not in _disabled
             has_plan_project = "plan_project" not in _disabled
             
-            if task_type in ["setup", "testing"] or has_run_command:
+            # classify_task_type already uses embedding cosine similarity to determine
+            # task domain — trust it directly instead of re-checking with keywords.
+            _CODING_TASK_TYPES = {"setup", "testing", "file_edit", "refactoring", "debugging", "search", "ui_design"}
+            _is_coding_task = task_type in _CODING_TASK_TYPES
+
+            if _is_coding_task and has_run_command:
                 active_tags.add("[SHELL_CONVENTION]")
-            if task_type in ["file_edit", "refactoring"] or has_plan_project:
+            if _is_coding_task and has_plan_project:
                 active_tags.add("[CODING_STYLE]")
                 active_tags.add("[BUG_FIX]")
-                
+
             # Filter cache by active tags
             lines = cached_summary.splitlines()
             filtered_lines = []
@@ -876,6 +968,13 @@ def get_system_prompt(user_prompt: str = "", current_iteration: int = 0, elapsed
                 has_any_tag = any(t in line for t in ["[SHELL_CONVENTION]", "[CODING_STYLE]", "[BUG_FIX]", "[USER_PREF]", "[GENERAL_RULE]"])
                 # If it matches active tags or doesn't have a tag, keep it
                 if not has_any_tag or any(tag in line for tag in active_tags):
+                    # Semantic relevance gate: drop lessons that are unrelated to
+                    # the SPECIFIC active task, not just the broad tag category.
+                    # This prevents lessons from unrelated past tasks (which share
+                    # a coarse tag like [USER_PREF] or [GENERAL_RULE]) from leaking
+                    # into the current task's context based on the whole cache.
+                    if active_task and not _lesson_relevant_to_task(line, active_task):
+                        continue
                     # Check adaptive budget
                     if current_len + len(line) + 1 <= char_budget:
                         filtered_lines.append(line)
@@ -891,7 +990,7 @@ def get_system_prompt(user_prompt: str = "", current_iteration: int = 0, elapsed
         try:
             from utim_cli.reflection import experience_manager, extract_context_from_interaction
             from utim_cli.state import STATE
-            active_task = _get_active_task(user_prompt)
+            active_task = _get_active_task(user_prompt, messages=messages)
             ctx = extract_context_from_interaction(active_task, "")
             
             # 1. Check for relevant unverified experiences that need confirmation
@@ -957,7 +1056,7 @@ def get_system_prompt(user_prompt: str = "", current_iteration: int = 0, elapsed
         from utim_cli.bootstrap import scan_available_skills
         skills = scan_available_skills()
         if skills:
-            active_task = _get_active_task(user_prompt) if user_prompt else ""
+            active_task = _get_active_task(user_prompt, messages=messages) if user_prompt else ""
             active_task_lower = active_task.lower()
             
             relevant_skills = []
@@ -1083,7 +1182,15 @@ def get_system_prompt(user_prompt: str = "", current_iteration: int = 0, elapsed
     except Exception:
         pass
 
-    return base_prompt + mcp_prompt + exp_prompt + skills_prompt + session_prompt + hint_prompt
+    # ── 7. Brain Memory Context (two-stage RAG: MiniLM + Qwen) ──
+    brain_prompt = ""
+    try:
+        from utim_cli.brain import get_brain_context_prompt
+        brain_prompt = get_brain_context_prompt(user_prompt)
+    except Exception:
+        pass
+
+    return base_prompt + mcp_prompt + exp_prompt + skills_prompt + session_prompt + brain_prompt + hint_prompt
 
 # ── Context management settings ───────────────────────────────────────────────
 KEEP_FULL_TURNS = 10      # last N turns (including current) kept with full fidelity
@@ -1263,6 +1370,23 @@ class Orchestrator:
         self.mcp_tool_names: set = set()
 
         # Eager session create removed for local mode - sessions are created by _persist_messages
+
+        # ── Brain System Startup ─────────────────────────────────────────────
+        # Start the background brain watcher (architecture scan + memory watch)
+        # and run the initial project architecture indexing — both in background
+        # so they never block the CLI startup time.
+        try:
+            import threading as _brain_thread
+            from utim_cli.brain import start_brain_watcher, index_project_architecture
+            start_brain_watcher()
+            _brain_thread.Thread(
+                target=lambda: index_project_architecture(os.getcwd()),
+                daemon=True,
+                name="utim-brain-init-arch-scan",
+            ).start()
+        except Exception:
+            pass
+
 
     def abort(self) -> None:
         """Instantly abort all LLM stream responses, running tool processes, and worker loops."""
@@ -1554,7 +1678,7 @@ class Orchestrator:
                                 config.set("main_model_source", "utim")
                         else:
                             fallback_model = DEFAULT_MODEL  # default free fallback
-                            self.console.print(f"\n[bold yellow]⚠ Model '{chosen_model}' is gated under your current '{quota['display_name']}' plan.[/bold yellow]")
+                            self.console.print(f"\n[bold yellow]Model '{chosen_model}' is gated under your current '{quota['display_name']}' plan.[/bold yellow]")
                             self.console.print(f"  Downgrading to default allowed model: '{fallback_model}' for this request.")
                             if override_model:
                                 override_model = fallback_model
@@ -1679,6 +1803,12 @@ class Orchestrator:
                 native_reasoning = False
                 display_buf = ""
                 _think_buf = ""
+                # Reset thinking manager for this new LLM call
+                try:
+                    from utim_cli.tui.thinking_display import global_thinking_manager
+                    global_thinking_manager.reset()
+                except Exception:
+                    pass
                 _proxy = sys.stdout
                 _term_width = self.console.width or 80
                 _line_buf = ""
@@ -1970,7 +2100,54 @@ class Orchestrator:
                                 if "type" in chunk:
                                     last_content_time = time.time()
                                     t = chunk["type"]
-                                    if t == "content_delta":
+                                    if t == "thinking_delta":
+                                        t_text = chunk.get("text", "")
+                                        if t_text:
+                                            if not in_think:
+                                                in_think = True
+                                                native_reasoning = True
+                                                final_content += "<think>\n"
+                                                try:
+                                                    from utim_cli.tui.thinking_display import global_thinking_manager
+                                                    global_thinking_manager.start()
+                                                except Exception:
+                                                    pass
+                                                if not silent:
+                                                    self.console.print()
+                                                    self.console.print("[cyan]▸ Thinking...[/cyan]  [dim](Ctrl+O to expand)[/dim]")
+                                            final_content += t_text
+                                            _think_buf += t_text
+                                            try:
+                                                from utim_cli.tui.thinking_display import global_thinking_manager
+                                                global_thinking_manager.append(t_text)
+                                            except Exception:
+                                                pass
+                                            try:
+                                                from utim_cli.state import STATE
+                                                lines = [l.strip() for l in _think_buf.split('\n') if l.strip()]
+                                                if lines:
+                                                    topic = lines[-1]
+                                                    if len(topic) > 60:
+                                                        topic = topic[:57] + "..."
+                                                    STATE["thinking_topic"] = topic
+                                            except Exception:
+                                                pass
+                                        continue
+                                    elif t == "content_delta":
+                                        # If we were in a thinking block, close it now
+                                        if native_reasoning:
+                                            native_reasoning = False
+                                            in_think = False
+                                            final_content += "\n</think>\n"
+                                            try:
+                                                from utim_cli.tui.thinking_display import global_thinking_manager
+                                                finished_block = global_thinking_manager.finish()
+                                                if finished_block and not silent:
+                                                    rendered = global_thinking_manager.render_block(finished_block)
+                                                    if rendered:
+                                                        self.console.print(rendered)
+                                            except Exception:
+                                                pass
                                         text = chunk.get("text", "")
                                         final_content += text
                                         # Never print raw tool-call XML tokens live. If the
@@ -2049,9 +2226,10 @@ class Orchestrator:
                                                     if "arguments" in f:
                                                         final_tool_calls[idx]["function"]["arguments"] += f["arguments"]
                                         
-                                        # Handle content streaming
+                                        # Handle content streaming — support all OpenRouter reasoning delta formats:
+                                        # reasoning (OpenAI/OpenRouter), reasoning_content (DeepSeek), thinking (Claude/Qwen), thought (Gemini)
                                         chunk_text = delta.get("content")
-                                        reasoning_text = delta.get("reasoning")
+                                        reasoning_text = delta.get("reasoning") or delta.get("reasoning_content") or delta.get("thinking") or delta.get("thought")
                                         
                                         if reasoning_text:
                                             last_content_time = time.time()  # real data arrived
@@ -2059,8 +2237,23 @@ class Orchestrator:
                                                 in_think = True
                                                 native_reasoning = True
                                                 final_content += "<think>\n"
+                                                # Explicitly start the thinking manager on first token
+                                                try:
+                                                    from utim_cli.tui.thinking_display import global_thinking_manager
+                                                    global_thinking_manager.start()
+                                                except Exception:
+                                                    pass
+                                                # Print live "Thinking..." indicator immediately
+                                                if not silent:
+                                                    self.console.print()
+                                                    self.console.print("[cyan]▸ Thinking...[/cyan]  [dim](Ctrl+O to expand)[/dim]")
                                             final_content += reasoning_text
                                             _think_buf += reasoning_text
+                                            try:
+                                                from utim_cli.tui.thinking_display import global_thinking_manager
+                                                global_thinking_manager.append(reasoning_text)
+                                            except Exception:
+                                                pass
                                             try:
                                                 from utim_cli.state import STATE
                                                 lines = [l.strip() for l in _think_buf.split('\n') if l.strip()]
@@ -2079,6 +2272,16 @@ class Orchestrator:
                                                 native_reasoning = False
                                                 in_think = False
                                                 final_content += "\n</think>\n"
+                                                # Finish this block and print it immediately
+                                                try:
+                                                    from utim_cli.tui.thinking_display import global_thinking_manager
+                                                    finished_block = global_thinking_manager.finish()
+                                                    if finished_block and not silent:
+                                                        rendered = global_thinking_manager.render_block(finished_block)
+                                                        if rendered:
+                                                            self.console.print(rendered)
+                                                except Exception:
+                                                    pass
                                                 
                                             final_content += chunk_text
                                             
@@ -2089,12 +2292,29 @@ class Orchestrator:
                                                     for closing in ("</think>", "</thinking>", "[/THINKING]"):
                                                         end_idx = remaining.find(closing)
                                                         if end_idx >= 0:
-                                                            _think_buf += remaining[:end_idx]
+                                                            t_part = remaining[:end_idx]
+                                                            _think_buf += t_part
+                                                            try:
+                                                                from utim_cli.tui.thinking_display import global_thinking_manager
+                                                                global_thinking_manager.append(t_part)
+                                                                finished_block = global_thinking_manager.finish()
+                                                                # Print this inline think block immediately
+                                                                if finished_block and not silent:
+                                                                    rendered = global_thinking_manager.render_block(finished_block)
+                                                                    if rendered:
+                                                                        self.console.print(rendered)
+                                                            except Exception:
+                                                                pass
                                                             remaining = remaining[end_idx + len(closing):]
                                                             in_think = False
                                                             break
                                                     else:
                                                         _think_buf += remaining
+                                                        try:
+                                                            from utim_cli.tui.thinking_display import global_thinking_manager
+                                                            global_thinking_manager.append(remaining)
+                                                        except Exception:
+                                                            pass
                                                         remaining = ""
                                                         
                                                     try:
@@ -2116,6 +2336,15 @@ class Orchestrator:
                                                             remaining = remaining[start_idx + len(opening):]
                                                             in_think = True
                                                             open_found = True
+                                                            try:
+                                                                from utim_cli.tui.thinking_display import global_thinking_manager
+                                                                global_thinking_manager.start()
+                                                            except Exception:
+                                                                pass
+                                                            # Print live indicator for this new block
+                                                            if not silent:
+                                                                self.console.print()
+                                                                self.console.print("[cyan]▸ Thinking...[/cyan]  [dim](Ctrl+O to expand)[/dim]")
                                                             break
                                                     if not open_found:
                                                         display += remaining
@@ -2149,7 +2378,7 @@ class Orchestrator:
                             # If we have received some content/tool calls, recover gracefully
                             if final_content or final_tool_calls:
                                 if not silent:
-                                    self.console.print(f"\n[dim yellow]⚠ Stream interrupted: {stream_exc}. Returning partial response.[/dim yellow]\n")
+                                    self.console.print(f"\n[dim yellow]Stream interrupted: {stream_exc}. Returning partial response.[/dim yellow]\n")
                                 was_cut_off = True
                             else:
                                 raise stream_exc
@@ -2170,6 +2399,21 @@ class Orchestrator:
                         if _line_buf and not silent:
                             process_stream_part(_line_buf)
                             _line_buf = ""
+
+                        # ── Print trailing thinking block (if reasoning ended stream with no content after) ──
+                        if not silent:
+                            try:
+                                from utim_cli.tui.thinking_display import global_thinking_manager
+                                # Only print if there's an unfinished/unreprinted active block
+                                if global_thinking_manager.current_block and global_thinking_manager.current_block.thought_buffer:
+                                    finished_block = global_thinking_manager.finish()
+                                    if finished_block:
+                                        rendered = global_thinking_manager.render_block(finished_block)
+                                        if rendered:
+                                            self.console.print()
+                                            self.console.print(rendered)
+                            except Exception:
+                                pass
 
                         # ── End of `with resp` streaming block ────────────────────────────
                         # Content was already printed live chunk-by-chunk above if streaming.
@@ -2320,7 +2564,7 @@ class Orchestrator:
                             break
                         self.console.print(f"\n[bold red]✗ Model '{current_model}' requires bonus credits or an upgraded plan.[/bold red]")
                         self.console.print("  Top up at [bold]utim.dev/pricing[/bold] or run [bold]utim upgrade[/bold].")
-                        self.console.print("  [bold yellow]💡 Tip: Your bonus credits are exhausted. You can still access all free models! [/bold yellow]")
+                        self.console.print("  [bold yellow]Tip: Your bonus credits are exhausted. You can still access all free models! [/bold yellow]")
                         self.console.print("  [yellow]   Press Ctrl+M or type /model to switch to a free model, or run 'utim reset'.[/yellow]\n")
                         raise _FatalClientError(f"Model '{current_model}' requires bonus credits or an upgraded plan.")
                     if code == 429:
@@ -2395,38 +2639,40 @@ class Orchestrator:
 
     # Icons per tool
     TOOL_ICON: Dict[str, str] = {
-        "read_file":              "📄",
-        "write_file":             "✏️ ",
-        "edit_file":              "🔧",
-        "move_file":              "📦",
-        "delete_file":            "🗑️ ",
-        "run_command":            "⚡",
-        "list_directory":         "📁",
-        "get_background_output":  "📤",
-        "send_background_input": "⌨️ ",
-        "stop_background_process":"⏹️ ",
-        "list_background_processes": "📋",
-        "web_search":             "🔍",
-        "plan_project":           "🧠",
-        "manage_todos":           "📝",
-        "generate_image":         "🎨",
+        "read_file":              "",
+        "write_file":             "",
+        "edit_file":              "",
+        "move_file":              "",
+        "delete_file":            "",
+        "run_command":            "",
+        "list_directory":         "",
+        "get_background_output":  "",
+        "send_background_input":  "",
+        "stop_background_process":"",
+        "list_background_processes": "",
+        "web_search":             "",
+        "plan_project":           "",
+        "manage_todos":           "",
+        "generate_image":         "",
     }
 
-    # User-friendly display names for tools
+    # Short, Antigravity-style verb labels per tool
     TOOL_DISPLAY_NAME: Dict[str, str] = {
-        "read_file":              "Reading file",
-        "write_file":             "Writing file",
-        "edit_file":              "Editing file",
-        "move_file":              "Moving file",
-        "delete_file":            "Deleting file",
-        "run_command":            "Running command",
-        "list_directory":         "Listing directory",
-        "get_background_output":  "Reading background output",
-        "send_background_input":  "Sending background input",
-        "web_search":             "Searching web",
-        "plan_project":           "Planning project",
-        "manage_todos":           "Managing To-Dos",
-        "generate_image":         "Generating image",
+        "read_file":              "Read",
+        "write_file":             "Write",
+        "edit_file":              "Edit",
+        "move_file":              "Move",
+        "delete_file":            "Delete",
+        "run_command":            "Bash",
+        "list_directory":         "ListDir",
+        "get_background_output":  "BgOutput",
+        "send_background_input":  "BgInput",
+        "stop_background_process": "BgStop",
+        "list_background_processes": "BgList",
+        "web_search":             "Search",
+        "plan_project":           "Plan",
+        "manage_todos":           "Todo",
+        "generate_image":         "GenImage",
     }
 
     @staticmethod
@@ -2495,166 +2741,249 @@ class Orchestrator:
         return ""
 
     def _render_result(self, func_name: str, arguments: Dict, result: str, color: str, user_confirmed: bool = False, expand: bool = False, print_to_console: bool = True) -> str:
-        """Render the tool result inside a styled panel appropriate to the tool type."""
-        width = min(self.console.width - 2, 120)
+        """Render a tool result in Antigravity inline style — no box, no border.
+
+        Collapsed:  Verb(path)
+                      └ +N / -N lines
+        Expanded:   Verb(path)
+                      └ <full content>
+        """
         display_name = self.TOOL_DISPLAY_NAME.get(func_name, func_name)
+        display_arg  = self._get_display_arg(func_name, arguments)
 
         is_error = result.startswith("Error") or result.startswith("Pre-Commit Validation Failed")
-        
-        if is_error:
-            display_arg = self._get_display_arg(func_name, arguments)
-            header = Text()
-            header.append(f"✗  ", style="bold red")
-            header.append(f"{display_name} Failed", style="bold red")
-            if display_arg:
-                header.append(f"  {display_arg}", style="white")
-                
-            with self.console.capture() as capture:
-                self.console.print(Panel(
-                    Text(result, style="red"),
-                    title=header,
-                    title_align="left",
-                    border_style="red",
-                    padding=(0, 1),
-                    width=width,
-                ))
-            rendered_text = capture.get()
-            if print_to_console:
-                sys.stdout.write(rendered_text)
-                sys.stdout.flush()
-            return rendered_text
 
-        # ── Header line: icon  ToolName  path/arg ─────────────────────────────
-        display_arg = self._get_display_arg(func_name, arguments)
-        icon = self.TOOL_ICON.get(func_name, "●")
+        # ── Line 1: Verb(arg) ──────────────────────────────────────────────────
         header = Text()
-        header.append(f"✓  ", style="bold white")
-        header.append(f"{display_name}", style=f"bold {color}")
+        if is_error:
+            header.append("\u2717 ", style="bold red")
+            header.append(f"{display_name}", style="bold red")
+        else:
+            header.append(f"{display_name}", style=f"bold {color}")
         if display_arg:
-            header.append(f"  {display_arg}", style="white")
+            header.append(f"({display_arg})", style="dim white")
+        if not expand and not is_error:
+            header.append(" (ctrl+o to expand)", style="dim #585b70")
 
-        # ── Body: tool-specific formatting ─────────────────────────────────────
-        if func_name == "edit_file":
+        # ── Body lines ─────────────────────────────────────────────────────────
+        body_lines: list = []  # list of Text objects to print after header
+
+        TREE  = "  \u2514 "
+        PIPE  = "  \u2502 "
+        BLANK = "    "
+
+        def _tree(txt: Text | str, style: str = "") -> Text:
+            t = Text()
+            t.append(TREE, style="dim #585b70")
+            if isinstance(txt, Text):
+                t.append_text(txt)
+            else:
+                t.append(txt, style=style)
+            return t
+
+        def _pipe(txt: str, style: str = "") -> Text:
+            t = Text()
+            t.append(PIPE, style="dim #585b70")
+            t.append(txt, style=style)
+            return t
+
+        if is_error:
+            # Always show full error
+            err_lines = result.strip().splitlines()
+            for i, line in enumerate(err_lines):
+                connector = TREE if i == 0 else PIPE
+                t = Text()
+                t.append(connector, style="dim #585b70")
+                t.append(line, style="red")
+                body_lines.append(t)
+
+            # Permission hint for MCP
+            result_lower = result.lower()
+            is_permission_error = any(kw in result_lower for kw in [
+                "permission denied", "not accessible by personal access token",
+                "resource not accessible", "403", "unauthorized", "401",
+                "insufficient scope", "bad credentials", "bad_credentials",
+                "requires authentication", "token", "forbidden"
+            ])
+            if is_permission_error and "__" in func_name:
+                server_name_hint = func_name.split("__")[0]
+                hint = Text()
+                hint.append(PIPE, style="dim #585b70")
+                hint.append("Hint: ", style="bold yellow")
+                hint.append(
+                    f"Token for \'{server_name_hint}\' may lack required permissions. Go to /mcp \u2192 Update Token.",
+                    style="yellow"
+                )
+                body_lines.append(hint)
+
+        elif func_name == "edit_file":
             replacements = arguments.get("replacements")
-            body = Text()
+            removed = 0
+            added   = 0
+
             if replacements is not None and isinstance(replacements, list):
-                removed = 0
-                added = 0
-                for i, rep in enumerate(replacements):
+                for rep in replacements:
                     if isinstance(rep, dict):
+                        removed += len((rep.get("old_str", "") or "").splitlines())
+                        added   += len((rep.get("new_str", "") or "").splitlines())
+            else:
+                removed = len((arguments.get("old_str", "") or "").splitlines())
+                added   = len((arguments.get("new_str", "") or "").splitlines())
+
+            if not expand:
+                # Collapsed: single stat line
+                stat = Text()
+                stat.append(TREE, style="dim #585b70")
+                if added:
+                    stat.append(f"+{added}", style="bold green")
+                    stat.append(" / ", style="dim #585b70")
+                if removed:
+                    stat.append(f"-{removed}", style="bold red")
+                    stat.append(" lines", style="dim white")
+                elif added:
+                    stat.append(" lines", style="dim white")
+                if not added and not removed:
+                    stat.append("(no changes)", style="dim")
+                body_lines.append(stat)
+            else:
+                # Expanded: show diff hunks with 5-6 lines truncation, count footers per type
+                def render_hunk(o_str, n_str, rep_index=None):
+                    o_lines = o_str.splitlines()
+                    n_lines = n_str.splitlines()
+                    
+                    if rep_index is not None:
+                        body_lines.append(_pipe(f"Replacement #{rep_index}", "bold dim white"))
+                        
+                    # 1. Render Deleted Lines (up to 5)
+                    if o_lines:
+                        shown_o = o_lines[:5]
+                        for line in shown_o:
+                            body_lines.append(_pipe(f"- {line}", "bold red"))
+                        if len(o_lines) > 5:
+                            body_lines.append(_pipe(f"- ... ({len(o_lines) - 5} more lines)", "red"))
+                        # Show -X lines footer under deleted lines
+                        body_lines.append(_pipe(f"-{len(o_lines)} lines", "bold red"))
+                        
+                    # 2. Render Added Lines (up to 5)
+                    if n_lines:
+                        shown_n = n_lines[:5]
+                        for line in shown_n:
+                            body_lines.append(_pipe(f"+ {line}", "bold green"))
+                        if len(n_lines) > 5:
+                            body_lines.append(_pipe(f"+ ... ({len(n_lines) - 5} more lines)", "green"))
+                        # Show +X lines footer under added lines
+                        body_lines.append(_pipe(f"+{len(n_lines)} lines", "bold green"))
+
+                if replacements is not None and isinstance(replacements, list):
+                    for idx, rep in enumerate(replacements):
+                        if not isinstance(rep, dict):
+                            continue
                         o_str = rep.get("old_str", "") or ""
                         n_str = rep.get("new_str", "") or ""
-                        o_lines = o_str.splitlines()
-                        n_lines = n_str.splitlines()
-                        removed += len(o_lines)
-                        added += len(n_lines)
-                        
-                        if expand or i < 3:
-                            if len(replacements) > 1:
-                                body.append(f"Replacement #{i+1}:\n", style="bold cyan")
-                            
-                            o_lines_to_show = o_lines if expand else o_lines[:2]
-                            for line in o_lines_to_show:
-                                body.append(f"- {line}\n", style="bold red")
-                            if not expand and len(o_lines) > 2:
-                                body.append(f"  … ({len(o_lines) - 2} more lines)\n", style="dim red")
-                                
-                            n_lines_to_show = n_lines if expand else n_lines[:2]
-                            for line in n_lines_to_show:
-                                body.append(f"+ {line}\n", style="bold green")
-                            if not expand and len(n_lines) > 2:
-                                body.append(f"  … ({len(n_lines) - 2} more lines)\n", style="dim green")
-                if not expand and len(replacements) > 3:
-                    body.append(f"  … ({len(replacements) - 3} more replacements)\n", style="dim cyan")
-            else:
-                old_str = arguments.get("old_str", "") or ""
-                new_str = arguments.get("new_str", "") or ""
-                old_lines = old_str.splitlines()
-                new_lines = new_str.splitlines()
-                removed = len(old_lines)
-                added   = len(new_lines)
-                
-                old_lines_to_show = old_lines if expand else old_lines[:4]
-                for line in old_lines_to_show:
-                    body.append(f"- {line}\n", style="bold red")
-                if not expand and removed > 4:
-                    body.append(f"  … ({removed - 4} more lines)\n", style="dim red")
+                        render_hunk(o_str, n_str, rep_index=idx+1 if len(replacements) > 1 else None)
+                else:
+                    o_str = arguments.get("old_str", "") or ""
+                    n_str = arguments.get("new_str", "") or ""
+                    render_hunk(o_str, n_str)
                     
-                new_lines_to_show = new_lines if expand else new_lines[:4]
-                for line in new_lines_to_show:
-                    body.append(f"+ {line}\n", style="bold green")
-                if not expand and added > 4:
-                    body.append(f"  … ({added - 4} more lines)\n", style="dim green")
-            # Stat footer
-            body.append("\n")
-            body.append(f" -{removed} lines", style="bold red")
-            body.append("   ", style="dim")
-            body.append(f"+{added} lines", style="bold green")
-
-            if expand:
-                header.append("  (Ctrl+O to collapse)", style="dim italic")
-            elif len(replacements or []) > 3 or removed > 4 or added > 4 or any(len((r.get("old_str","") if isinstance(r,dict) else "").splitlines()) > 2 for r in (replacements or [])):
-                header.append("  (Ctrl+O to expand)", style="dim italic")
+                # stat footer
+                stat = Text()
+                stat.append(TREE, style="dim #585b70")
+                if added:
+                    stat.append(f"+{added}", style="bold green")
+                    stat.append(" / ", style="dim #585b70")
+                if removed:
+                    stat.append(f"-{removed}", style="bold red")
+                    stat.append(" lines", style="dim white")
+                body_lines.append(stat)
 
         elif func_name == "write_file":
             old_content = arguments.get("_old_content") or ""
             new_content = arguments.get("content", "")
-            old_lines = old_content.splitlines(keepends=True)
-            new_lines = new_content.splitlines(keepends=True)
-            diff_lines = list(difflib.unified_diff(old_lines, new_lines, lineterm=""))
+            old_ls      = old_content.splitlines(keepends=True)
+            new_ls      = new_content.splitlines(keepends=True)
+            diff_lines  = list(difflib.unified_diff(old_ls, new_ls, lineterm=""))
+            added_count   = sum(1 for l in diff_lines if l.startswith("+") and not l.startswith("+++"))
+            removed_count = sum(1 for l in diff_lines if l.startswith("-") and not l.startswith("---"))
 
-            body = Text()
-            removed_count = 0
-            added_count   = 0
-
-            if not diff_lines:
-                body.append("  (no changes)", style="dim")
-            else:
-                shown = 0
-                for dl in diff_lines:
-                    if dl.startswith("---") or dl.startswith("+++"):
-                        continue
-                    if not expand and shown >= 30:
-                        body.append(f"  … (diff truncated)\n", style="dim")
-                        break
-                    if dl.startswith("+"):
-                        body.append(f"{dl}\n", style="bold green")
-                        added_count += 1
-                        shown += 1
-                    elif dl.startswith("-"):
-                        body.append(f"{dl}\n", style="bold red")
-                        removed_count += 1
-                        shown += 1
-                    else:
-                        body.append(f"{dl}\n", style="dim white")
-                        shown += 1
-                # Stat footer
-                if removed_count or added_count:
-                    body.append("\n")
+            if not expand:
+                stat = Text()
+                stat.append(TREE, style="dim #585b70")
+                if not old_content and not diff_lines:
+                    stat.append(f"+{len(new_ls)} lines (new file)", style="bold green")
+                elif added_count or removed_count:
+                    if added_count:
+                        stat.append(f"+{added_count}", style="bold green")
+                        stat.append(" / ", style="dim #585b70")
                     if removed_count:
-                        body.append(f" -{removed_count} lines", style="bold red")
-                        body.append("   ", style="dim")
-                    body.append(f"+{added_count} lines", style="bold green")
-                elif not old_content:
-                    total = len(new_lines)
-                    body.append(f"\n +{total} lines (new file)", style="bold green")
-
-            if expand:
-                header.append("  (Ctrl+O to collapse)", style="dim italic")
-            elif not expand and len(diff_lines) > 32:
-                header.append("  (Ctrl+O to expand)", style="dim italic")
+                        stat.append(f"-{removed_count}", style="bold red")
+                    stat.append(" lines", style="dim white")
+                else:
+                    stat.append("(no changes)", style="dim")
+                body_lines.append(stat)
+            else:
+                # Clean up diff lines to exclude header lines starting with '---' or '+++' or '@@'
+                clean_lines = []
+                for dl in diff_lines:
+                    if dl.startswith("---") or dl.startswith("+++") or dl.startswith("@@"):
+                        continue
+                    clean_lines.append(dl)
+                
+                # Show first 5 and last 5 lines with a "..." in the middle if more than 10
+                if len(clean_lines) <= 10:
+                    for i, dl in enumerate(clean_lines):
+                        connector = TREE if i == 0 else PIPE
+                        t = Text()
+                        t.append(connector, style="dim #585b70")
+                        if dl.startswith("+"):
+                            t.append(dl, style="bold green")
+                        elif dl.startswith("-"):
+                            t.append(dl, style="bold red")
+                        else:
+                            t.append(dl, style="dim white")
+                        body_lines.append(t)
+                else:
+                    first_five = clean_lines[:5]
+                    last_five = clean_lines[-5:]
+                    
+                    for i, dl in enumerate(first_five):
+                        connector = TREE if i == 0 else PIPE
+                        t = Text()
+                        t.append(connector, style="dim #585b70")
+                        if dl.startswith("+"):
+                            t.append(dl, style="bold green")
+                        elif dl.startswith("-"):
+                            t.append(dl, style="bold red")
+                        else:
+                            t.append(dl, style="dim white")
+                        body_lines.append(t)
+                        
+                    # The 11th line is a '...' truncation indicator
+                    t_trunc = Text()
+                    t_trunc.append(PIPE, style="dim #585b70")
+                    t_trunc.append("...", style="dim white")
+                    body_lines.append(t_trunc)
+                    
+                    for dl in last_five:
+                        t = Text()
+                        t.append(PIPE, style="dim #585b70")
+                        if dl.startswith("+"):
+                            t.append(dl, style="bold green")
+                        elif dl.startswith("-"):
+                            t.append(dl, style="bold red")
+                        else:
+                            t.append(dl, style="dim white")
+                        body_lines.append(t)
+                        
+                if not clean_lines:
+                    body_lines.append(_tree("(no changes)", "dim"))
 
         elif func_name == "run_command":
             raw_output = result.strip()
-            body = Text()
-
             exit_code_val = None
-            stdout_section = ""
-            stderr_section = ""
+            stdout_lines  = []
+            stderr_lines  = []
             current_section = None
-            stdout_lines = []
-            stderr_lines = []
-
             for line in raw_output.splitlines():
                 if line.startswith("[exit_code:"):
                     exit_code_val = line.strip().lstrip("[").rstrip("]").split(":", 1)[1].strip()
@@ -2664,147 +2993,202 @@ class Orchestrator:
                     current_section = "stderr"
                 else:
                     if current_section == "stdout":
-                        stdout_section += line + "\n"
+                        stdout_lines.append(line.rstrip("\r").split("\r")[-1])
                     elif current_section == "stderr":
-                        stderr_section += line + "\n"
+                        stderr_lines.append(line.rstrip("\r").split("\r")[-1])
 
-            if exit_code_val is not None:
-                code_int = int(exit_code_val) if exit_code_val.lstrip("-").isdigit() else None
-                code_style = "bold red" if (code_int is not None and code_int != 0) else "bold green"
-                body.append(f"exit {exit_code_val}\n", style=code_style)
-
-            def clean_line(l: str) -> str:
-                return l.rstrip('\r').split('\r')[-1]
-
-            if stdout_section.strip():
-                stdout_lines = [clean_line(l) for l in stdout_section.splitlines()]
-                if not expand and len(stdout_lines) > 20:
-                    shown_block = "\n".join(stdout_lines[:20])
-                    tail = f"\n… ({len(stdout_lines) - 20} more lines)"
+            if not expand:
+                stat = Text()
+                stat.append(TREE, style="dim #585b70")
+                if exit_code_val is not None:
+                    code_int   = int(exit_code_val) if exit_code_val.lstrip("-").isdigit() else None
+                    code_style = "bold red" if (code_int is not None and code_int != 0) else "bold green"
+                    stat.append(f"exit {exit_code_val}", style=code_style)
+                    if stdout_lines:
+                        stat.append(f"  {len(stdout_lines)} lines", style="dim white")
+                elif stdout_lines:
+                    stat.append(f"{len(stdout_lines)} lines", style="dim white")
+                elif stderr_lines:
+                    stat.append(f"stderr: {len(stderr_lines)} lines", style="dim #f9e2af")
                 else:
-                    shown_block = "\n".join(stdout_lines)
-                    tail = ""
-                t_out = Text.from_ansi(shown_block)
-                t_out.style = "dim white"
-                body.append(t_out)
-                if tail:
-                    body.append(tail, style="dim")
-                body.append("\n")
-
-            if stderr_section.strip():
-                body.append("\n[stderr]\n", style="bold yellow")
-                stderr_lines = [clean_line(l) for l in stderr_section.splitlines()]
-                if not expand and len(stderr_lines) > 10:
-                    shown_err = "\n".join(stderr_lines[:10])
-                    err_tail = f"\n… ({len(stderr_lines) - 10} more lines)"
+                    stat.append("(no output)", style="dim")
+                body_lines.append(stat)
+            else:
+                if exit_code_val is not None:
+                    code_int   = int(exit_code_val) if exit_code_val.lstrip("-").isdigit() else None
+                    code_style = "bold red" if (code_int is not None and code_int != 0) else "bold green"
+                    ex = Text()
+                    ex.append(TREE, style="dim #585b70")
+                    ex.append(f"exit {exit_code_val}", style=code_style)
+                    body_lines.append(ex)
+                
+                # Truncate stdout to 15 lines max
+                if len(stdout_lines) <= 15:
+                    for i, line in enumerate(stdout_lines):
+                        connector = TREE if (i == 0 and exit_code_val is None) else PIPE
+                        t = Text()
+                        t.append(connector, style="dim #585b70")
+                        t.append_text(Text.from_ansi(line))
+                        body_lines.append(t)
                 else:
-                    shown_err = "\n".join(stderr_lines)
-                    err_tail = ""
-                t_err = Text.from_ansi(shown_err)
-                t_err.style = "dim #f9e2af"
-                body.append(t_err)
-                if err_tail:
-                    body.append(err_tail, style="dim")
+                    first_twelve = stdout_lines[:12]
+                    for i, line in enumerate(first_twelve):
+                        connector = TREE if (i == 0 and exit_code_val is None) else PIPE
+                        t = Text()
+                        t.append(connector, style="dim #585b70")
+                        t.append_text(Text.from_ansi(line))
+                        body_lines.append(t)
+                    body_lines.append(_tree(f"... ({len(stdout_lines) - 12} more lines of output)", "dim white"))
 
-            if not stdout_section.strip() and not stderr_section.strip():
-                body.append("(no output)", style="dim")
-
-            if expand:
-                header.append("  (Ctrl+O to collapse)", style="dim italic")
-            elif not expand and (len(stdout_lines) > 20 or len(stderr_lines) > 10):
-                header.append("  (Ctrl+O to expand)", style="dim italic")
+                if stderr_lines:
+                    se_hdr = Text()
+                    se_hdr.append(PIPE, style="dim #585b70")
+                    se_hdr.append("[stderr]", style="bold yellow")
+                    body_lines.append(se_hdr)
+                    
+                    # Truncate stderr to 10 lines max
+                    if len(stderr_lines) <= 10:
+                        for line in stderr_lines:
+                            t = Text()
+                            t.append(PIPE, style="dim #585b70")
+                            t.append(line, style="dim #f9e2af")
+                            body_lines.append(t)
+                    else:
+                        first_seven = stderr_lines[:7]
+                        for line in first_seven:
+                            t = Text()
+                            t.append(PIPE, style="dim #585b70")
+                            t.append(line, style="dim #f9e2af")
+                            body_lines.append(t)
+                        body_lines.append(_tree(f"... ({len(stderr_lines) - 7} more lines of errors)", "dim #f9e2af"))
+                        
+                if not stdout_lines and not stderr_lines:
+                    body_lines.append(_tree("(no output)", "dim"))
 
         elif func_name == "list_directory":
-            output = result.strip()
-            lines = output.splitlines()
-            body = Text()
+            lines = result.strip().splitlines()
             items = lines[1:] if lines and lines[0].startswith("Contents") else lines
-            
-            items_to_show = items if expand else items[:30]
-            for item in items_to_show:
-                body.append(f"  {item}\n", style="dim white")
-            if not expand and len(items) > 30:
-                body.append(f"  … ({len(items) - 30} more items)", style="dim")
-                
-            if expand:
-                header.append("  (Ctrl+O to collapse)", style="dim italic")
-            elif not expand and len(items) > 30:
-                header.append("  (Ctrl+O to expand)", style="dim italic")
+            if not expand:
+                body_lines.append(_tree(f"{len(items)} items", "dim white"))
+            else:
+                if len(items) <= 15:
+                    for i, item in enumerate(items):
+                        connector = TREE if i == 0 else PIPE
+                        t = Text()
+                        t.append(connector, style="dim #585b70")
+                        t.append(item, style="dim white")
+                        body_lines.append(t)
+                else:
+                    first_twelve = items[:12]
+                    for i, item in enumerate(first_twelve):
+                        connector = TREE if i == 0 else PIPE
+                        t = Text()
+                        t.append(connector, style="dim #585b70")
+                        t.append(item, style="dim white")
+                        body_lines.append(t)
+                    body_lines.append(_tree(f"... ({len(items) - 12} more files)", "dim white"))
 
         elif func_name == "read_file":
-            all_lines = result.splitlines()
-            meta = all_lines[0] if all_lines and all_lines[0].startswith("[") else ""
-            content_lines = all_lines[1:] if meta else all_lines
-            
-            preview_lines = content_lines if expand else content_lines[:15]
-            body = Text()
-            if meta:
-                body.append(meta + "\n", style="dim #585b70")
-            for line in preview_lines:
-                body.append(line + "\n", style="dim white")
-            if not expand and len(content_lines) > 15:
-                body.append(f"… ({len(content_lines) - 15} more lines in this chunk)", style="dim")
-                
-            if expand:
-                header.append("  (Ctrl+O to collapse)", style="dim italic")
-            elif not expand and len(content_lines) > 15:
-                header.append("  (Ctrl+O to expand)", style="dim italic")
+            all_lines     = result.splitlines()
+            meta_line     = all_lines[0] if all_lines and all_lines[0].startswith("[") else ""
+            content_lines = all_lines[1:] if meta_line else all_lines
+            if not expand:
+                stat = Text()
+                stat.append(TREE, style="dim #585b70")
+                stat.append(f"{len(content_lines)} lines", style="dim white")
+                body_lines.append(stat)
+            else:
+                if len(content_lines) <= 15:
+                    for i, line in enumerate(content_lines):
+                        connector = TREE if i == 0 else PIPE
+                        t = Text()
+                        t.append(connector, style="dim #585b70")
+                        t.append(line, style="dim white")
+                        body_lines.append(t)
+                else:
+                    first_twelve = content_lines[:12]
+                    for i, line in enumerate(first_twelve):
+                        connector = TREE if i == 0 else PIPE
+                        t = Text()
+                        t.append(connector, style="dim #585b70")
+                        t.append(line, style="dim white")
+                        body_lines.append(t)
+                    body_lines.append(_tree(f"... ({len(content_lines) - 12} more lines)", "dim white"))
+
+        elif func_name == "web_search":
+            lines = result.strip().splitlines()
+            if not expand:
+                body_lines.append(_tree(lines[0][:80] if lines else "results retrieved", "dim white"))
+            else:
+                if len(lines) <= 15:
+                    for i, line in enumerate(lines):
+                        connector = TREE if i == 0 else PIPE
+                        t = Text()
+                        t.append(connector, style="dim #585b70")
+                        t.append(line, style="dim white")
+                        body_lines.append(t)
+                else:
+                    first_twelve = lines[:12]
+                    for i, line in enumerate(first_twelve):
+                        connector = TREE if i == 0 else PIPE
+                        t = Text()
+                        t.append(connector, style="dim #585b70")
+                        t.append(line, style="dim white")
+                        body_lines.append(t)
+                    body_lines.append(_tree(f"... ({len(lines) - 12} more results)", "dim white"))
+
+        elif func_name == "generate_image":
+            body_lines.append(_tree("image generated", "dim white"))
 
         elif func_name == "manage_todos":
-            if expand:
-                header.append("  (Ctrl+O to collapse)", style="dim italic")
+            lines = result.strip().splitlines()
+            if not expand:
+                body_lines.append(_tree(lines[0][:80] if lines else "done", "dim white"))
             else:
-                header.append("  (Ctrl+O to expand)", style="dim italic")
-            
-            with self.console.capture() as capture:
-                self.console.print(Panel(
-                    Text(result.strip(), style="dim white"),
-                    title=header,
-                    title_align="left",
-                    border_style=color,
-                    padding=(0, 1),
-                    width=width,
-                ))
-            rendered_text = capture.get()
-            if print_to_console:
-                sys.stdout.write(rendered_text)
-                sys.stdout.flush()
-            return rendered_text
+                if len(lines) <= 15:
+                    for i, line in enumerate(lines):
+                        connector = TREE if i == 0 else PIPE
+                        t = Text()
+                        t.append(connector, style="dim #585b70")
+                        t.append(line, style="dim white")
+                        body_lines.append(t)
+                else:
+                    first_twelve = lines[:12]
+                    for i, line in enumerate(first_twelve):
+                        connector = TREE if i == 0 else PIPE
+                        t = Text()
+                        t.append(connector, style="dim #585b70")
+                        t.append(line, style="dim white")
+                        body_lines.append(t)
+                    body_lines.append(_tree(f"... ({len(lines) - 12} more lines)", "dim white"))
 
         else:
-            summary = result.strip()
-            if not expand and len(summary) > 300:
-                summary = summary[:300] + "…"
-            
-            if expand:
-                header.append("  (Ctrl+O to collapse)", style="dim italic")
-            elif not expand and len(result.strip()) > 300:
-                header.append("  (Ctrl+O to expand)", style="dim italic")
-            
-            with self.console.capture() as capture:
-                self.console.print(Panel(
-                    Text(summary, style="dim white"),
-                    title=header,
-                    title_align="left",
-                    border_style=color,
-                    padding=(0, 1),
-                    width=width,
-                ))
-            rendered_text = capture.get()
-            if print_to_console:
-                sys.stdout.write(rendered_text)
-                sys.stdout.flush()
-            return rendered_text
+            lines = result.strip().splitlines()
+            if not expand:
+                body_lines.append(_tree(lines[0][:80] if lines else "done", "dim white"))
+            else:
+                if len(lines) <= 15:
+                    for i, line in enumerate(lines):
+                        connector = TREE if i == 0 else PIPE
+                        t = Text()
+                        t.append(connector, style="dim #585b70")
+                        t.append(line, style="dim white")
+                        body_lines.append(t)
+                else:
+                    first_twelve = lines[:12]
+                    for i, line in enumerate(first_twelve):
+                        connector = TREE if i == 0 else PIPE
+                        t = Text()
+                        t.append(connector, style="dim #585b70")
+                        t.append(line, style="dim white")
+                        body_lines.append(t)
+                    body_lines.append(_tree(f"... ({len(lines) - 12} more lines)", "dim white"))
 
+        # ── Render ─────────────────────────────────────────────────────────────
         with self.console.capture() as capture:
-            self.console.print(Panel(
-                body,
-                title=header,
-                title_align="left",
-                border_style=color,
-                padding=(0, 1),
-                width=width,
-            ))
+            self.console.print(header)
+            for bl in body_lines:
+                self.console.print(bl)
         rendered_text = capture.get()
         if print_to_console:
             sys.stdout.write(rendered_text)
@@ -2898,7 +3282,7 @@ class Orchestrator:
         tool_call["function"]["arguments"] = json.dumps(arguments)
 
         color = TOOL_COLOR.get(func_name, "#888888")
-        icon  = self.TOOL_ICON.get(func_name, "●")
+        icon  = self.TOOL_ICON.get(func_name, "")
 
         # The JSON arguments are now guaranteed to be clean/valid
         arguments = json.loads(tool_call["function"]["arguments"])
@@ -2970,10 +3354,9 @@ class Orchestrator:
                 from utim_cli.mcp_client import mcp_manager
                 if server_name in mcp_manager.sessions:
                     color = "#cba6f7"  # purple accent for MCP
-                    icon = "🔌"
+                    icon = ""
                     display_name = f"{server_name} ➔ {actual_tool_name}"
                     display_arg = self._get_display_arg(func_name, arguments)
-                    self.console.print(f"  {icon}  Calling MCP tool {display_name}...", style=f"dim {color}")
                     result = mcp_manager.call_tool(server_name, actual_tool_name, arguments)
                     self.TOOL_DISPLAY_NAME[func_name] = display_name
                     self.TOOL_ICON[func_name] = icon
@@ -2994,6 +3377,15 @@ class Orchestrator:
                         self.last_tool_lines = 0
                     return result
             except Exception as e:
+                # Erase the running line first
+                try:
+                    width = self.console.size.width
+                except Exception:
+                    width = 80
+                import math
+                num_lines = math.ceil(getattr(self, "_last_running_indicator_len", 40) / max(1, width))
+                for _ in range(num_lines):
+                    self.console.print("\033[F\033[K", end="")
                 self.console.print(Panel(
                     Text(f"Error executing MCP tool {func_name}: {str(e)}", style="red"),
                     border_style="red", padding=(0, 1),
@@ -3144,6 +3536,51 @@ class Orchestrator:
                         self.console.print("[bold red]✗ Execution cancelled by user.[/bold red]")
                         return f"[User rejected {func_name}. Do NOT retry this action — ask the user what they want instead.]"
 
+        # ── invoke_subagents — parallel subagent execution ────────────────────
+        # Needs session context (model_id, console, cancel_event, depth), so
+        # it's dispatched here rather than via the generic tool_functions table.
+        if func_name == "invoke_subagents":
+            # Guard: subagents cannot spawn their own subagents (max depth = 1)
+            current_depth = getattr(self, "_subagent_depth", 0)
+            if current_depth >= 1:
+                return (
+                    "[invoke_subagents blocked] Subagents cannot spawn their own "
+                    "subagents. Maximum nesting depth is 1. Complete your task "
+                    "using the tools available to you directly."
+                )
+
+            tasks_raw = arguments.get("tasks", [])
+            if not isinstance(tasks_raw, list) or not tasks_raw:
+                return "[invoke_subagents error] 'tasks' must be a non-empty array."
+
+            from utim_cli.subagent_manager import SubAgentTask, SubAgentManager, format_subagent_results
+
+            tasks = []
+            for t in tasks_raw:
+                if not isinstance(t, dict):
+                    continue
+                tasks.append(SubAgentTask(
+                    task_id         = str(t.get("task_id", f"task-{len(tasks)+1}")),
+                    role            = str(t.get("role", "Subagent")),
+                    system_prompt   = str(t.get("system_prompt", "")),
+                    user_prompt     = str(t.get("user_prompt", "")),
+                    model_id        = str(t.get("model_id", "") or self.model_id),
+                    max_iterations  = int(t.get("max_iterations", 20)),
+                    timeout_seconds = int(t.get("timeout_seconds", 300)),
+                ))
+
+            if not tasks:
+                return "[invoke_subagents error] No valid tasks found in 'tasks' array."
+
+            manager = SubAgentManager(
+                parent_model=self.model_id,
+                console=self.console,
+                cancel_event=self.cancel_event,
+                depth=current_depth,
+            )
+            results = manager.run_parallel(tasks)
+            return format_subagent_results(results)
+
         # ── Silent tools: skip all visual output ─────────────────────────────
         _SILENT_TOOLS = {"manage_memory", "recall_experience", "store_experience"}
         if func_name in _SILENT_TOOLS:
@@ -3164,13 +3601,15 @@ class Orchestrator:
         # is executing. We intentionally avoid Rich Live/Spinner here because
         # it animates at 12 fps and conflicts with prompt_toolkit's own redraws,
         # causing the double-spinner glitch and constant screen flicker.
+        # Antigravity-style: ● Verb(path) (ctrl+o to expand)
+        _display_name = self.TOOL_DISPLAY_NAME.get(func_name, func_name)
         _pre = Text()
-        _pre.append(f" {icon} ", style=color)
-        _pre.append(func_name, style=f"bold {color}")
+        _pre.append(_display_name, style="bold white")
         if display_arg:
-            _pre.append(f"  {display_arg}", style="dim white")
-        _pre.append("  …", style="dim")
-        self.console.print(_pre)
+            _pre.append(f"({display_arg})", style="dim white")
+        _pre.append(" (ctrl+o to expand)", style="dim #585b70")
+        pre_plain = f"{_display_name}({display_arg}) (ctrl+o to expand)" if display_arg else f"{_display_name} (ctrl+o to expand)"
+        self._last_running_indicator_len = len(pre_plain)
 
         try:
             # Dynamically update the thinking indicator so it shows what tool is running
@@ -3368,6 +3807,15 @@ class Orchestrator:
             except Exception:
                 pass
         except Exception as exc:
+            # Erase the running line first
+            try:
+                width = self.console.size.width
+            except Exception:
+                width = 80
+            import math
+            num_lines = math.ceil(getattr(self, "_last_running_indicator_len", 40) / max(1, width))
+            for _ in range(num_lines):
+                self.console.print("\033[F\033[K", end="")
             self.console.print(Panel(
                 Text(str(exc), style="red"),
                 title=Text(f"✗  {func_name}", style=f"bold red"),
@@ -3434,7 +3882,8 @@ class Orchestrator:
         # Tools that can be safely executed in parallel (read-only operations)
         PARALLEL_SAFE = {"read_file", "list_directory", "grep_search", "search", "web_search", 
                          "plan_project", "manage_todos", "manage_memory",
-                         "analyze_image", "generate_image"}
+                         "analyze_image", "generate_image",
+                         "invoke_subagents"}  # manages its own internal thread pool
         
         # Tools that must be sequential (modify state)
         SEQUENTIAL = {"write_file", "edit_file", "delete_file", "run_command",
@@ -3454,9 +3903,6 @@ class Orchestrator:
         
         # Execute parallel-safe tools concurrently
         if parallel_calls:
-            self.console.print()
-            self.console.print(f"[dim cyan]⊘ Executing {len(parallel_calls)} tool(s) in parallel...[/dim cyan]")
-            
             executor = ThreadPoolExecutor(max_workers=min(len(parallel_calls), 8))
             try:
                 future_to_idx = {executor.submit(self._execute_tool_timed, tc): (orig_idx, tc) 
@@ -3759,15 +4205,9 @@ class Orchestrator:
             return 65_000
 
     def _get_dynamic_interval(self) -> int:
-        """Get dynamic iteration compression interval based on current model's context window."""
-        try:
-            from .server.models import get_model
-            model_entry = get_model(self.model_id)
-            if model_entry and model_entry.context_window:
-                return _get_compression_interval(model_entry.context_window)
-        except Exception:
-            pass
-        return 10
+        """Get iteration context compression interval (every 35 iterations)."""
+        return 35
+
     
     def _get_iteration_budget(self) -> int:
         """Return the max iteration budget for the current model, scaled by context window.
@@ -4042,7 +4482,16 @@ class Orchestrator:
             # guard the IndexError is silently swallowed and the model gets no
             # active objective in its system prompt for the rest of the turn.
             if 0 < effective_turn_start < len(messages_snapshot):
-                obj = (messages_snapshot[effective_turn_start].get("content") or "")[:600]
+                raw_content = messages_snapshot[effective_turn_start].get("content") or ""
+                if isinstance(raw_content, list):
+                    text_parts = []
+                    for part in raw_content:
+                        if isinstance(part, dict) and part.get("type") == "text":
+                            text_parts.append(part.get("text", ""))
+                    text_str = " ".join(text_parts)
+                else:
+                    text_str = str(raw_content)
+                obj = text_str[:600]
                 active_context += f"\n- **Active Objective**: {obj}..."
 
         system_msg["content"] += active_context
@@ -4623,7 +5072,14 @@ class Orchestrator:
         
         # Update the experience summary cache for this task at start
         try:
-            update_experience_summary_cache(user_message)
+            update_experience_summary_cache(user_message, messages=self.messages)
+        except Exception:
+            pass
+
+        # Update STATE so the background brain watcher pre-fetches relevant memories
+        try:
+            from utim_cli.state import STATE as _S
+            _S["last_user_prompt"] = user_message
         except Exception:
             pass
 
@@ -4631,6 +5087,12 @@ class Orchestrator:
         final_answer = ""
         _empty_response_streak = 0  # tracks consecutive empty (no content, no tools) responses
         turn_iteration = 0
+        # ── Cross-turn 5-request reflection counter ────────────────────────────
+        # Persists across user turns on self so response-end reflection at
+        # request 3 doesn't reset the sequence — the next user turn picks up at
+        # 3 and fires at 2 more requests (total 5).
+        if not hasattr(self, "_reflect_request_counter"):
+            self._reflect_request_counter = 0
         for iteration in range(max_iterations):
             self.current_iteration = iteration
             turn_iteration = iteration + 1
@@ -4646,25 +5108,25 @@ class Orchestrator:
                 if turn_iteration == 1 and ("intro", _uid) not in self._milestones_fired:
                     self.messages.append({
                         "role": "user",
-                        "content": f"⚠️ [SYSTEM DIRECTIVE] Finish the task within {_budget} tool uses (scaled by model context window).",
+                        "content": f"[SYSTEM DIRECTIVE] Finish the task within {_budget} tool uses (scaled by model context window).",
                     })
                     self._milestones_fired.add(("intro", _uid))
                 elif turn_iteration == _halfway and ("halfway", _uid) not in self._milestones_fired:
                     self.messages.append({
                         "role": "user",
-                        "content": f"⚠️ [SYSTEM WARNING] You have already used {turn_iteration} iterations. Task is still not finished, you have only {_budget - turn_iteration} iterations left. Try to finish within the limit (total budget: {_budget}).",
+                        "content": f"[SYSTEM WARNING] You have already used {turn_iteration} iterations. Task is still not finished, you have only {_budget - turn_iteration} iterations left. Try to finish within the limit (total budget: {_budget}).",
                     })
                     self._milestones_fired.add(("halfway", _uid))
                 elif turn_iteration == _last5 and ("last5", _uid) not in self._milestones_fired:
                     self.messages.append({
                         "role": "user",
-                        "content": f"⚠️ [SYSTEM URGENT] Only 5 iterations left (of {_budget} total). Finish the task fast.",
+                        "content": f"[SYSTEM URGENT] Only 5 iterations left (of {_budget} total). Finish the task fast.",
                     })
                     self._milestones_fired.add(("last5", _uid))
                 elif turn_iteration == _grant and ("grant", _uid) not in self._milestones_fired:
                     self.messages.append({
                         "role": "user",
-                        "content": f"⚠️ [SYSTEM NOTICE] +5 iterations granted (previous budget was {_budget}). No more will be provided. Finish the task within this limit.",
+                        "content": f"[SYSTEM NOTICE] +5 iterations granted (previous budget was {_budget}). No more will be provided. Finish the task within this limit.",
                     })
                     self._milestones_fired.add(("grant", _uid))
             except Exception:
@@ -4732,7 +5194,7 @@ class Orchestrator:
                                 self._pre_computation_thread.join(timeout=0.2)
                             
                             if self._pre_computation_done and self._pre_computation_result:
-                                self.console.print(f"[bold green]⚡ Anticipatory Cache HIT: Reused background reasoning ({match_reason}).[/bold green]")
+                                self.console.print(f"[bold green][CACHE HIT] Anticipatory Cache HIT: Reused background reasoning ({match_reason}).[/bold green]")
                                 msg = self._pre_computation_result
                                 was_streamed = True
                                 clean_content = msg.get("content") or ""
@@ -4768,7 +5230,7 @@ class Orchestrator:
                         _llm_retries += 1
                         wait_s = 5 * _llm_retries
                         self.console.print(
-                            f"\n[bold yellow]⚠  All models unreachable (attempt {_llm_retries}/{_llm_max_retries}). "
+                            f"\n[bold yellow]All models unreachable (attempt {_llm_retries}/{_llm_max_retries}). "
                             f"Retrying in {wait_s}s...[/bold yellow]"
                         )
                         # Interruptible wait — checks cancel_event every 100ms so Ctrl+C stops instantly
@@ -4788,7 +5250,7 @@ class Orchestrator:
                     self.console.print()
                     self.console.print(Panel(
                         Text.from_markup(
-                            f"[bold #FFE066]⚠  UTIM Server Unavailable[/bold #FFE066]\n\n"
+                            f"[bold #FFE066]UTIM Server Unavailable[/bold #FFE066]\n\n"
                             f"[white]{exc}[/white]\n\n"
                             "[dim]All retry attempts failed. The task has been paused.\n"
                             "Type your message again when the connection is restored.[/dim]"
@@ -4948,11 +5410,11 @@ class Orchestrator:
                     pass
                 if parsed_calls:
                     tool_calls = parsed_calls
-                    self.console.print(f"\n[bold yellow]🔧 Parsed {len(tool_calls)} tool call(s) from assistant text response.[/bold yellow]")
+                    self.console.print(f"\n[bold yellow]Parsed {len(tool_calls)} tool call(s) from assistant text response.[/bold yellow]")
 
             # If the model response was cut off mid-turn due to length/token limits, nudge it to continue
             if msg.get("was_cut_off"):
-                self.console.print("\n[bold yellow]⚠ Response truncated by token limits. Continuing response...[/bold yellow]\n")
+                self.console.print("\n[bold yellow]Response truncated by token limits. Continuing response...[/bold yellow]\n")
                 self.messages.append(
                     {
                         "role": "assistant",
@@ -5090,7 +5552,7 @@ class Orchestrator:
                             "the stream reconstruction was incomplete. The tool was NOT executed."
                         )
 
-                    _warn_line = f"⚠ The model returned a '{_fail_names}' tool call, but its arguments were incomplete or invalid."
+                    _warn_line = f"The model returned a '{_fail_names}' tool call, but its arguments were incomplete or invalid."
                     self.console.print(f"\n[bold yellow]{_warn_line}[/bold yellow]")
                     self.console.print(f"[dim yellow]  Reason: {_reason}[/dim yellow]")
 
@@ -5133,11 +5595,11 @@ class Orchestrator:
                     and (_os.environ.get("UTIM_ENABLE_REGRESSION_TESTS") == "1" or config.get("enable_regression_tests", False))
                     and getattr(self, "_test_run_attempts", 0) < 3
                 ):
-                    self.console.print("\n[bold yellow]🔍 Running automated regression tests to verify changes...[/bold yellow]")
+                    self.console.print("\n[bold yellow][TESTS] Running automated regression tests to verify changes...[/bold yellow]")
                     test_error = self._detect_and_run_tests()
                     if test_error:
                         self._test_run_attempts = getattr(self, "_test_run_attempts", 0) + 1
-                        self.console.print(f"[bold red]❌ Automated tests failed (Attempt {self._test_run_attempts}/3). Nudging agent to self-heal...[/bold red]")
+                        self.console.print(f"[bold red][FAILED] Automated tests failed (Attempt {self._test_run_attempts}/3). Nudging agent to self-heal...[/bold red]")
                         self.messages.append({"role": "assistant", "content": content})
                         self.messages.append({
                             "role": "user",
@@ -5145,7 +5607,7 @@ class Orchestrator:
                         })
                         continue
                     else:
-                        self.console.print("[bold green]✓ All automated tests passed successfully![/bold green]\n")
+                        self.console.print("[bold green]All automated tests passed successfully![/bold green]\n")
 
                 self.messages.append({"role": "assistant", "content": content})
                 self.turn_step_timings.append({
@@ -5178,9 +5640,10 @@ class Orchestrator:
             t_tool_start = time.time()
 
             # ── Iteration-based auto-compression ─────────────────────────────
-            # Compress every 45 iterations to keep context lean regardless of
-            # model context window size.
-            COMPRESS_INTERVAL = 45
+            # Compress every N iterations (default 35) to keep context lean.
+            # The interval is dynamically determined by _get_dynamic_interval(),
+            # which returns 35 by default but can scale with the model's context window.
+            COMPRESS_INTERVAL = self._get_dynamic_interval()
             compression_instruction = ""  # kept for _compress_intra_turn API compat
 
             if iteration > 0 and iteration % COMPRESS_INTERVAL == 0:
@@ -5206,7 +5669,7 @@ class Orchestrator:
                 except Exception:
                     pass
                 self.console.print(
-                    f"\n[dim magenta]⊘ Iteration {iteration} — compression applied.[/dim magenta]"
+                    f"\n[dim magenta]Iteration {iteration} — compression applied.[/dim magenta]"
                 )
 
             # ── Pre-execution arg validation gate ──────────────────────────────
@@ -5278,7 +5741,7 @@ class Orchestrator:
                 _has_write = any(f["tool_name"] in _MUTATION_NAMES for f in _malformed_this_run)
                 _mchars = max(f["argument_length"] for f in _malformed_this_run)
                 _warn = (
-                    f"⚠ The model returned a '{_mnames}' tool call, "
+                    f"The model returned a '{_mnames}' tool call, "
                     "but its arguments were incomplete or invalid. The tool was NOT executed."
                 )
                 if _msg_was_truncated:
@@ -5600,7 +6063,7 @@ class Orchestrator:
                         # Reset count after issuing nudge so it doesn't repeatedly spam on subsequent steps
                         self._tool_failure_counts[fingerprint] = 0
                         warning_text = (
-                            f"⚠️ [SYSTEM CRITICAL NOTICE] You have attempted to execute the tool `{func_name}` "
+                            f"[SYSTEM CRITICAL NOTICE] You have attempted to execute the tool `{func_name}` "
                             f"with arguments `{args_str}` 3 times in a row, and it continues to fail with the error:\n"
                             f"{tool_res}\n\n"
                             f"Your current approach is stuck in a loop. You MUST change your parameters, check the syntax, "
@@ -5610,7 +6073,7 @@ class Orchestrator:
                             "role": "user",
                             "content": warning_text
                         })
-                        self.console.print(f"\n[bold red]⚠️ Tool Loop Intercepted: Nudging agent to prevent repeated `{func_name}` failures.[/bold red]")
+                        self.console.print(f"\n[bold red][WARNING] Tool Loop Intercepted: Nudging agent to prevent repeated `{func_name}` failures.[/bold red]")
 
                     # Also track general failures by tool name to catch cases where the model
                     # changes arguments slightly but keeps failing the same tool type.
@@ -5623,7 +6086,7 @@ class Orchestrator:
                     if name_count >= 4:
                         self._tool_name_failure_counts[func_name] = 0
                         warning_text = (
-                            f"⚠️ [SYSTEM NOTICE] The tool `{func_name}` has failed 4 times with different arguments in this turn. "
+                            f"[SYSTEM NOTICE] The tool `{func_name}` has failed 4 times with different arguments in this turn. "
                             f"Your general approach with `{func_name}` is failing. Please check if your file paths are absolute, "
                             f"if directories exist, or if command flags are correct. You MUST alter your strategy or verify "
                             f"path structure before calling `{func_name}` again."
@@ -5632,14 +6095,14 @@ class Orchestrator:
                             "role": "user",
                             "content": warning_text
                         })
-                        self.console.print(f"\n[bold red]⚠️ Tool Type Failure Loop Intercepted: Nudging agent for `{func_name}` general failures.[/bold red]")
+                        self.console.print(f"\n[bold red][WARNING] Tool Type Failure Loop Intercepted: Nudging agent for `{func_name}` general failures.[/bold red]")
                 else:
                     # Successful tool run clears the failure counts
                     self._tool_failure_counts.pop(fingerprint, None)
                     if hasattr(self, "_tool_name_failure_counts"):
                         self._tool_name_failure_counts.pop(func_name, None)
 
-            # Periodic iteration context compression (every 10, 20, 30, or 45 iterations depending on context window)
+            # Periodic iteration context compression (every 35 iterations)
             interval = getattr(self, "_compression_interval", None) or self._get_dynamic_interval()
             if turn_iteration > 0 and turn_iteration % interval == 0:
                 try:
@@ -5671,61 +6134,64 @@ class Orchestrator:
                 "tools": [tc.get("function", {}).get("name", "") for tc in tool_calls]
             })
 
-            # Mid-turn Real-time reflection: Evolve after every 3 iterations if tool errors occur
-            if iteration > 0 and iteration % 3 == 0:
+            # ── Per-request experience injection is handled by _get_send_messages
+            # which calls get_system_prompt() → reads from the cache on every
+            # iteration. No extra call needed here.
+
+            # ── 5-request reflection counter ──────────────────────────────────
+            # Increment per model request (every iteration of this loop).
+            # Fires every 5 requests regardless of errors, independent of
+            # response-end reflection so the sequence is never disrupted.
+            self._reflect_request_counter += 1
+            if self._reflect_request_counter >= 5:
+                self._reflect_request_counter = 0  # reset only when fired
                 try:
-                    recent_start = max(turn_msg_start, len(self.messages) - 6)
-                    recent_msgs = self.messages[recent_start:]
-                    
-                    has_errors = False
+                    recent_start = max(turn_msg_start, len(self.messages) - 10)
+                    recent_msgs  = self.messages[recent_start:]
+                    last_assistant = ""
+                    last_tools     = []
+                    for m in reversed(recent_msgs):
+                        if m.get("role") == "assistant" and m.get("content"):
+                            last_assistant = m["content"]
+                            break
                     for m in recent_msgs:
                         if m.get("role") == "tool":
-                            c_str = str(m.get("content", "")).lower()
-                            if any(err_kw in c_str for err_kw in ["error", "failed", "exception", "not found", "invalid syntax", "undefined"]):
-                                has_errors = True
-                                break
-                                
-                    if has_errors:
-                        last_assistant = ""
-                        last_tools = []
-                        for m in reversed(recent_msgs):
-                            if m.get("role") == "assistant" and m.get("content"):
-                                last_assistant = m["content"]
-                                break
-                        for m in recent_msgs:
-                            if m.get("role") == "tool":
-                                last_tools.append(m)
-                                
-                        if last_tools:
+                            last_tools.append(m)
+
+                    _refl_msgs    = self.messages  # capture before thread starts
+                    _refl_user    = user_message
+                    _refl_elapsed = int(time.time() - task_start_time)
+                    _refl_iter    = iteration
+                    _refl_hints   = list(self.session_hints)
+
+                    def _run_5req_reflection_bg():
+                        try:
                             from utim_cli.reflection import run_reflection_phase
-                            
-                            def run_mid_turn_reflection_bg():
-                                try:
-                                    run_reflection_phase(
-                                        user_message=user_message,
-                                        assistant_content=last_assistant,
-                                        tool_results=last_tools,
-                                        elapsed_seconds=int(time.time() - task_start_time),
-                                        iterations=iteration,
-                                        hints=list(self.session_hints)
-                                    )
-                                    update_experience_summary_cache(user_message)
-                                except Exception:
-                                    pass
-                            
-                            threading.Thread(
-                                target=run_mid_turn_reflection_bg,
-                                daemon=True,
-                                name=f"utim-mid-turn-reflector-iter-{iteration}"
-                            ).start()
+                            run_reflection_phase(
+                                user_message=_refl_user,
+                                assistant_content=last_assistant,
+                                tool_results=last_tools,
+                                elapsed_seconds=_refl_elapsed,
+                                iterations=_refl_iter,
+                                hints=_refl_hints,
+                            )
+                            update_experience_summary_cache(_refl_user, messages=_refl_msgs)
+                        except Exception:
+                            pass
+
+                    threading.Thread(
+                        target=_run_5req_reflection_bg,
+                        daemon=True,
+                        name=f"utim-5req-reflector-req-{self._reflect_request_counter + 5}",
+                    ).start()
                 except Exception:
                     pass
-            
+
         elapsed = int(time.time() - task_start_time)
         elapsed_str = (
             f"{elapsed // 60}m {elapsed % 60}s" if elapsed >= 60 else f"{elapsed}s"
         )
-        self.console.print(Rule(f"[dim]⚙  {elapsed_str}[/dim]"))
+        self.console.print(Rule(f"[dim]{elapsed_str}[/dim]", style="dim"))
 
         # CRITICAL: Clear the thinking-topic spinner IMMEDIATELY after the response
         # ends so the spinner stops animating. Otherwise the spinner keeps spinning
@@ -5776,8 +6242,10 @@ class Orchestrator:
             self._persist_messages()
             self._trigger_bg_summarization()
             
-            # Automated Reflection Phase and cleanup run in background, non-blocking
-            def bg_reflection_and_cleanup(u_msg, a_content, t_results, el, iter_count, hints):
+            # Automated Reflection Phase (response-end) — fires after every response.
+            # This is INDEPENDENT of the 5-request counter; it does NOT reset
+            # _reflect_request_counter, so the sequence continues into the next turn.
+            def bg_reflection_and_cleanup(u_msg, a_content, t_results, el, iter_count, hints, msgs_snapshot):
                 try:
                     from utim_cli.reflection import run_reflection_phase
                     run_reflection_phase(
@@ -5788,9 +6256,12 @@ class Orchestrator:
                         iterations=iter_count,
                         hints=hints
                     )
+                    # Rebuild experience cache after response-end reflection
+                    # so the next user turn gets fresh lessons immediately.
+                    update_experience_summary_cache(u_msg, messages=msgs_snapshot)
                 except Exception:
                     pass
-                
+
                 try:
                     self._cleanup_tmp_folder()
                 except Exception:
@@ -5798,7 +6269,15 @@ class Orchestrator:
 
             threading.Thread(
                 target=bg_reflection_and_cleanup,
-                args=(user_message or "", final_answer or "", list(self._turn_changes) if self._turn_changes else [], int(elapsed), turn_iteration, list(self.session_hints)),
+                args=(
+                    user_message or "",
+                    final_answer or "",
+                    list(self._turn_changes) if self._turn_changes else [],
+                    int(elapsed),
+                    turn_iteration,
+                    list(self.session_hints),
+                    list(self.messages),  # snapshot so thread has stable reference
+                ),
                 daemon=True
             ).start()
             

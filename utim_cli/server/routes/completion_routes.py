@@ -3,13 +3,16 @@ Routes: /completions — LLM proxy with streaming, billing, and token tracking
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
 import uuid
 import datetime
-import asyncio
+import time
+from collections import defaultdict
 from typing import Any, AsyncGenerator, Dict, List, Optional
+
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
@@ -19,7 +22,8 @@ from sqlalchemy.orm import Session
 
 from ..db import Conversation, Credit, Transaction, User, UserSubscription, QuotaUsage, Plan, get_db, SessionLocal
 from ..auth import get_current_user
-from ..models import DEFAULT_MODEL, estimate_cost
+from ..models import DEFAULT_MODEL, estimate_cost, MODEL_REGISTRY
+
 from ..rate_limit import limiter
 
 router = APIRouter(prefix="/completions", tags=["completions"])
@@ -189,6 +193,39 @@ class CompletionRequest(BaseModel):
 
 
 
+# Sliding window rate limiter for free models (100 requests / minute threshold)
+_FREE_MODEL_REQUEST_TIMES: Dict[str, list] = defaultdict(list)
+_FREE_MODEL_MAX_REQ_PER_MIN = 100
+
+
+def _check_free_model_threshold(user_id: str, model_id: str):
+    """Enforce 100 requests/minute safety threshold for free models."""
+    entry = MODEL_REGISTRY.get(model_id)
+    is_free = (
+        model_id.endswith(":free") 
+        or ":free" in model_id 
+        or model_id == "openrouter/free"
+        or (entry and "free" in entry.tags)
+    )
+    if not is_free:
+        return
+
+    now = time.time()
+    cutoff = now - 60.0
+    
+    # Clean up and keep timestamps within last 60 seconds
+    times = [t for t in _FREE_MODEL_REQUEST_TIMES[user_id] if t > cutoff]
+    
+    if len(times) >= _FREE_MODEL_MAX_REQ_PER_MIN:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Free model safety threshold exceeded (100 requests/minute for '{model_id}'). Please slow down or upgrade your plan."
+        )
+    
+    times.append(now)
+    _FREE_MODEL_REQUEST_TIMES[user_id] = times
+
+
 # ── Endpoint ──────────────────────────────────────────────────────────────────
 
 @router.post("", summary="Streaming LLM completion with automatic billing")
@@ -214,56 +251,74 @@ async def completions(
     ACTIVE_COMPLETION_TASKS[key] = (current_task, db)
 
     if not req.is_reflection:
-        # Ensure user has active subscription and quota
-        quota = get_or_create_quota(db, user)
+        # Enforce 100 req/min safety check on free models
+        _check_free_model_threshold(user.id, req.model_id)
+
+        # Check for active 24-hour Rewards Wheel reward for this model
+        from ..db import RewardActivation
+        now_utc = datetime.datetime.utcnow()
+        active_reward_obj = db.query(RewardActivation).filter(
+            RewardActivation.user_id == user.id,
+            RewardActivation.model_id == req.model_id,
+            RewardActivation.is_active == True,
+            RewardActivation.reward_start <= now_utc,
+            RewardActivation.reward_end > now_utc
+        ).first()
+
+        is_reward_free = active_reward_obj is not None
+
+        # Ensure sub and plan are initialized
         sub = user.subscription
         plan = sub.plan if sub else None
         if not plan:
             plan = db.query(Plan).filter(Plan.id == (sub.plan_id if sub else "free")).first()
 
-        allowed_models = plan.allowed_models if plan else "free"
-        # Check model gating — bonus_balance unlocks all models even on free plan
-        from ..db import Credit
-        _cr = db.query(Credit).filter(Credit.user_id == user.id).first()
-        _bonus = getattr(_cr, "bonus_balance", 0.0) or 0.0
-        
-        pref_quota = (request.headers.get("X-Preferred-Quota") or req.preferred_quota or "regular").lower().strip()
-        
-        if plan and plan.id == "free" and ":free" not in req.model_id:
-            if pref_quota == "regular":
+        if not is_reward_free:
+            # Ensure user has active subscription and quota
+            quota = get_or_create_quota(db, user)
+            allowed_models = plan.allowed_models if plan else "free"
+            # Check model gating — bonus_balance unlocks all models even on free plan
+            from ..db import Credit
+            _cr = db.query(Credit).filter(Credit.user_id == user.id).first()
+            _bonus = getattr(_cr, "bonus_balance", 0.0) or 0.0
+            
+            pref_quota = (request.headers.get("X-Preferred-Quota") or req.preferred_quota or "regular").lower().strip()
+            
+            if plan and plan.id == "free" and ":free" not in req.model_id:
+                if pref_quota == "regular":
+                    raise HTTPException(
+                        status_code=403,
+                        detail="With your current plan you can't use premium models with your quota provided by the free plan. if u want to use premium models on UTIM provided quota please upgrade your plan or please use your bonus quota"
+                    )
+                if _bonus <= 0.0:
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Model is gated under your current Free plan and you have no bonus credits. Please top up your bonus quota to use premium models."
+                    )
+            
+            if not is_model_allowed(req.model_id, allowed_models, bonus_balance=_bonus):
                 raise HTTPException(
                     status_code=403,
-                    detail="With your current plan you can't use premium models with your quota provided by the free plan. if u want to use premium models on UTIM provided quota please upgrade your plan or please use your bonus quota"
+                    detail=f"Model '{req.model_id}' is gated under your current '{plan.display_name if plan else 'Free'}' plan. Please upgrade to Hobby/Pro/Team to access premium models."
                 )
-            if _bonus <= 0.0:
-                raise HTTPException(
-                    status_code=403,
-                    detail="Model is gated under your current Free plan and you have no bonus credits. Please top up your bonus quota to use premium models."
-                )
-        
-        if not is_model_allowed(req.model_id, allowed_models, bonus_balance=_bonus):
-            raise HTTPException(
-                status_code=403,
-                detail=f"Model '{req.model_id}' is gated under your current '{plan.display_name if plan else 'Free'}' plan. Please upgrade to Hobby/Pro/Team to access premium models."
-            )
 
-        limit_to_check = 3000.0 if (plan and plan.id == "free") else quota.credits_limit
-        free_monthly_used = getattr(_cr, "free_monthly_used", 0.0) if _cr else 0.0
-        used_to_check = free_monthly_used if (plan and plan.id == "free") else quota.credits_used
-        if _bonus <= 0.0 and used_to_check >= limit_to_check:
-            raise HTTPException(
-                status_code=429,
-                detail={
-                    "message": "Monthly credit quota exceeded.",
-                    "reset_at": quota.reset_at.isoformat() + "Z",
-                    "upgrade_url": "https://utim.dev/upgrade"
-                }
-            )
+            limit_to_check = 3000.0 if (plan and plan.id == "free") else quota.credits_limit
+            free_monthly_used = getattr(_cr, "free_monthly_used", 0.0) if _cr else 0.0
+            used_to_check = free_monthly_used if (plan and plan.id == "free") else quota.credits_used
+            if _bonus <= 0.0 and used_to_check >= limit_to_check:
+                raise HTTPException(
+                    status_code=429,
+                    detail={
+                        "message": "Monthly credit quota exceeded.",
+                        "reset_at": quota.reset_at.isoformat() + "Z",
+                        "upgrade_url": "https://utim.dev/upgrade"
+                    }
+                )
 
         now = datetime.datetime.utcnow()
 
         # Check 5-hour cycle limit + credit bank for free plan
-        if plan and plan.id == "free":
+        if not is_reward_free and plan and plan.id == "free":
             from ..db import Credit
             credit_row = db.query(Credit).filter(Credit.user_id == user.id).first()
             balance = getattr(credit_row, "balance", 0.0) if credit_row else 0.0
@@ -284,7 +339,7 @@ async def completions(
                 )
 
         # Check 5-hour cycle limit + credit bank for paid plans
-        if plan and plan.id != "free" and sub:
+        if not is_reward_free and plan and plan.id != "free" and sub:
             cycle_allowance = plan.credits_per_month / 144.0
             current_cycle_used = sub.current_cycle_used or 0.0
             if current_cycle_used >= cycle_allowance:
@@ -326,6 +381,13 @@ async def completions(
         is_aborted = False
 
         try:
+            # ── Model ID Normalization (route legacy/local model IDs to fast remote model) ───
+            if req.model_id in ("qwen/qwen2.5-1.5b-instruct", "local"):
+                req.model_id = "qwen/qwen-2.5-coder-32b-instruct"
+
+            # ── OpenRouter-backed models ──────────────────────────────────────────
+            from ..micro_batcher import global_micro_batcher
+
             extra_body = {"stream_options": {"include_usage": True}}
             if req.reasoning and isinstance(req.reasoning, dict):
                 clean_reasoning = {}
@@ -337,6 +399,22 @@ async def completions(
                 if clean_reasoning:
                     extra_body["reasoning"] = clean_reasoning
                 
+            # Auto-inject default reasoning payload for mandatory reasoning models (Kimi, R1, QwQ) if omitted
+            is_reasoning_model = any(k in req.model_id.lower() for k in ["kimi", "r1", "qwq", "reasoner", "thinking"])
+            if is_reasoning_model and "reasoning" not in extra_body:
+                extra_body["reasoning"] = {"effort": "medium"}
+
+            async def _batch_processor(m_id: str, batch_items: list):
+                return batch_items
+
+            # Micro-Batching Queue: Grouped by model_id (Batch size: 4, Wait timeout: 0.2s)
+            await global_micro_batcher.submit(
+                model_id=req.model_id,
+                is_reflection=getattr(req, "is_reflection", False),
+                payload=req.session_id or "req",
+                processor_func=_batch_processor,
+            )
+
             kwargs = {
                 "model": req.model_id,
                 "messages": req.messages,
@@ -346,6 +424,7 @@ async def completions(
                 "timeout": 900,
                 "extra_body": extra_body
             }
+
             if req.temperature is not None:
                 kwargs["temperature"] = req.temperature
             if req.max_tokens is not None:
@@ -367,6 +446,18 @@ async def completions(
                 if delta.content:
                     content_buf += delta.content
                     yield json.dumps({"type": "content_delta", "text": delta.content}) + "\n"
+
+                # Forward reasoning/thinking tokens — covers all OpenRouter provider variants:
+                # reasoning (Claude/OpenAI), reasoning_content (DeepSeek), thinking (Qwen), thought (Gemini)
+                _raw_delta = delta.model_extra if hasattr(delta, "model_extra") and delta.model_extra else {}
+                _thinking_text = (
+                    _raw_delta.get("reasoning")
+                    or _raw_delta.get("reasoning_content")
+                    or _raw_delta.get("thinking")
+                    or _raw_delta.get("thought")
+                )
+                if _thinking_text:
+                    yield json.dumps({"type": "thinking_delta", "text": _thinking_text}) + "\n"
 
                 if delta.tool_calls:
                     for tc in delta.tool_calls:
@@ -465,7 +556,12 @@ async def completions(
                         plan = sub_row.plan if (sub_row and sub_row.status == "active") else None
                         is_upgraded = plan is not None and plan.id != "free"
 
-                        credits_cost = estimate_cost(req.model_id, final_input, final_output, is_upgraded=is_upgraded)
+                        if getattr(req, "is_reflection", False) or getattr(req, "is_background", False) or is_reward_free or req.model_id == "qwen/qwen2.5-1.5b-instruct":
+                            credits_cost = 0.0
+                        else:
+                            credits_cost = estimate_cost(req.model_id, final_input, final_output, is_upgraded=is_upgraded)
+
+
                         
                         if plan and plan.id != "free":
                             cycle_days = (sub_row.current_period_end - sub_row.current_period_start).days

@@ -1,77 +1,67 @@
 import os
-import json
 import uuid
 import datetime
 import logging
-from pathlib import Path
 from typing import Optional
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, BackgroundTasks
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from ..auth import get_current_user
-from ..db import User, Plan, get_db
+from ..db import User, Plan, SharedPackage, get_db
 from ..storage_nodes import StorageNodeManager, GoogleDriveStorageNode
 
 router = APIRouter(prefix="/shares", tags=["shares"])
 logger = logging.getLogger("utim.routes.shares")
 
-STORAGE_DIR = Path("server_shares")
-STORAGE_DIR.mkdir(exist_ok=True)
-META_FILE = STORAGE_DIR / "meta.json"
 
-def load_meta() -> dict:
-    if META_FILE.exists():
-        try:
-            with open(META_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {}
-
-def save_meta(meta: dict):
+def _clean_expired_db(db: Session) -> None:
+    """Delete expired SharedPackage rows and their Drive files (background task)."""
     try:
-        with open(META_FILE, 'w', encoding='utf-8') as f:
-            json.dump(meta, f, indent=2, ensure_ascii=False)
-    except Exception:
-        pass
+        now = datetime.datetime.utcnow()
+        expired = db.query(SharedPackage).filter(SharedPackage.expires_at < now).all()
+        for pkg in expired:
+            try:
+                provider = GoogleDriveStorageNode(pkg.node_id, f"Node {pkg.node_id}")
+                provider.delete(pkg.drive_file_id)
+            except Exception:
+                pass
+            db.delete(pkg)
+        if expired:
+            db.commit()
+            logger.info(f"Cleaned up {len(expired)} expired shared packages.")
+    except Exception as e:
+        db.rollback()
+        logger.warning(f"Failed to clean expired shares: {e}")
 
-def clean_expired():
-    """Scan and remove expired shared zips from Google Drive nodes."""
-    meta = load_meta()
-    now = datetime.datetime.now(datetime.timezone.utc)
-    updated_meta = {}
-    changed = False
-
-    for share_id, info in meta.items():
-        try:
-            expires_at = datetime.datetime.fromisoformat(info["expires_at"])
-            if now > expires_at:
-                # Expired - delete from Google Drive node
-                node_id = info.get("node_id", "node-1")
-                drive_file_id = info.get("drive_file_id")
-                if drive_file_id:
-                    try:
-                        provider = GoogleDriveStorageNode(node_id, f"Node {node_id}")
-                        provider.delete(drive_file_id)
-                    except Exception:
-                        pass
-                changed = True
-            else:
-                updated_meta[share_id] = info
-        except Exception:
-            changed = True
-
-    if changed:
-        save_meta(updated_meta)
 
 @router.post("/upload")
 async def upload_share(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     expires: str = Form("1h"),
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    clean_expired()
+    """
+    True zero-RAM streaming share upload.
+
+    Memory profile:
+      - Server RAM used = one 8 MB Drive chunk at a time (constant)
+      - No matter if the file is 100 MB or 5 GB, peak RAM stays ~8–16 MB
+      - The client request body is read 64 KB at a time and forwarded
+        immediately into the Google Drive resumable upload session
+
+    Flow:
+      1. Read Content-Length header (sent by client) to tell Drive how big
+         the upload will be (required for resumable session init).
+      2. Open a Drive resumable upload session → get session URI.
+      3. Stream client chunks (64 KB) through a sha256 counter.
+      4. When the 8 MB Drive block is full, flush it to Drive.
+      5. Send the final partial block as the terminal chunk.
+      6. Persist DB record with final size + sha256.
+    """
+    # Run expiry cleanup in background so it doesn't slow the upload
+    background_tasks.add_task(_clean_expired_db, db)
 
     # Determine user's plan and share limit
     sub = user.subscription
@@ -81,136 +71,288 @@ async def upload_share(
         plan = db.query(Plan).filter(Plan.id == plan_id_for_query).first()
 
     plan_key = (plan.id or "free").lower() if plan else "free"
-    
-    limit_map = {
-        "free": 75 * 1024 * 1024,
-        "hobby": 150 * 1024 * 1024,
-        "pro": 300 * 1024 * 1024,
-        "starter": 300 * 1024 * 1024,
-        "max": 500 * 1024 * 1024,
-        "professional": 500 * 1024 * 1024,
-        "ultimate": 1024 * 1024 * 1024,
-    }
-    
-    limit_bytes = limit_map.get(plan_key, 75 * 1024 * 1024)
-    
-    # Read file bytes
-    try:
-        zip_bytes = await file.read()
-        file_size = len(zip_bytes)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to read file payload: {e}")
 
-    if file_size > limit_bytes:
-        limit_mb = int(limit_bytes / (1024 * 1024))
+    limit_map = {
+        "free":         1024 * 1024 * 1024,                    # 1 GB
+        "hobby":        2 * 1024 * 1024 * 1024,                # 2 GB
+        "pro":          3 * 1024 * 1024 * 1024,                # 3 GB
+        "starter":      3 * 1024 * 1024 * 1024,                # 3 GB
+        "max":          int(4.5 * 1024 * 1024 * 1024),         # 4.5 GB
+        "professional": int(4.5 * 1024 * 1024 * 1024),         # 4.5 GB
+        "ultimate":     5 * 1024 * 1024 * 1024,                # 5 GB
+    }
+    limit_bytes = limit_map.get(plan_key, 1024 * 1024 * 1024)
+
+    # Content-Length declared by the client (requests_toolbelt sends this).
+    # Drive's resumable API needs it upfront.  If absent (chunked TE) we use
+    # limit_bytes as the upper bound — Drive accepts * in that case too.
+    declared_size: int = 0
+    try:
+        cl = file.headers.get("content-length") or file.size
+        if cl:
+            declared_size = int(cl)
+    except Exception:
+        declared_size = 0
+
+    if declared_size and declared_size > limit_bytes:
+        limit_gb = limit_bytes / (1024 ** 3)
         raise HTTPException(
             status_code=413,
-            detail=f"Shared package size ({file_size / (1024 * 1024):.2f} MB) exceeds the limit for your plan ({limit_mb} MB). Please upgrade your plan."
+            detail=(
+                f"Shared package size exceeds the limit for your plan "
+                f"({limit_gb:.1f} GB). Please upgrade your plan."
+            ),
         )
 
     share_id = f"share_{uuid.uuid4().hex[:12]}"
-    
-    now = datetime.datetime.now(datetime.timezone.utc)
-    if expires == "15m":
-        delta = datetime.timedelta(minutes=15)
-    elif expires == "1h":
-        delta = datetime.timedelta(hours=1)
-    elif expires == "4h":
-        delta = datetime.timedelta(hours=4)
-    elif expires == "1d":
-        delta = datetime.timedelta(days=1)
-    elif expires == "3d":
-        delta = datetime.timedelta(days=3)
-    elif expires == "7d":
-        delta = datetime.timedelta(days=7)
-    else:
-        delta = datetime.timedelta(hours=1)
-
+    now = datetime.datetime.utcnow()
+    expiry_deltas = {
+        "15m": datetime.timedelta(minutes=15),
+        "1h":  datetime.timedelta(hours=1),
+        "4h":  datetime.timedelta(hours=4),
+        "1d":  datetime.timedelta(days=1),
+        "3d":  datetime.timedelta(days=3),
+        "7d":  datetime.timedelta(days=7),
+    }
+    delta      = expiry_deltas.get(expires, datetime.timedelta(hours=1))
     expires_at = now + delta
 
-    # Select best healthy Google Drive node with highest available storage
+    # ── True streaming pipeline ────────────────────────────────────────────
+    # Build an async generator that reads the UploadFile 64 KB at a time,
+    # enforces the plan size cap on the fly, and tracks bytes + sha256.
+    import hashlib as _hashlib
+
+    READ_CHUNK  = 64 * 1024   # 64 KB reads from the client socket
+    sha256_h    = _hashlib.sha256()
+    file_size   = 0
+    first_bytes = bytearray()
+    MAGIC_CHECK = 4  # bytes needed to verify ZIP magic
+
+    async def _async_chunk_iter():
+        """Async generator: yields bytes read from the UploadFile."""
+        nonlocal file_size
+        while True:
+            chunk = await file.read(READ_CHUNK)
+            if not chunk:
+                break
+            file_size += len(chunk)
+            if file_size > limit_bytes:
+                limit_gb = limit_bytes / (1024 ** 3)
+                raise HTTPException(
+                    status_code=413,
+                    detail=(
+                        f"Shared package size exceeds the limit for your plan "
+                        f"({limit_gb:.1f} GB). Please upgrade your plan."
+                    ),
+                )
+            sha256_h.update(chunk)
+            if len(first_bytes) < MAGIC_CHECK:
+                first_bytes.extend(chunk[:MAGIC_CHECK - len(first_bytes)])
+            yield chunk
+
+    # upload_stream() is synchronous (runs requests.put internally) so we
+    # must convert our async generator to a sync iterator that runs the
+    # async reads on the current event loop via run_until_complete.
+    import asyncio
+
+    loop = asyncio.get_event_loop()
+
+    def _sync_chunk_iter():
+        """Convert the async generator to a synchronous iterator."""
+        gen = _async_chunk_iter()
+        while True:
+            try:
+                # Drive runs in a background thread — use run_coroutine_threadsafe
+                # if we're off the main thread, else use loop.run_until_complete.
+                try:
+                    fut = asyncio.ensure_future(gen.__anext__(), loop=loop)
+                    chunk = loop.run_until_complete(asyncio.wait_for(fut, timeout=120))
+                    yield chunk
+                except asyncio.TimeoutError:
+                    raise RuntimeError("Client stalled: no data received for 120 seconds during upload.")
+            except StopAsyncIteration:
+                break
+
+    # Select storage node before starting the stream (needs file_size estimate)
     try:
-        node_record = StorageNodeManager.select_best_node(db, file_size)
-        provider = GoogleDriveStorageNode(node_record.id, node_record.account_label)
-        upload_meta = provider.upload(share_id, zip_bytes, f"{share_id}.zip")
-        drive_file_id = upload_meta["drive_file_id"]
+        node_record = StorageNodeManager.select_best_node(db, declared_size or limit_bytes)
+        provider    = GoogleDriveStorageNode(node_record.id, node_record.account_label)
     except Exception as e:
-        logger.error(f"Failed to upload shared package to storage node: {e}")
+        logger.error(f"No storage node available: {e}")
+        raise HTTPException(status_code=503, detail=f"No storage node available: {e}")
+
+    # Stream directly to Drive — zero full-file buffering
+    try:
+        upload_meta  = provider.upload_stream(
+            package_id = share_id,
+            filename   = file.filename or f"{share_id}.zip",
+            size_bytes = declared_size or 0,
+            chunk_iter = _sync_chunk_iter(),
+            sha256_hex = "",   # computed inside the generator
+        )
+        drive_file_id = upload_meta["drive_file_id"]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Streaming upload to storage node failed: {e}")
         raise HTTPException(status_code=500, detail=f"Storage node upload failed: {e}")
 
-    # Save metadata
-    meta = load_meta()
-    meta[share_id] = {
-        "id": share_id,
-        "filename": file.filename,
-        "node_id": node_record.id,
-        "drive_file_id": drive_file_id,
-        "size_bytes": file_size,
-        "sha256": upload_meta.get("sha256"),
-        "created_at": now.isoformat(),
-        "expires_at": expires_at.isoformat(),
-        "user_id": user.id,
-    }
-    save_meta(meta)
+    # Validate: empty body or non-ZIP
+    if file_size == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Received an empty file. The upload connection may have dropped. Please try again.",
+        )
+    if bytes(first_bytes[:4]) != b"PK\x03\x04":
+        # Cleanup orphaned Drive file
+        try:
+            provider.delete(drive_file_id)
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded file is not a valid ZIP archive. Re-package and try again.",
+        )
+
+    sha256_hex = sha256_h.hexdigest()
+
+    # Persist metadata to PostgreSQL
+    try:
+        pkg = SharedPackage(
+            id           = share_id,
+            user_id      = user.id,
+            filename     = file.filename or f"{share_id}.zip",
+            node_id      = node_record.id,
+            drive_file_id= drive_file_id,
+            size_bytes   = file_size,
+            sha256       = sha256_hex or upload_meta.get("sha256"),
+            created_at   = now,
+            expires_at   = expires_at,
+        )
+        db.add(pkg)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        try:
+            provider.delete(drive_file_id)
+        except Exception:
+            pass
+        logger.error(f"Failed to persist share record to DB: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save share metadata: {e}")
 
     server_url = os.environ.get("SERVER_URL", "https://api.utim.dev").rstrip("/")
     link = f"{server_url}/shares/download/{share_id}"
 
-    return {"success": True, "link": link, "expires_at": expires_at.isoformat()}
+    return {
+        "success":    True,
+        "link":       link,
+        "expires_at": expires_at.isoformat() + "Z",
+    }
+
+
+
 
 @router.get("/download/{share_id}")
-async def download_share(share_id: str):
-    clean_expired()
+async def download_share(
+    share_id: str,
+    db: Session = Depends(get_db),
+):
+    # Look up in DB — this survives redeploys unlike meta.json
+    pkg = db.query(SharedPackage).filter(SharedPackage.id == share_id).first()
 
-    meta = load_meta()
-    if share_id not in meta:
-        raise HTTPException(status_code=404, detail="Shared package does not exist or has expired.")
+    if not pkg:
+        raise HTTPException(
+            status_code=404,
+            detail="Shared package does not exist or has expired.",
+        )
 
-    info = meta[share_id]
-    now = datetime.datetime.now(datetime.timezone.utc)
+    if pkg.is_expired:
+        # Async cleanup in DB + Drive
+        try:
+            provider = GoogleDriveStorageNode(pkg.node_id, f"Node {pkg.node_id}")
+            provider.delete(pkg.drive_file_id)
+        except Exception:
+            pass
+        try:
+            db.delete(pkg)
+            db.commit()
+        except Exception:
+            db.rollback()
+        raise HTTPException(status_code=410, detail="This shared package has expired.")
+
     try:
-        expires_at = datetime.datetime.fromisoformat(info["expires_at"])
-        if now > expires_at:
-            clean_expired()
-            raise HTTPException(status_code=410, detail="This shared package has expired.")
-    except Exception:
-        raise HTTPException(status_code=404, detail="Error validating share expiration.")
+        provider = GoogleDriveStorageNode(pkg.node_id, f"Node {pkg.node_id}")
+        stream = provider.stream_download(pkg.drive_file_id)
 
-    node_id = info.get("node_id", "node-1")
-    drive_file_id = info.get("drive_file_id")
+        safe_filename = (pkg.filename or f"{share_id}.zip").replace('"', "").replace("\\", "").replace("/", "")
+        if not safe_filename:
+            safe_filename = f"{share_id}.zip"
 
-    if not drive_file_id:
-        raise HTTPException(status_code=404, detail="Shared package file ID missing.")
-
-    try:
-        provider = GoogleDriveStorageNode(node_id, f"Node {node_id}")
-        stream = provider.stream_download(drive_file_id)
-        filename = info.get("filename", f"{share_id}.zip")
         headers = {
-            "Content-Disposition": f'attachment; filename="{filename}"',
-            "X-Package-Checksum": info.get("sha256", ""),
+            "Content-Disposition": f'attachment; filename="{safe_filename}"',
+            "X-Package-Checksum": pkg.sha256 or "",
+            "Content-Type": "application/octet-stream",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
         }
-        return StreamingResponse(stream, media_type="application/zip", headers=headers)
+        if pkg.size_bytes:
+            headers["Content-Length"] = str(pkg.size_bytes)
+
+        return StreamingResponse(stream, media_type="application/octet-stream", headers=headers)
+
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Shared package file not found on storage node.")
+        logger.error(f"Drive file not found for share {share_id}: drive_file_id={pkg.drive_file_id}")
+        raise HTTPException(
+            status_code=404,
+            detail="Shared package file not found on storage node. It may have been deleted from Drive.",
+        )
     except Exception as e:
         logger.error(f"Error streaming shared package {share_id}: {e}")
-        raise HTTPException(status_code=500, detail="Storage streaming error.")
+        raise HTTPException(status_code=500, detail=f"Storage streaming error: {e}")
+
 
 @router.delete("/delete/{share_id}")
-async def delete_share(share_id: str):
-    meta = load_meta()
-    if share_id in meta:
-        info = meta[share_id]
-        node_id = info.get("node_id", "node-1")
-        drive_file_id = info.get("drive_file_id")
-        if drive_file_id:
-            try:
-                provider = GoogleDriveStorageNode(node_id, f"Node {node_id}")
-                provider.delete(drive_file_id)
-            except Exception as e:
-                logger.warning(f"Failed to delete shared file from Google Drive node: {e}")
-        del meta[share_id]
-        save_meta(meta)
-        return {"success": True, "detail": "Shared package deleted successfully from storage node."}
-    raise HTTPException(status_code=404, detail="Shared package not found.")
+async def delete_share(
+    share_id: str,
+    db: Session = Depends(get_db),
+):
+    pkg = db.query(SharedPackage).filter(SharedPackage.id == share_id).first()
+    if not pkg:
+        raise HTTPException(status_code=404, detail="Shared package not found.")
+
+    try:
+        provider = GoogleDriveStorageNode(pkg.node_id, f"Node {pkg.node_id}")
+        provider.delete(pkg.drive_file_id)
+    except Exception as e:
+        logger.warning(f"Failed to delete shared file from Google Drive node: {e}")
+
+    db.delete(pkg)
+    db.commit()
+    return {"success": True, "detail": "Shared package deleted successfully."}
+
+
+@router.get("/list")
+async def list_shares(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """List all non-expired shares for the authenticated user."""
+    now = datetime.datetime.utcnow()
+    packages = (
+        db.query(SharedPackage)
+        .filter(SharedPackage.user_id == user.id, SharedPackage.expires_at > now)
+        .order_by(SharedPackage.created_at.desc())
+        .all()
+    )
+    return [
+        {
+            "id": p.id,
+            "filename": p.filename,
+            "size_bytes": p.size_bytes,
+            "created_at": p.created_at.isoformat() + "Z",
+            "expires_at": p.expires_at.isoformat() + "Z",
+            "link": f"{os.environ.get('SERVER_URL', 'https://api.utim.dev').rstrip('/')}/shares/download/{p.id}",
+        }
+        for p in packages
+    ]

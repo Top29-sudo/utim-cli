@@ -1,5 +1,33 @@
 # Changelog
 
+## [2.2.1] - 2026-08-13
+
+### 🛠️ Fixes & Minor Polish
+- **TUI Input Divider Line**: Updated input area horizontal divider line to extend full width across the terminal screen (`shutil.get_terminal_size().columns`) with line-wrap protection.
+- **Subagent Swarm Visualizer Mobile Responsiveness**: Added mobile responsive breakpoint styles (`.st-swarm-canvas`), card container bounds, text truncation, and flex badge anchors (`DISPATCHER`, `DONE`, etc.) to prevent layout overflow on mobile screens.
+- **OS-Specific Requirements Architecture**: Added dedicated lightweight requirement files (`requirements_android.txt`, `requirements_windows.txt`, `requirements_desktop.txt`, `requirements_full.txt`) and updated installer scripts (`install.sh`, `setup_utim1.py`) to select pure-Python requirements for Android/Termux without PyPI binary wheel dependencies.
+- **Reflection Pipeline Primary Model**: Updated reflection and experience extraction model fallback chain to use `openrouter/free` as the primary model (`REFLECTION_PRIMARY_MODEL`).
+- **Correction Fast-Path Engine**: Removed keyword-matching gate on correction detection, delegating judgment directly to the reflection LLM for zero false negatives.
+
+## [2.2.0] - 2026-08-13
+
+### 🛠️ Fixes
+- Modified interface
+
+## [2.1.2] - 2026-08-10
+
+### 🛠️ Fixes
+- **Fixed `grep_search` auto-regex promotion bug**: Queries containing regex metacharacters (`|`, `\`, `*`, etc.) were silently auto-promoted to regex mode even when `is_regex=False`, causing literal searches to fail with "No matches found." Now `is_regex=False` always means literal search, matching the documented "Literal-first semantics."
+- **Made ripgrep an automatic dependency**: Added `ripgrep>=0.13.0` to core dependencies in `pyproject.toml` and `requirements.txt`. The `_grep_find_ripgrep()` function now falls back to the `ripgrep` PyPI package (which bundles a prebuilt binary) when ripgrep isn't found on the system PATH, ensuring fast searches work out of the box.
+- **Increased context compression interval from 25 to 35 iterations**: Reduced compression frequency to conserve context resources and improve performance during long agent sessions.
+- **Reduced batch poll interval from 5s to 0.3s**: Improved responsiveness of batch status checks in `BatchAPIProcessor.poll_and_retrieve_results()`.
+- **Cleaned up network error messages in feedback dialog**: Stripped verbose `HTTPSConnectionPool` technical details from error messages, now showing clean messages like "Connection timed out. Please check your network and try again."
+
+## [2.1.1] - 2026-08-06
+
+### 🛠️ Fixes
+- **Enhanced `grep_search` reliability**: Fixed broken auto-regex promotion, ripgrep flag bugs (`-max-count` → `--max-count`), single-file `--with-filename` handling, Windows drive-letter colon parsing, and fallback file-list mode counting. Added dual-engine architecture (cached ripgrep fast-path + multithreaded Python fallback), binary-file sniffing, symlink-cycle protection, expanded noise filtering, and multi-encoding support.
+
 ## [2.1.0] - 2026-08-05
 
 ### ⚡ Performance

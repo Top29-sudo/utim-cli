@@ -198,7 +198,7 @@ def _create_miniagent_interactive(console):
 
     existing_dir = _get_miniagents_dir() / agent_id
     if (existing_dir / "agent.json").exists():
-        console.print(f"  [yellow]⚠ Miniagent '{agent_id}' already exists.[/yellow]\n")
+        console.print(f"  [yellow]Miniagent '{agent_id}' already exists.[/yellow]\n")
         return agent_id
 
     try:
@@ -246,17 +246,17 @@ def _dialog_miniagents(orchestrator=None):
 
         rows = []
         rows.append({
-            "name": "⚡ Create New Miniagent (with AI Prompt @miniagents)",
+            "name": "Create New Miniagent (with AI Prompt @miniagents)",
             "desc": "Closes dialog and appends @miniagents to prompt AI to design your miniagent",
             "action": "create",
         })
         rows.append({
-            "name": "📝 Create New Miniagent (Interactive Form)",
+            "name": "Create New Miniagent (Interactive Form)",
             "desc": "Fill out ID & script details manually in terminal",
             "action": "create_manual",
         })
         rows.append({
-            "name": "❌ Exit",
+            "name": "Exit",
             "desc": "Return to the chat screen",
             "action": "exit",
         })
@@ -268,7 +268,7 @@ def _dialog_miniagents(orchestrator=None):
                 "action": "header",
             })
             for ag in agents:
-                lang_icon = "🐍" if ag["lang"] == "python" else "🟨"
+                lang_icon = "" if ag["lang"] == "python" else ""
                 rows.append({
                     "name": f"  {lang_icon}  @{ag['id']}",
                     "desc": f"[{ag['lang']}]  {ag['description']}",
@@ -277,7 +277,7 @@ def _dialog_miniagents(orchestrator=None):
                     "agent": ag,
                 })
                 rows.append({
-                    "name": f"       🗑  Delete '@{ag['id']}'",
+                    "name": f"        Delete '@{ag['id']}'",
                     "desc": "Permanently remove this miniagent from disk",
                     "action": "delete",
                     "agent_id": ag["id"],
@@ -290,7 +290,7 @@ def _dialog_miniagents(orchestrator=None):
             })
 
         def render_row(idx, row, selected):
-            bg = "bg:#1e1e2e" if selected else ""
+            bg = "bg:#313244" if selected else ""
             act = row.get("action")
 
             if act == "exit":
@@ -300,9 +300,9 @@ def _dialog_miniagents(orchestrator=None):
             elif act == "header":
                 fg = "dim #585b70"
             elif act == "delete":
-                fg = "bold #f38ba8 bg:#313244" if selected else "#f38ba8"
+                fg = "bold white bg:#313244" if selected else "#6c7086"
             elif act == "view":
-                fg = "bold #f9e2af bg:#313244" if selected else "#f9e2af"
+                fg = "bold white bg:#313244" if selected else "#cdd6f4"
             else:
                 fg = "fg:#cdd6f4" if selected else "fg:#a6adc8"
 
@@ -347,7 +347,7 @@ def _dialog_miniagents(orchestrator=None):
             from utim_cli.utim import _run_captured_dialog  # type: ignore
 
             def _show_agent(console):
-                lang_icon = "🐍" if ag["lang"] == "python" else "🟨"
+                lang_icon = "" if ag["lang"] == "python" else ""
                 console.print(f"\n  {lang_icon} [bold #f9e2af]@{ag['id']}[/bold #f9e2af]  [dim]({ag['lang']})[/dim]")
                 console.print(f"  [dim]{ag['description']}[/dim]\n")
                 script_path = ag["path"] / f"agent.{'py' if ag['lang'] == 'python' else 'js'}"

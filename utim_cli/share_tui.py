@@ -29,6 +29,26 @@ def copy_to_clipboard(text: str) -> bool:
     except Exception:
         return False
 
+
+def _open_dialog_from_background(func):
+    """
+    Open a full-screen PTK dialog from a background thread.
+
+    Calls `_run_in_terminal_safe(func)` directly on the background thread.
+    Because we are NOT on the main event loop thread, _run_in_terminal_safe
+    takes its blocking `run_coroutine_threadsafe(...).result()` path, which:
+      1. Suspends the main prompt_toolkit renderer cleanly (same as /usage).
+      2. Runs func() — which calls dialog_app.run() — in the suspended terminal.
+      3. On ESC/Enter the dialog exits and _run_in_terminal_safe redraws the
+         chat prompt and status bar below it.
+    This background thread blocks until the user dismisses the dialog.
+    """
+    from utim_cli.utim import _run_in_terminal_safe
+    try:
+        _run_in_terminal_safe(func)
+    except Exception:
+        pass
+
 def _safe_exit(app, result=None):
     if not app.is_done:
         try:
@@ -141,7 +161,7 @@ def _run_custom_omits_dialog(workspace_path: str) -> Optional[List[str]]:
     
     def get_prompt_text():
         out = []
-        out.append(('bold #42bcf5', '\n  📤 Step 3: Enter Custom Files/Folders to Omit (Optional)\n'))
+        out.append(('bold #42bcf5', '\n  Step 3: Enter Custom Files/Folders to Omit (Optional)\n'))
         out.append(('class:dim',    '  Type or paste any path relative to the root folder (e.g. package-lock.json, data/logs).\n'))
         out.append(('class:dim',    '  Path MUST be inside the current root folder\'s file tree.\n'))
         out.append(('class:dim',    '  Separate multiple paths with commas. Press ENTER to submit, ESC to cancel/skip.\n\n'))
@@ -225,7 +245,7 @@ def _run_share_type_dialog():
 
     def content():
         out = []
-        out.append(('bold #42bcf5', '\n  📤 Step 1: Choose Share Type\n'))
+        out.append(('bold #42bcf5', '\n  Step 1: Choose Share Type\n'))
         out.append(('class:dim',    '  Select what content you would like to package and share:\n\n'))
 
         for i, opt in enumerate(options):
@@ -403,7 +423,7 @@ def _run_shares_dashboard(manager: ShareManager):
         if N_filtered[0] == 0:
             return [
                 ('', '\n'),
-                ('bold #f38ba8', '    ⚠️  No matching shared items found.\n'),
+                ('bold #f38ba8', '    No matching shared items found.\n'),
             ]
 
         matching_heights = [get_row_height(row) for _, row in filtered_rows]
@@ -469,7 +489,7 @@ def _run_shares_dashboard(manager: ShareManager):
                     action_style = "class:dim"
                 
                 out.extend([
-                    (bg or 'bold #cdd6f4', f"  📁  {rec.name} "),
+                    (bg or 'bold #cdd6f4', f"  {rec.name} "),
                     (bg or 'class:dim', f"({rec.id})"),
                     (bg or 'bold #cba6f7', f" [{type_label}]"),
                     (bg or status_style, f" [{status}]".rjust(15) + "\n"),
@@ -486,7 +506,7 @@ def _run_shares_dashboard(manager: ShareManager):
 
     search_field = TextArea(
         multiline=False,
-        prompt=" 🔍 Search Shares: ",
+        prompt=" Search Shares: ",
         style="class:search-field",
     )
     search_field.buffer.on_text_changed += lambda buf: update_filtered_rows(buf.text)
@@ -567,7 +587,7 @@ def _run_shares_dashboard(manager: ShareManager):
     def _quit_list(e):
         _safe_exit(e.app)
 
-    title_window = Window(FormattedTextControl([('bold #42bcf5', f'\n  📤  Workspace Share Manager\n')]), height=2)
+    title_window = Window(FormattedTextControl([('bold #42bcf5', f'\n  Workspace Share Manager\n')]), height=2)
 
     search_frame = Frame(search_field, title="Filter Shared Items (Search Name, ID, Link, or Exclusions)")
 
@@ -647,7 +667,7 @@ def show_share_details(record: ShareRecord):
     theme_console.print()
     panel = Panel(
         Text.from_markup(
-            f"[bold white]📁 Share Package: {record.name}[/bold white]\n\n"
+            f"[bold white]Share Package: {record.name}[/bold white]\n\n"
             f"[dim]ID:[/dim]          {record.id}\n"
             f"[dim]Created At:[/dim]  {record.created_at}\n"
             f"[dim]Expires At:[/dim]  {record.expires_at}\n"
@@ -664,52 +684,354 @@ def show_share_details(record: ShareRecord):
     theme_console.print(panel)
     wait_for_enter("\n  Press Enter to return to Dashboard...")
 
-def do_create_share(manager: ShareManager, exclude_keys, expiry_hours, chat_messages, share_type):
-    """Run zip compression, upload, copy to clipboard, and print status."""
-    theme_console.print()
-    panel = Panel(
-        Text.from_markup(
-            "[bold yellow]⚡ Building Share Package...[/bold yellow]\n"
-            "[dim]Compressing files and uploading to server...[/dim]"
-        ),
-        border_style="yellow",
-        expand=False,
-        padding=(1, 2)
-    )
-    theme_console.print(panel)
-    
+import threading
+import time
+import asyncio
+import sys
+
+def print_clean_above_prompt(panel):
+    """Print a Rich Panel cleanly into terminal scrollback above prompt_toolkit input prompt."""
+    from utim_cli.utim import _run_in_terminal_safe
     try:
-        rec = manager.create_share(exclude_keys, expiry_hours, chat_messages, share_type)
-            
-        copied = copy_to_clipboard(rec.link)
-        clipboard_msg = " [green](Copied to clipboard!)[/green]" if copied else " [red](Failed to copy to clipboard)[/red]"
-        
-        # Clear screen so final layout fits perfectly
-        theme_console.clear()
-        
-        success_panel = Panel(
+        from utim_cli.utim import console
+        def _task():
+            console.print()
+            console.print(panel)
+            console.print()
+        _run_in_terminal_safe(_task)
+    except Exception:
+        try:
+            theme_console.print()
+            theme_console.print(panel)
+            theme_console.print()
+        except Exception:
+            pass
+
+
+
+
+
+def _run_share_complete_dialog(rec, error=None):
+    """
+    Full-screen scrollable dialog showing the completed share details.
+    Mirrors the /usage dialog pattern so it can open on top of the running
+    agent UI without polluting the chat scrollback, and allows the agent
+    to keep working once dismissed.
+    """
+    import shutil
+    from prompt_toolkit.application import Application
+    from prompt_toolkit.layout import Layout, Window
+    from prompt_toolkit.layout.controls import FormattedTextControl
+    from prompt_toolkit.key_binding import KeyBindings
+    from prompt_toolkit.styles import Style as PTStyle
+    from rich.console import Console
+    from utim_cli.utim import get_console_width
+
+    width = min(80, get_console_width())
+    capture_console = Console(
+        highlight=False,
+        force_terminal=True,
+        color_system="truecolor",
+        width=width,
+    )
+
+    with capture_console.capture() as cap:
+        capture_console.print()
+        capture_console.print("=" * width, style="dim")
+        capture_console.print(" SHARE COMPLETE ", style="bold green", justify="center")
+        capture_console.print("=" * width, style="dim")
+
+        if error:
+            capture_console.print()
+            capture_console.print(f"  [bold red]✗ Background Share Failed[/bold red]")
+            capture_console.print(f"  [dim]{error}[/dim]")
+            capture_console.print()
+        elif rec is not None:
+            copied = getattr(rec, "_copied", False)
+            clipboard_msg = " [bold green](Copied to clipboard!)[/bold green]" if copied else ""
+            capture_console.print()
+            capture_console.print("  [bold #42bcf5]Share Package Ready[/bold #42bcf5]")
+            capture_console.print()
+            capture_console.print(f"  [dim]Workspace:[/dim]     [white]{rec.name}[/white]")
+            capture_console.print(f"  [dim]Share ID:[/dim]      [white]{rec.id}[/white]")
+            capture_console.print(f"  [dim]Time Left:[/dim]     [white]{rec.time_remaining()}[/white]")
+            capture_console.print(f"  [dim]Download Link:[/dim] [bold cyan]{rec.link}[/bold cyan]{clipboard_msg}")
+            capture_console.print(f"  [dim]File Path:[/dim]     {rec.file_path}")
+            capture_console.print()
+            capture_console.print("  [dim]You can continue typing commands — the agent is still working.[/dim]")
+
+        capture_console.print("-" * width, style="dim")
+        capture_console.print(" ESC/Q/Enter close ", style="italic dim", justify="center")
+        capture_console.print("-" * width, style="dim")
+        capture_console.print()
+
+    ansi_text = cap.get()
+
+    from prompt_toolkit.formatted_text import ANSI
+    raw_segments = ANSI(ansi_text).__pt_formatted_text__()
+    all_lines: list[list] = []
+    current_line: list = []
+    for style, text in raw_segments:
+        parts = text.split("\n")
+        for i, part in enumerate(parts):
+            if i > 0:
+                all_lines.append(current_line)
+                current_line = []
+            if part:
+                current_line.append((style, part))
+    if current_line:
+        all_lines.append(current_line)
+
+    total_lines = len(all_lines)
+    viewport_start = [0]
+
+    def content():
+        term_h = shutil.get_terminal_size((80, 24)).lines
+        visible_n = max(1, term_h - 2)
+        start = viewport_start[0]
+        end = min(total_lines, start + visible_n)
+        out: list = []
+        for line in all_lines[start:end]:
+            out.extend(line)
+            out.append(("", "\n"))
+        remaining = total_lines - end
+        if remaining > 0:
+            out.append(("fg:#f9e2af",
+                        f"  ▼ {remaining} more line{'s' if remaining > 1 else ''} (↓ / PgDn to scroll)\n"))
+        elif start > 0:
+            out.append(("fg:#555577", "  ─ end of content ─\n"))
+        return out
+
+    kb = KeyBindings()
+
+    @kb.add("escape")
+    @kb.add("q")
+    @kb.add("enter")
+    @kb.add("c-c")
+    def _close(e):
+        e.app.exit()
+
+    def _scroll(delta: int, app):
+        vp = viewport_start[0] + delta
+        viewport_start[0] = max(0, min(total_lines - 1, vp))
+        app.invalidate()
+
+    @kb.add("up")
+    def _up(e): _scroll(-1, e.app)
+
+    @kb.add("down")
+    def _dn(e): _scroll(1, e.app)
+
+    @kb.add("pageup")
+    def _pgup(e): _scroll(-15, e.app)
+
+    @kb.add("pagedown")
+    def _pgdn(e): _scroll(15, e.app)
+
+    @kb.add("<scroll-up>")
+    def _mup(e): _scroll(-3, e.app)
+
+    @kb.add("<scroll-down>")
+    def _mdn(e): _scroll(3, e.app)
+
+    dialog_app = Application(
+        layout=Layout(Window(FormattedTextControl(content), wrap_lines=False)),
+        key_bindings=kb,
+        full_screen=True,
+        style=PTStyle.from_dict({"dim": "#555577", "": "bg:#0d0d16 fg:#cdd6f4"}),
+        mouse_support=True,
+    )
+    dialog_app.run()
+
+
+def do_share_building_dialog(manager: ShareManager, exclude_keys, expiry_hours, chat_messages, share_type):
+    """
+    Run the Share Building screen.
+    Shows real-time packaging progress & ETA.
+    Offers [ Press Enter ] Minimize to Background option.
+    If minimized: closes dialog, prints start notification cleanly above chat prompt, and finishes in background.
+    If not minimized: waits for completion on screen, then shows Share Complete screen.
+    """
+    workspace_name = manager.workspace_path.name or "workspace"
+
+    state = {
+        "status": "compress",
+        "pct": 0.0,
+        "eta": None,
+        "record": None,
+        "error": None,
+        "is_done": False,
+        "is_minimized": False
+    }
+
+    finished_event = threading.Event()
+
+    def _worker():
+        def _progress_cb(phase, pct, eta_sec):
+            state["status"] = phase
+            state["pct"] = pct
+            state["eta"] = eta_sec
+
+        try:
+            rec = manager.create_share(
+                exclude_keys, expiry_hours, chat_messages, share_type,
+                progress_callback=_progress_cb, is_background=False
+            )
+            copied = copy_to_clipboard(rec.link)
+            rec._copied = copied
+            state["record"] = rec
+            state["status"] = "done"
+        except Exception as e:
+            state["error"] = str(e)
+            state["status"] = "error"
+        finally:
+            state["is_done"] = True
+            finished_event.set()
+
+    worker_thread = threading.Thread(target=_worker, daemon=True)
+    worker_thread.start()
+
+    from prompt_toolkit.layout.containers import HSplit, Window
+    from prompt_toolkit.layout.controls import FormattedTextControl
+    from prompt_toolkit.layout.layout import Layout
+    from prompt_toolkit.key_binding import KeyBindings
+    from prompt_toolkit.application import Application
+
+    kb = KeyBindings()
+
+    @kb.add("c-c")
+    @kb.add("q")
+    @kb.add("escape")
+    def _(event):
+        _safe_exit(event.app, result="cancel")
+
+    @kb.add("enter")
+    @kb.add("m")
+    def _(event):
+        _safe_exit(event.app, result="minimize")
+
+    def _get_formatted_text():
+        lines = []
+        lines.append(("", "\n"))
+        lines.append(("class:title", f"  Building Share Package: {workspace_name}\n\n"))
+
+        st = state["status"]
+        pct = state["pct"]
+        eta = state["eta"]
+
+        eta_str = ""
+        if eta is not None and eta > 0:
+            secs = int(eta)
+            if secs < 60:
+                eta_str = f" (ETA: ~{secs}s)"
+            else:
+                mins = secs // 60
+                s = secs % 60
+                eta_str = f" (ETA: ~{mins}m {s}s)"
+
+        bar_width = 30
+        filled = min(bar_width, max(0, int(round((pct / 100.0) * bar_width))))
+        bar = "█" * filled + "░" * (bar_width - filled)
+
+        if st == "compress":
+            lines.append(("class:info", f"  Compressing files:   [{bar}] {pct:.1f}%{eta_str}\n\n"))
+        elif st == "upload":
+            lines.append(("class:info", f"  Uploading to server: [{bar}] {pct:.1f}%{eta_str}\n\n"))
+        elif st == "done":
+            lines.append(("class:success", "  ✓ Package compression and upload complete!\n\n"))
+        elif st == "error":
+            lines.append(("class:error", f"  ✗ Error: {state['error']}\n\n"))
+
+        lines.append(("class:legend", "  ─────────────────────────────────────────────────────────────\n"))
+        lines.append(("class:key", "  [ Press Enter or 'm' ] "))
+        lines.append(("class:desc", "Minimize to Background (Continue working in CLI)\n"))
+        lines.append(("class:key", "  [ Press Esc or 'q'   ] "))
+        lines.append(("class:desc", "Cancel / Exit\n"))
+        return lines
+
+    layout = Layout(HSplit([Window(content=FormattedTextControl(_get_formatted_text))]))
+
+    app = Application(
+        layout=layout,
+        key_bindings=kb,
+        full_screen=False,
+        erase_when_done=True,
+    )
+
+    def _app_monitor():
+        while not finished_event.is_set():
+            if app.is_running:
+                app.invalidate()
+            time.sleep(0.15)
+        if app.is_running:
+            _safe_exit(app, result="finished")
+
+    monitor_thread = threading.Thread(target=_app_monitor, daemon=True)
+    monitor_thread.start()
+
+    res = app.run()
+
+    if res == "minimize":
+        state["is_minimized"] = True
+        start_panel = Panel(
             Text.from_markup(
-                f"[bold green]✓ Share link created successfully![/bold green]\n\n"
-                f"[dim]Link:[/dim] [bold cyan]{rec.link}[/bold cyan]{clipboard_msg}"
+                f"[bold #42bcf5]Background Share Started: {workspace_name}[/bold #42bcf5]\n"
+                f"[dim]UTIM is packaging and uploading your project in the background.\n"
+                f"You can continue working and typing commands in the CLI![/dim]"
             ),
-            title="Share Complete",
-            border_style="green",
+            border_style="#42bcf5",
             expand=False,
             padding=(1, 2)
         )
-        theme_console.print(success_panel)
-    except Exception as e:
-        theme_console.print(f"\n[bold red]✗ Failed to create share link: {e}[/bold red]\n")
-        
-    wait_for_enter("  Press Enter to return...")
+        print_clean_above_prompt(start_panel)
+
+        def _bg_completion_watcher():
+            finished_event.wait()
+            # Open the share-complete full-screen dialog from the background thread.
+            # _open_dialog_from_background calls _run_in_terminal_safe which, from a
+            # non-main-loop thread, uses run_coroutine_threadsafe(...).result() to
+            # properly suspend the main prompt_toolkit renderer, run the dialog, then
+            # redraw the chat prompt cleanly below — exactly like /usage.
+            if state["record"]:
+                rec = state["record"]
+                _open_dialog_from_background(lambda: _run_share_complete_dialog(rec))
+            elif state["error"]:
+                err = state["error"]
+                _open_dialog_from_background(lambda: _run_share_complete_dialog(None, error=err))
+
+        threading.Thread(target=_bg_completion_watcher, daemon=True).start()
+        return
+
+    elif res == "finished":
+        if state["record"]:
+            rec = state["record"]
+            copied = getattr(rec, "_copied", False)
+            clipboard_msg = " [green](Copied to clipboard!)[/green]" if copied else ""
+            theme_console.clear()
+            success_panel = Panel(
+                Text.from_markup(
+                    f"[bold green]✓ Share link created successfully![/bold green]\n\n"
+                    f"[dim]Link:[/dim] [bold cyan]{rec.link}[/bold cyan]{clipboard_msg}"
+                ),
+                title="Share Complete",
+                border_style="green",
+                expand=False,
+                padding=(1, 2)
+            )
+            theme_console.print(success_panel)
+            wait_for_enter("\n  Press Enter to return to Dashboard...")
+        elif state["error"]:
+            theme_console.print(f"\n[bold red]✗ Failed to create share link: {state['error']}[/bold red]\n")
+            wait_for_enter("  Press Enter to return...")
+
 
 def run_share_flow(orchestrator):
     """Main orchestrator for the /share flow."""
     manager = ShareManager()
-    
+
     # Extract chat messages from orchestrator
     chat_messages = getattr(orchestrator, "messages", [])
-    
+
     while True:
         # If there are no shares, go directly to the wizard
         records = manager.get_all()
@@ -718,7 +1040,7 @@ def run_share_flow(orchestrator):
             share_type = _run_share_type_dialog()
             if share_type is None:
                 return  # user cancelled
-                
+
             exclude_keys = []
             if share_type in ("project", "chat_project"):
                 # Step 2: select exclusions
@@ -727,38 +1049,36 @@ def run_share_flow(orchestrator):
                 ]
                 exclude_keys = _run_checkbox_dialog(
                     exclude_options,
-                    title="📤 Step 2: Select items to exclude (space to toggle)",
+                    title="Step 2: Select items to exclude (space to toggle)",
                     legend="Select which files/folders to omit to save space and exclude secrets"
                 )
                 if exclude_keys is None:
                     return  # user cancelled
-                
+
                 if "add_custom" in exclude_keys:
                     exclude_keys.remove("add_custom")
                     custom_omits = _run_custom_omits_dialog(str(manager.workspace_path))
                     if custom_omits is not None:
                         exclude_keys.extend(custom_omits)
-                
+
             # Step 3: select expiry
             expiry_opt = _run_expiry_dialog(
                 EXPIRY_OPTIONS,
-                title="⏰ Step Choose link expiry duration",
+                title="⏰ Step 3: Choose link expiry duration",
                 legend="Select how long the link should remain active before expiring"
             )
             if expiry_opt is None:
                 return  # user cancelled
-                
-            # Step 4: create share
-            do_create_share(manager, exclude_keys, expiry_opt["hours"], chat_messages, share_type)
-            
-            # Since records are no longer empty, we will loop and the dashboard will show next
-            continue
-            
+
+            # Step 4: run interactive Share Building screen with progress & [ Minimize ] option
+            do_share_building_dialog(manager, exclude_keys, expiry_opt["hours"], chat_messages, share_type)
+            return
+
         # Otherwise, show the dashboard
         action_data = _run_shares_dashboard(manager)
         if not action_data:
             break  # user exited
-            
+
         action, value = action_data
         if action == "new":
             # Run the wizard
@@ -771,7 +1091,7 @@ def run_share_flow(orchestrator):
                     ]
                     exclude_keys = _run_checkbox_dialog(
                         exclude_options,
-                        title="📤 Step 2: Select items to exclude (space to toggle)",
+                        title="Step 2: Select items to exclude (space to toggle)",
                         legend="Select which files/folders to omit to save space and exclude secrets"
                     )
                     if exclude_keys is not None:
@@ -783,10 +1103,13 @@ def run_share_flow(orchestrator):
                 if share_type == "chat" or exclude_keys is not None:
                     expiry_opt = _run_expiry_dialog(
                         EXPIRY_OPTIONS,
-                        title="⏰ Step Choose link expiry duration",
+                        title="⏰ Step 3: Choose link expiry duration",
                         legend="Select how long the link should remain active before expiring"
                     )
                     if expiry_opt is not None:
-                        do_create_share(manager, exclude_keys, expiry_opt["hours"], chat_messages, share_type)
+                        do_share_building_dialog(manager, exclude_keys, expiry_opt["hours"], chat_messages, share_type)
+                        return
         elif action == "details":
             show_share_details(value)
+
+

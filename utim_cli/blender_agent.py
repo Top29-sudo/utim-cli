@@ -63,10 +63,11 @@ _VISION_MODELS: List[str] = [
 ]
 
 _CODE_MODELS: List[str] = [
-    "poolside/laguna-m.1:free",
     DEFAULT_MODEL,
+    "cohere/north-mini-code:free",
     "openrouter/free"
 ]
+
 
 
 def _get_vision_models() -> List[str]:

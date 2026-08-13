@@ -58,7 +58,7 @@ def run_quota_redeem_flow(orchestrator) -> None:
     from rich.panel import Panel
     from rich.align import Align
     console.print(Panel(
-        Align.center(f"[bold {_PURPLE}]🎁 REDEEM CODE[/bold {_PURPLE}]"),
+        Align.center(f"[bold {_PURPLE}]REDEEM CODE[/bold {_PURPLE}]"),
         border_style=_PURPLE,
         expand=False,
         width=width
@@ -168,7 +168,7 @@ def run_quota_redeem_flow(orchestrator) -> None:
     from rich.panel import Panel
     from rich.align import Align
     console.print(Panel(
-        Align.center(f"[bold {_GREEN}]🎉 REDEMPTION SUCCESSFUL[/bold {_GREEN}]"),
+        Align.center(f"[bold {_GREEN}]REDEMPTION SUCCESSFUL[/bold {_GREEN}]"),
         border_style=_GREEN,
         expand=False,
         width=width
@@ -176,6 +176,6 @@ def run_quota_redeem_flow(orchestrator) -> None:
     console.print()
     console.print(f"  [bold {_GREEN}]✓ successfully added {_fmt_credits(credits_added)} credits to your Bonus Quota.[/bold {_GREEN}]")
     if capped:
-        console.print(f"  [dim yellow]⚠ The amount was capped to your plan's maximum Bonus Quota limit.[/dim yellow]")
+        console.print(f"  [dim yellow]The amount was capped to your plan's maximum Bonus Quota limit.[/dim yellow]")
     console.print(f"  [dim]Your updated Bonus Quota balance is now [bold {_GREEN}]{_fmt_credits(new_bonus)}[/bold {_GREEN}] credits.[/dim]")
     console.print()

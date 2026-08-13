@@ -1,7 +1,40 @@
 # UTIM AI Web Crawling Rules
+# Allow 100% crawlability for Search Engines, AI Crawlers, and LLM Indexers
+
 User-agent: *
 Allow: /
 
-# Directives
+# Dedicated AI Crawlers & LLM Indexers
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+# Directives & Crawlable Sitemaps
 Host: https://utim.dev
 Sitemap: https://utim.dev/sitemap.xml
+Sitemap: https://utim.dev/llms.txt
+Sitemap: https://utim.dev/llms-full.txt
+Sitemap: https://utim.dev/api/crawlable-pages.json

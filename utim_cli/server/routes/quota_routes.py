@@ -646,9 +646,40 @@ def get_quota(
 
 
 @router.get("/plans", summary="List all available subscription plans")
+@router.get("/api/plans", summary="List all available subscription plans (API prefix)")
 def get_plans(db: Session = Depends(get_db)):
     from ..exchange_rate import ExchangeRateStore
+    from sqlalchemy import func
     usd_to_inr = ExchangeRateStore.get_rate()
+
+    # Calculate active user counts per plan dynamically from DB records
+    active_counts = {}
+    try:
+        subs = (
+            db.query(UserSubscription.plan_id, func.count(UserSubscription.id))
+            .filter(UserSubscription.status == "active")
+            .group_by(UserSubscription.plan_id)
+            .all()
+        )
+        active_counts = {plan_id: count for plan_id, count in subs}
+    except Exception as e:
+        logger.warning(f"Failed to query active plan user counts: {e}")
+
+    # Determine the most popular plan dynamically
+    most_popular_id = None
+    if active_counts:
+        # Get the plan_id with the maximum active user count
+        most_popular_id = max(active_counts, key=active_counts.get)
+
+    # Fallback to 'pro' if no subscriptions or error
+    try:
+        pro_plan = db.query(Plan).filter(Plan.name == "pro").first()
+        fallback_id = pro_plan.id if pro_plan else "pro"
+    except Exception:
+        fallback_id = "pro"
+
+    popular_id = most_popular_id or fallback_id
+
     plans = db.query(Plan).order_by(Plan.price_inr.asc()).all()
     return [
         {
@@ -663,6 +694,8 @@ def get_plans(db: Session = Depends(get_db)):
             "requests_per_month": p.credits_per_month,
             "allowed_models": p.allowed_models,
             "max_context_k": p.max_context_k,
+            "active_users_count": active_counts.get(p.id, 0),
+            "is_most_popular": p.id == popular_id,
         }
         for p in plans
     ]

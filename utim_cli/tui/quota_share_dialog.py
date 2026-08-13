@@ -101,7 +101,7 @@ def run_quota_share_flow(orchestrator) -> None:
     )
 
     if not referred_users:
-        console.print(f"\n  [bold {_YELLOW}]⚠  You have no directly referred users eligible to receive credits directly.[/bold {_YELLOW}]")
+        console.print(f"\n  [bold {_YELLOW}] You have no directly referred users eligible to receive credits directly.[/bold {_YELLOW}]")
         console.print(f"  [dim]You can still convert credits to a redeem code for yourself or future referees.[/dim]\n")
 
     if shareable_balance <= 0:
@@ -118,7 +118,7 @@ def run_quota_share_flow(orchestrator) -> None:
     ] + referred_users
 
     def render_user_row(i, row, sel):
-        bg = f"bg:#006622 bold white" if sel else ""
+        bg = f"bg:#313244 fg:#ffffff bold" if sel else ""
         prefix = f"  ➔ " if sel else "     "
         if row["uid"] == "redeem_code_only":
             name_style = bg or f"bold {_PURPLE}"
@@ -127,13 +127,13 @@ def run_quota_share_flow(orchestrator) -> None:
         return [
             (bg or "white", prefix),
             (name_style, f"{row['display_name']}\n"),
-            (bg or _DIM, f"       {row['email_hint']}\n"),
+            (bg or "class:dim", f"       {row['email_hint']}\n"),
         ]
 
     action, idx = _run_list_dialog(
         choices,
         render_user_row,
-        title="💳 Quota Share — Select Recipient or Action",
+        title="Quota Share — Select Recipient or Action",
         legend="↑↓ Navigate  Enter Select  q/Esc Cancel",
     )
 
@@ -220,7 +220,7 @@ def _show_balance_overview(
     width = 56
     console.print()
     console.print(Panel(
-        Align.center(f"[bold {_CYAN}]💳 QUOTA SHARE — {plan_name} Plan[/bold {_CYAN}]"),
+        Align.center(f"[bold {_CYAN}]QUOTA SHARE — {plan_name} Plan[/bold {_CYAN}]"),
         border_style=_CYAN,
         expand=False,
         width=width
@@ -245,9 +245,9 @@ def _show_balance_overview(
         console.print(f"  {icon} [bold white]{label}[/bold white]")
         console.print(f"    [[{col}]{bar_s}[/{col}]] [bold {_GREEN}]{_fmt_credits(value)}[/bold {_GREEN}] [dim]credits[/dim]")
 
-    _source_row("Quota Bank", quota_bank, "🏦")
+    _source_row("Quota Bank", quota_bank, "")
     _source_row("Current Cycle Balance", current_cycle_balance, "⏱")
-    _source_row("Unallocated Plan Credits", unallocated, "📦")
+    _source_row("Unallocated Plan Credits", unallocated, "")
 
     if remaining_cycles > 0 and unallocated > 0:
         per_cycle = unallocated / remaining_cycles
@@ -347,7 +347,7 @@ def _show_transfer_summary_and_confirm(console, preview: dict) -> bool:
     from rich.panel import Panel
     from rich.align import Align
     console.print(Panel(
-        Align.center(f"[bold {_YELLOW}]📋 TRANSFER SUMMARY[/bold {_YELLOW}]"),
+        Align.center(f"[bold {_YELLOW}]TRANSFER SUMMARY[/bold {_YELLOW}]"),
         border_style=_YELLOW,
         expand=False,
         width=width
@@ -436,7 +436,7 @@ def _show_success(console, result: dict, plan_name: str, regular_plan_credits: f
     from rich.align import Align
     if is_direct:
         console.print(Panel(
-            Align.center(f"[bold {_GREEN}]✅ TRANSFER SUCCESSFUL[/bold {_GREEN}]"),
+            Align.center(f"[bold {_GREEN}]TRANSFER SUCCESSFUL[/bold {_GREEN}]"),
             border_style=_GREEN,
             expand=False,
             width=width
@@ -445,7 +445,7 @@ def _show_success(console, result: dict, plan_name: str, regular_plan_credits: f
         console.print(f"  [bold {_GREEN}]✓ {_fmt_credits(amount)} credits shared directly with {recipient.get('display_name', 'recipient')}[/bold {_GREEN}]")
     else:
         console.print(Panel(
-            Align.center(f"[bold {_PURPLE}]🎟️ REDEEM CODE GENERATED[/bold {_PURPLE}]"),
+            Align.center(f"[bold {_PURPLE}]REDEEM CODE GENERATED[/bold {_PURPLE}]"),
             border_style=_PURPLE,
             expand=False,
             width=width

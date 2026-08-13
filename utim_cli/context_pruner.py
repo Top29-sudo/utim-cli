@@ -16,10 +16,13 @@ from utim_cli.constants import DEFAULT_MODEL
 # Fallback models for compression operations - ordered by reliability and quality.
 # "openrouter/free" is the first fallback tried after the primary model.
 COMPRESSION_FALLBACK_MODELS = [
-    "openrouter/free",
-    "poolside/laguna-xs-2.1:free",
     "cohere/north-mini-code:free",
+    "openrouter/free",
+    "inclusionai/ling-3.0-flash:free",
 ]
+
+
+
 
 # Track what content has already been summarized to prevent duplicate summarization
 _summarized_content_hashes: Set[str] = set()
@@ -340,9 +343,10 @@ def _call_compression_model_with_fallback(messages: List[Dict], llm_key: str, ma
         if content_hash in _summarized_content_hashes:
             return "[Content previously summarized - skipped]"
         _summarized_content_hashes.add(content_hash)
-    
+
     # Prioritize primary model if provided, followed by fallback models
     models_to_try = list(COMPRESSION_FALLBACK_MODELS)
+
     if primary_model:
         if primary_model in models_to_try:
             models_to_try.remove(primary_model)

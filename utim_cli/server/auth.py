@@ -367,7 +367,9 @@ def get_optional_firebase_user(
 
 def create_user(db: Session, email: str, display_name: str = "") -> User:
     """Create a new user with initial credits and quota subscription. Idempotent by email."""
-    existing = db.query(User).filter(User.email == email).first()
+    from sqlalchemy import func
+    email = (email or "").strip().lower()
+    existing = db.query(User).filter(func.lower(User.email) == email).first()
     if existing:
         if display_name and (not existing.display_name or existing.display_name == email.split("@")[0] or existing.display_name == "UTIM Developer"):
             existing.display_name = display_name

@@ -28,11 +28,23 @@ workspace_dir = pathlib.Path(__file__).parent.parent.resolve()
 if not dependencies_installed:
     print("Installing missing dependencies...")
     try:
-        # Run pip install -r requirements.txt
-        req_file = workspace_dir / "requirements.txt"
+        # Select OS-specific requirement file
+        import os
+        if os.path.exists("/data/data/com.termux") or os.getenv("TERMUX_VERSION"):
+            req_name = "requirements_android.txt"
+        elif sys.platform.startswith("win"):
+            req_name = "requirements_windows.txt"
+        else:
+            req_name = "requirements_desktop.txt"
+
+        req_file = workspace_dir / req_name
+        if not req_file.exists():
+            req_file = workspace_dir / "requirements.txt"
+
+        print(f"Using OS-specific requirement file: {req_file.name}")
         subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", str(req_file)])
         # Run pip install -e .
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "-e", str(workspace_dir)])
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "--no-deps", "-e", str(workspace_dir)])
         print("Dependencies successfully installed.")
     except Exception as e:
         print(f"Error installing dependencies: {e}")

@@ -54,7 +54,7 @@ def clean_clixml(text: str) -> str:
     decoded = re.sub(r'_x([0-9A-Fa-f]{4})_', replace_hex_escape, decoded)
 
     # Fix surrogate pairs that PowerShell CLIXML produces for emoji/astral chars.
-    # PowerShell escapes e.g. U+1F9E0 (🧠) as two UTF-16 surrogates: _xD83E__DDE0_.
+    # PowerShell escapes e.g. U+1F9E0 () as two UTF-16 surrogates: _xD83E__DDE0_.
     # chr(0xD83E) + chr(0xDDE0) is a valid Python surrogate pair; encode+decode
     # with surrogatepass recombines them into the proper astral character.
     try:
@@ -285,6 +285,46 @@ def _generate_file_outline_text(filepath: str, file_content: str) -> str:
 
     return "\n".join(outline_lines) + "\n\n"
 
+def compress_image_base64(raw_bytes: bytes, filepath: str = "", max_dim: int = 1600, quality: int = 82) -> str:
+    """
+    Downscales and compresses raw image bytes into a lightweight JPEG base64 string.
+    Prevents HTTP connection drops and '413 Payload Too Large' errors when uploading high-res images.
+    """
+    import base64 as _b64mod, io as _iomod
+    try:
+        from PIL import Image as _PILImage, ImageOps as _PILOps
+        _img = _PILImage.open(_iomod.BytesIO(raw_bytes))
+        
+        # Auto-orient EXIF orientation tag if present
+        try:
+            _img = _PILOps.exif_transpose(_img)
+        except Exception:
+            pass
+
+        _w, _h = _img.size
+        # Resize if dimensions exceed max_dim or raw bytes > 1 MB
+        if max(_w, _h) > max_dim or len(raw_bytes) > 1 * 1024 * 1024:
+            _img.thumbnail((max_dim, max_dim), _PILImage.Resampling.LANCZOS)
+
+        # Convert to RGB mode for JPEG format
+        if _img.mode in ("RGBA", "P", "LA"):
+            _bg = _PILImage.new("RGB", _img.size, (255, 255, 255))
+            if _img.mode == "RGBA":
+                _bg.paste(_img, mask=_img.split()[3])
+            else:
+                _bg.paste(_img.convert("RGBA"))
+            _img = _bg
+        elif _img.mode != "RGB":
+            _img = _img.convert("RGB")
+
+        _buf = _iomod.BytesIO()
+        _img.save(_buf, format="JPEG", quality=quality, optimize=True)
+        return _b64mod.b64encode(_buf.getvalue()).decode("utf-8")
+    except Exception:
+        # Fallback if Pillow is unavailable: limit payload size to max 3.5 MB
+        if len(raw_bytes) > 3.5 * 1024 * 1024:
+            raw_bytes = raw_bytes[: 3 * 1024 * 1024]
+        return _b64mod.b64encode(raw_bytes).decode("utf-8")
 
 def read_file(filepath: str, start_line: int = None, end_line: int = None, symbol_name: str = None, show_outline: bool = None) -> str:
     """Reads the content of a file, with optional range slicing, symbol extraction, or structural outline."""
@@ -417,7 +457,7 @@ def read_file(filepath: str, start_line: int = None, end_line: int = None, symbo
         # Non-vision model → call analyze_image() in the background and return its
         #   text description so the model has useful context.
         if is_model_vision_capable():
-            import base64 as _b64mod, mimetypes as _mtmod
+            import mimetypes as _mtmod
             _mime_v, _ = _mtmod.guess_type(filepath)
             _ext_v = _os.path.splitext(filepath)[1].lower()
             if not _mime_v or not _mime_v.startswith("image/"):
@@ -426,10 +466,13 @@ def read_file(filepath: str, start_line: int = None, end_line: int = None, symbo
                     _mime_v = "image/jpeg"
             try:
                 with open(filepath, "rb") as _fv:
-                    _b64_v = _b64mod.b64encode(_fv.read()).decode("utf-8")
+                    _raw_v = _fv.read()
+                _b64_v = compress_image_base64(_raw_v, filepath)
                 # Push to queue — orchestrator injects the user message after tools complete
-                _pending_vision_images.append({"meta": meta, "b64": _b64_v, "mime": _mime_v})
+                _pending_vision_images.append({"meta": meta, "b64": _b64_v, "mime": "image/jpeg"})
                 return meta  # return clean metadata text only; no sentinel needed
+            except Exception as _venc_err:
+                pass  # return clean metadata text only; no sentinel needed
             except Exception as _venc_err:
                 # Encoding failed — fall through to analyze_image text fallback below
                 pass
@@ -955,8 +998,10 @@ def validate_syntax(filepath: str, content: str) -> Optional[str]:
                     pass
     return None
 
-def write_file(filepath: str, content: str) -> str:
-    """Writes complete content to a file, overwriting any existing file. Use this to create or modify code."""
+def write_file(filepath: str, content: str, force: bool = False) -> str:
+    """Writes complete content to a file, overwriting any existing file. Use this to create or modify code.
+    Pass force=True only when intentionally writing syntactically invalid content (e.g. test fixtures).
+    """
     try:
         filepath = resolve_project_path(filepath)
         old_content = ""
@@ -964,11 +1009,18 @@ def write_file(filepath: str, content: str) -> str:
             with open(filepath, "r", encoding="utf-8") as f:
                 old_content = f.read()
 
-        # Pre-commit syntax check (warning only — file is written regardless)
+        # Pre-commit syntax check — BLOCKS the write unless force=True
         syntax_error = validate_syntax(filepath, content)
-        syntax_warning = ""
-        if syntax_error:
-            syntax_warning = f"\n\n⚠ Syntax Warning: {syntax_error}"
+        if syntax_error and not force:
+            return (
+                f"Pre-Commit Validation Failed: write_file aborted for {filepath}.\n"
+                f"{syntax_error}\n\n"
+                f"Fix the syntax error above and retry. "
+                f"Pass force=True only if broken syntax is intentional."
+            )
+
+        # syntax_warning is only set when force=True bypasses a known error
+        syntax_warning = f"\n\nSyntax Warning: {syntax_error}" if (syntax_error and force) else ""
 
         if _DRY_RUN:
             old_lines = old_content.splitlines() if old_content else []
@@ -1004,8 +1056,10 @@ def write_file(filepath: str, content: str) -> str:
     except Exception as e:
         return f"Error writing file {filepath}: {str(e)}"
 
-def edit_file(filepath: str, old_str: str = None, new_str: str = None, replacements: list = None) -> str:
-    """Replaces specific strings in a file. Can perform a single replacement or multiple non-contiguous replacements in batch."""
+def edit_file(filepath: str, old_str: str = None, new_str: str = None, replacements: list = None, force: bool = False) -> str:
+    """Replaces specific strings in a file. Can perform a single replacement or multiple non-contiguous replacements in batch.
+    Pass force=True only when intentionally writing syntactically invalid content.
+    """
     try:
         filepath = resolve_project_path(filepath)
         if not os.path.exists(filepath):
@@ -1038,9 +1092,16 @@ def edit_file(filepath: str, old_str: str = None, new_str: str = None, replaceme
                 
                 current_content = current_content.replace(o_str, n_str, 1)
             
-            # Pre-commit syntax check (warning only — file is written regardless)
+            # Pre-commit syntax check — BLOCKS the write unless force=True
             syntax_error = validate_syntax(filepath, current_content)
-            syntax_warning = f"\n\n⚠ Syntax Warning: {syntax_error}" if syntax_error else ""
+            if syntax_error and not force:
+                return (
+                    f"Pre-Commit Validation Failed: edit_file aborted for {filepath}.\n"
+                    f"{syntax_error}\n\n"
+                    f"Fix the syntax error above and retry. "
+                    f"Pass force=True only if broken syntax is intentional."
+                )
+            syntax_warning = f"\n\nSyntax Warning: {syntax_error}" if syntax_error else ""
 
             if _DRY_RUN:
                 return f"[Dry Run] Successfully simulated applying {len(replacements)} replacements in batch to {filepath}."
@@ -1070,9 +1131,16 @@ def edit_file(filepath: str, old_str: str = None, new_str: str = None, replaceme
 
             new_content = content.replace(old_str, new_str, 1)
 
-            # Pre-commit syntax check (warning only — file is written regardless)
+            # Pre-commit syntax check — BLOCKS the write unless force=True
             syntax_error = validate_syntax(filepath, new_content)
-            syntax_warning = f"\n\n⚠ Syntax Warning: {syntax_error}" if syntax_error else ""
+            if syntax_error and not force:
+                return (
+                    f"Pre-Commit Validation Failed: edit_file aborted for {filepath}.\n"
+                    f"{syntax_error}\n\n"
+                    f"Fix the syntax error above and retry. "
+                    f"Pass force=True only if broken syntax is intentional."
+                )
+            syntax_warning = f"\n\nSyntax Warning: {syntax_error}" if syntax_error else ""
 
             if _DRY_RUN:
                 return f"[Dry Run] Successfully edited {filepath} (Simulated)."
@@ -1159,6 +1227,9 @@ def analyze_command_safety(command: str) -> tuple:
         (r"\bkill\b", "Process termination (kill)"),
         (r"\btaskkill\b", "Process termination (taskkill)"),
         (r"\bstop-process\b", "Process termination (Stop-Process)"),
+        (r"\bgit\s+push\b.*--force\b", "Force git push (overwrites remote history)"),
+        (r"\bgit\s+push\b.*-f\b", "Force git push (overwrites remote history)"),
+        (r"\bgit\s+reset\b.*--hard\b", "Hard git reset (discards local changes)"),
     ]
     
     # Check direct deletion patterns
@@ -1560,8 +1631,10 @@ def _run_single_command_internal(command: str, dir_path: str = "", timeout: int 
                 return "[Command aborted by user]", -1
 
 
-            # 4. If runs with is_background=True, detach after wait_seconds
-            if is_background and (time.time() - start_time >= wait_seconds):
+            # 4. Auto-detach to background if process runs past max_fg_wait (3.0s max)
+            # This ensures run_command NEVER blocks the agent or waits for eternity when commands hang!
+            max_fg_wait = min(float(wait_seconds or 3), 3.0)
+            if (time.time() - start_time >= max_fg_wait):
                 is_detached = True
                 _reader_detached[0] = True
                 _SHELL_STATE["active"] = False
@@ -1574,19 +1647,12 @@ def _run_single_command_internal(command: str, dir_path: str = "", timeout: int 
                     f"[Command running in background: {bg_info['id']} (PID: {proc.pid})]\n"
                     f"Status: Active / Running\n"
                     f"Command: {command}\n\n"
-                    f"[Initial Output (first {wait_seconds}s)]\n{init_out}"
+                    f"[Initial Output (first {int(max_fg_wait)}s)]\n{init_out}"
                 )
                 if init_err.strip():
                     res_str += f"\n[Initial Stderr]\n{init_err}"
-                res_str += "\n\nℹ The agent can now continue execution. Use get_background_output(), list_background_processes(), or stop_background_process()."
+                res_str += "\n\nℹ The command is running in the background. The agent can now continue execution without waiting. Use background_tasks (or list_background_processes / get_background_output) to check status."
                 return res_str, 0
-
-            # 5. Check for foreground timeout
-            if not is_background and (time.time() - start_time > timeout):
-                _kill_proc(proc)
-                stdout_t.join(timeout=1)
-                stderr_t.join(timeout=1)
-                return f"[Command timed out after {timeout} seconds]", -2
 
             time.sleep(0.05)
     finally:
@@ -1659,8 +1725,9 @@ def _run_single_command_internal(command: str, dir_path: str = "", timeout: int 
     return "\n".join(parts), exit_code
 
 
-def run_command(command: str = "", dir_path: str = "", timeout: int = 120, commands: list = None, is_background: bool = False, wait_seconds: int = 5) -> str:
+def run_command(command: str = "", dir_path: str = "", timeout: int = 120, commands: list = None, is_background: bool = True, wait_seconds: int = 3) -> str:
     """Execute a shell command (or list of commands sequentially) and return stdout, stderr, and exit code.
+    Fast commands finish synchronously; commands taking >3s automatically detach to run in the background so execution never pauses or hangs.
 
     Parameters
     ──────────
@@ -1668,8 +1735,8 @@ def run_command(command: str = "", dir_path: str = "", timeout: int = 120, comma
     dir_path      : directory to run the command in (defaults to current working dir)
     timeout       : maximum execution time in seconds (defaults to 120)
     commands      : list of shell commands to run in sequence (stops on first failure)
-    is_background : set to True for long-running servers or processes (e.g. npm run dev). Captures initial output for wait_seconds then continues in background.
-    wait_seconds  : initial output capture duration in seconds when running in background mode (default 5s).
+    is_background : defaults to True. Automatically detaches commands to background after wait_seconds if still running.
+    wait_seconds  : initial output capture duration before detaching (defaults to 3s).
     """
     if commands is None:
         if not command:
@@ -2176,10 +2243,11 @@ def web_search(prompt: str, level: str = "medium") -> str:
             raw_parts.append(entry)
         return "[Non-Agent Web Search Results]\n\n" + "\n\n---\n\n".join(raw_parts)
     models_to_try = [
-        "poolside/laguna-xs.2:free",
         DEFAULT_MODEL,
+        "cohere/north-mini-code:free",
         "openrouter/free"
     ]
+
     if sub_model:
         models_to_try = [sub_model] + [m for m in models_to_try if m != sub_model]
     last_err = None
@@ -2431,10 +2499,11 @@ If the project is a PowerPoint presentation (PPT/slide deck), document, or non-s
     if sub_model == "__non_agent__":
         return f"[Non-Agent Planner Mode]\n\nTask: {prompt}\n\nNo LLM planning was performed. The main agent will handle all planning inline."
     models_to_try = [
-        "poolside/laguna-xs.2:free",
         DEFAULT_MODEL,
+        "cohere/north-mini-code:free",
         "openrouter/free"
     ]
+
     if sub_model:
         models_to_try = [sub_model] + [m for m in models_to_try if m != sub_model]
     last_err = None
@@ -2526,147 +2595,408 @@ If the project is a PowerPoint presentation (PPT/slide deck), document, or non-s
 
 
 
-def grep_search(query: str, path: str = ".", is_regex: bool = False, case_sensitive: bool = False, includes = "", match_per_line: bool = True, max_results: int = 50) -> str:
-    """Next-gen ultra-fast codebase text and regex search tool.
-    Outperforms standard grep with auto-regex detection, match_per_line dual mode, glob exclusions,
-    and intelligent code scope context preview.
+_GREP_STATE = {"tool_type": None, "tool_path": None, "checked": False}
+
+
+def _grep_find_search_tool():
+    """Locate the best available search binary (rg, ag, or grep).
+
+    Search order:
+      1. ripgrep (rg)
+      2. Silver Searcher (ag)
+      3. standard grep
     """
-    import os, re, subprocess, shutil
-    from typing import Any, List, Dict
-    from pathlib import Path
-
-    target_path = resolve_project_path(path) if path else os.getcwd()
-
-    # Auto-detect regex if query contains regex operators (e.g. '|', '\b', '(', '[', '*', '+')
-    if not is_regex and re.search(r'[|()\[\]\\*+?^$]', query):
-        try:
-            re.compile(query)
-            is_regex = True
-        except Exception:
-            is_regex = False
-
-    # Process includes into glob lists
-    glob_patterns = []
-    if isinstance(includes, list):
-        glob_patterns = [str(x).strip() for x in includes if str(x).strip()]
-    elif isinstance(includes, str) and includes.strip():
-        glob_patterns = [x.strip() for x in includes.split(",") if x.strip()]
-
-    # Attempt high-speed ripgrep execution first if installed
-    rg_binary = shutil.which("rg") or shutil.which("rg.exe")
-    if rg_binary:
-        cmd = [rg_binary, "--color=never"]
-        if match_per_line:
-            cmd.extend(["--line-number", "--no-heading", "-max-count", str(max_results)])
-        else:
-            cmd.extend(["-l", "--count"])
-
-        if not case_sensitive:
-            cmd.append("-i")
-        if not is_regex:
-            cmd.append("-F")
-
-        for pattern_item in glob_patterns:
-            cmd.extend(["-g", pattern_item])
-
-        cmd.extend([query, target_path])
-        try:
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-            if res.returncode == 0 and res.stdout.strip():
-                raw_lines = res.stdout.strip().splitlines()
-                if not match_per_line:
-                    # Files-only count mode (e.g. filename:count)
-                    formatted_files = []
-                    for line in raw_lines[:max_results]:
-                        parts = line.rsplit(":", 1)
-                        if len(parts) == 2 and parts[1].isdigit():
-                            rel = os.path.relpath(parts[0], os.getcwd()).replace("\\", "/")
-                            formatted_files.append(f"  📄 {rel} ({parts[1]} matches)")
-                        else:
-                            rel = os.path.relpath(line, os.getcwd()).replace("\\", "/")
-                            formatted_files.append(f"  📄 {rel}")
-                    return f"[Matching Files for '{query}' | {len(formatted_files)} files]\n" + "\n".join(formatted_files)
-                else:
-                    lines = raw_lines[:max_results]
-                    formatted_matches = []
-                    for line in lines:
-                        parts = line.split(":", 2)
-                        if len(parts) >= 3:
-                            file_p, l_num, content = parts[0], parts[1], parts[2]
-                            rel = os.path.relpath(file_p, os.getcwd()).replace("\\", "/")
-                            formatted_matches.append(f"{rel}:{l_num}:{content.strip()}")
-                        else:
-                            formatted_matches.append(line)
-                    return f"[Search Results for '{query}' | {len(formatted_matches)} matches]\n" + "\n".join(formatted_matches)
-            elif res.returncode == 1:
-                return f"No matches found for '{query}' in {path}."
-        except Exception:
-            pass
-
-    # High-speed Python fallback multithreaded file search
-    _NOISE_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", "dist", "build", ".utim_tmp"}
-    _NOISE_EXTS = {".png", ".jpg", ".jpeg", ".ico", ".gif", ".pyc", ".exe", ".dll", ".zip", ".tar", ".gz", ".db", ".sqlite"}
-
-    pattern_flags = 0 if case_sensitive else re.IGNORECASE
+    if _GREP_STATE["checked"]:
+        return _GREP_STATE["tool_type"], _GREP_STATE["tool_path"]
     try:
-        pattern = re.compile(query if is_regex else re.escape(query), pattern_flags)
+        import shutil as _sh
+        rg_path = _sh.which("rg") or _sh.which("rg.exe")
+        if rg_path:
+            _GREP_STATE["tool_type"] = "rg"
+            _GREP_STATE["tool_path"] = rg_path
+            _GREP_STATE["checked"] = True
+            return "rg", rg_path
+    except Exception:
+        pass
+    try:
+        import ripgrep as _rg_pkg
+        _bin = getattr(_rg_pkg, "rg_path", None)
+        if _bin and os.path.isfile(_bin):
+            _GREP_STATE["tool_type"] = "rg"
+            _GREP_STATE["tool_path"] = _bin
+            _GREP_STATE["checked"] = True
+            return "rg", _bin
+    except Exception:
+        pass
+    try:
+        import shutil as _sh
+        ag_path = _sh.which("ag") or _sh.which("ag.exe")
+        if ag_path:
+            _GREP_STATE["tool_type"] = "ag"
+            _GREP_STATE["tool_path"] = ag_path
+            _GREP_STATE["checked"] = True
+            return "ag", ag_path
+        grep_path = _sh.which("grep") or _sh.which("grep.exe")
+        if grep_path:
+            _GREP_STATE["tool_type"] = "grep"
+            _GREP_STATE["tool_path"] = grep_path
+            _GREP_STATE["checked"] = True
+            return "grep", grep_path
+    except Exception:
+        pass
+
+    _GREP_STATE["checked"] = True
+    return None, None
+
+
+def _grep_read_text(full_file: str, max_bytes: int = 4_000_000):
+    """Read a file as text with encoding detection. Returns None for binary/too-large files."""
+    try:
+        size = os.path.getsize(full_file)
+    except OSError:
+        return None
+    if size > max_bytes or size == 0:
+        return None
+    try:
+        with open(full_file, "rb") as fh:
+            raw = fh.read()
+    except OSError:
+        return None
+    # Binary sniff: NUL byte or a high ratio of control chars in the sample head
+    head = raw[:8192]
+    if b"\x00" in head:
+        return None
+    if head:
+        ctrl = sum(1 for b in head if (b < 7 or 13 < b < 27) and b not in (9, 10))
+        if ctrl / len(head) > 0.10:
+            return None
+    for enc in ("utf-8", "utf-8-sig", "cp1252", "latin-1"):
+        try:
+            return raw.decode(enc)
+        except (UnicodeDecodeError, LookupError):
+            continue
+    return raw.decode("latin-1", errors="replace")
+
+
+def _grep_iter_files(root_path: str, is_file: bool, include_globs, exclude_globs):
+    """Yield candidate file paths, honouring glob include/exclude rules with symlink-cycle protection."""
+    import fnmatch
+
+    noise_dirs = {".git", "node_modules", "__pycache__", ".venv", "venv", "env", ".env",
+                  "dist", "build", ".next", ".nuxt", ".cache", ".pytest_cache", ".mypy_cache",
+                  ".tox", ".eggs", "target", ".gradle", ".idea", ".vs", ".vscode",
+                  ".utim", ".utim_tmp", "coverage", "vendor", "bower_components", ".terraform"}
+    noise_exts = {".png", ".jpg", ".jpeg", ".ico", ".gif", ".bmp", ".webp", ".tiff", ".pyc", ".pyo",
+                  ".exe", ".dll", ".so", ".dylib", ".obj", ".o", ".a", ".lib", ".zip", ".tar",
+                  ".gz", ".tgz", ".bz2", ".xz", ".7z", ".rar", ".db", ".sqlite", ".sqlite3",
+                  ".pdf", ".mp3", ".mp4", ".avi", ".mov", ".wav", ".flac", ".ogg", ".woff",
+                  ".woff2", ".ttf", ".eot", ".otf", ".class", ".jar", ".war", ".min.js", ".map"}
+
+    def _matches_any(name: str, rel: str, globs):
+        for g in globs:
+            if fnmatch.fnmatch(name, g) or fnmatch.fnmatch(rel, g) or fnmatch.fnmatch(rel, "*/" + g):
+                return True
+        return False
+
+    if is_file:
+        yield root_path
+        return
+
+    seen_real = set()
+    try:
+        root_real = os.path.realpath(root_path)
+        seen_real.add(root_real)
+    except OSError:
+        pass
+
+    for cur, dirs, files in os.walk(root_path, followlinks=True):
+        kept = []
+        for d in dirs:
+            if d in noise_dirs:
+                continue
+            full_d = os.path.join(cur, d)
+            if os.path.islink(full_d):
+                try:
+                    real_d = os.path.realpath(full_d)
+                except OSError:
+                    continue
+                if real_d in seen_real or not os.path.isdir(real_d):
+                    continue  # cycle or dangling symlink
+                seen_real.add(real_d)
+            kept.append(d)
+        dirs[:] = sorted(kept)
+
+        for fname in sorted(files):
+            if fname.lower().endswith(tuple(noise_exts)) or fname in noise_exts:
+                continue
+            full_f = os.path.join(cur, fname)
+            rel = os.path.relpath(full_f, root_path).replace("\\", "/")
+            if exclude_globs and _matches_any(fname, rel, exclude_globs):
+                continue
+            if include_globs and not _matches_any(fname, rel, include_globs):
+                continue
+            yield full_f
+
+
+def grep_search(query: str, path: str = ".", is_regex: bool = False, case_sensitive: bool = False,
+                includes=None, match_per_line: bool = True, max_results: int = 50) -> str:
+    """Ultra-reliable, ultra-fast codebase search (literal or regex).
+
+    Reliability guarantees:
+    - Literal-first semantics: regex only when is_regex=True (no surprise auto-promotion).
+    - Single-file or directory targets; missing/invalid paths report a clear error.
+    - ripgrep acceleration when available, with automatic fallback to a hardened,
+      multithreaded Python scanner on ANY ripgrep failure.
+    - Binary files, huge files, symlink cycles and noise dirs are safely skipped.
+    - Encoding ladder (utf-8 -> utf-8-sig -> cp1252 -> latin-1) so real-world files never crash the scan.
+    - Glob includes/excludes ('*.py', '!*.min.js'), case control, result capping,
+      line truncation, dedup and a truncation notice.
+
+    Modes:
+    - match_per_line=True  -> 'rel/path:LINE:snippet' per match (default).
+    - match_per_line=False -> unique matching files with per-file match counts.
+    """
+    import fnmatch
+    from concurrent.futures import ThreadPoolExecutor
+
+    # ── Input validation ───────────────────────────────────────────────────────
+    if query is None or str(query) == "":
+        return "Error: 'query' must be a non-empty string."
+    query = str(query)
+
+    try:
+        max_results = int(max_results)
+    except (TypeError, ValueError):
+        max_results = 50
+    max_results = max(1, min(max_results, 500))
+
+    try:
+        target_path = os.path.abspath(resolve_project_path(path) if path else os.getcwd())
     except Exception as e:
-        return f"Error: Invalid search regex pattern '{query}': {e}"
+        return f"Error: could not resolve path '{path}': {e}"
 
-    results = []
-    file_counts = {}
-    match_count = 0
+    if not os.path.exists(target_path):
+        return f"Error: path '{path}' does not exist."
+    is_file_target = os.path.isfile(target_path)
+    if not is_file_target and not os.path.isdir(target_path):
+        return f"Error: path '{path}' is neither a file nor a directory."
 
-    include_exts = set()
-    for item in glob_patterns:
-        clean = item.lower().replace("*", "").replace("!", "")
-        if clean:
-            include_exts.add(clean)
+    # Smart Regex Auto-Detection:
+    # If is_regex is False but query contains regex alternation '|' or operators ('\b', '^', '$'),
+    # automatically enable regex mode if it compiles cleanly as a valid regex pattern!
+    if not is_regex and ("|" in query or "\\b" in query or "(?" in query):
+        try:
+            pattern = re.compile(query, 0 if case_sensitive else re.IGNORECASE)
+            is_regex = True
+        except re.error:
+            pattern = None
+    elif is_regex:
+        try:
+            pattern = re.compile(query, 0 if case_sensitive else re.IGNORECASE)
+        except re.error as e:
+            return f"Error: invalid regex '{query}': {e}"
+    else:
+        pattern = None  # literal search uses str ops only
 
-    for root, dirs, files in os.walk(target_path):
-        dirs[:] = [d for d in dirs if d not in _NOISE_DIRS and not d.startswith(".")]
-        for file in files:
-            ext = os.path.splitext(file)[1].lower()
-            if ext in _NOISE_EXTS:
-                continue
-            if include_exts and not any(ext.endswith(ie) or file.endswith(ie) for ie in include_exts):
-                continue
+    # ── Parse include/exclude globs ────────────────────────────────────────────
+    raw_globs = []
+    if isinstance(includes, (list, tuple, set)):
+        raw_globs = [str(x).strip() for x in includes]
+    elif isinstance(includes, str) and includes.strip():
+        raw_globs = [p.strip() for p in includes.split(",")]
+    include_globs, exclude_globs = [], []
+    for g in raw_globs:
+        if not g:
+            continue
+        if g.startswith("!"):
+            body = g[1:].strip()
+            if body:
+                exclude_globs.append(body)
+        else:
+            include_globs.append(g)
 
-            full_file = os.path.join(root, file)
-            rel_path = os.path.relpath(full_file, os.getcwd()).replace("\\", "/")
-            try:
-                with open(full_file, "r", encoding="utf-8", errors="ignore") as f:
-                    for line_num, line_content in enumerate(f, start=1):
-                        if pattern.search(line_content):
-                            if not match_per_line:
-                                file_counts[rel_path] = file_counts.get(rel_path, 0) + 1
-                                break
-                            else:
-                                results.append(f"{rel_path}:{line_num}:{line_content.strip()}")
-                                match_count += 1
-                                if match_count >= max_results:
-                                    break
-            except Exception:
-                pass
-            if match_per_line and match_count >= max_results:
-                break
-            if not match_per_line and len(file_counts) >= max_results:
-                break
-        if match_per_line and match_count >= max_results:
-            break
-        if not match_per_line and len(file_counts) >= max_results:
-            break
+    # ── Path A: Native Search Tool Acceleration ───────────────────────────────
+    tool_type, tool_path = _grep_find_search_tool()
+    if tool_type:
+        if tool_type == "rg":
+            rg_cmd = [tool_path, "--color", "never", "--no-heading", "--no-messages", "--path-separator", "/",
+                      "--with-filename"]
+            if match_per_line:
+                rg_cmd += ["--line-number"]
+            else:
+                rg_cmd += ["--count"]
+            if not case_sensitive:
+                rg_cmd.append("-i")
+            if not (is_regex or pattern is not None):
+                rg_cmd.append("--fixed-strings")
+            for g in include_globs:
+                rg_cmd += ["--glob", g]
+            for g in exclude_globs:
+                rg_cmd += ["--glob", "!" + g]
+            rg_cmd += [query, target_path]
+        elif tool_type == "ag":
+            rg_cmd = [tool_path, "--nocolor", "--nogroup", "--filename"]
+            if match_per_line:
+                rg_cmd.append("--numbers")
+            else:
+                rg_cmd.append("-c")
+            if not case_sensitive:
+                rg_cmd.append("-i")
+            else:
+                rg_cmd.append("-s")
+            if not (is_regex or pattern is not None):
+                rg_cmd.append("-Q")
+            for g in include_globs:
+                rx = g.replace(".", "\\.").replace("*", ".*").replace("?", ".")
+                rg_cmd += ["-G", f"{rx}$"]
+            for g in exclude_globs:
+                rg_cmd += ["--ignore", g]
+            rg_cmd += [query, target_path]
+        else:  # grep
+            rg_cmd = [tool_path, "-r", "-I", "--color=never", "--with-filename"]
+            if match_per_line:
+                rg_cmd.append("-n")
+            else:
+                rg_cmd.append("-c")
+            if not case_sensitive:
+                rg_cmd.append("-i")
+            if not (is_regex or pattern is not None):
+                rg_cmd.append("-F")
+            for g in include_globs:
+                rg_cmd.append(f"--include={g}")
+            for g in exclude_globs:
+                rg_cmd.append(f"--exclude={g}")
+            rg_cmd += [query, target_path]
+
+        rg_usable = False
+        try:
+            import subprocess as _sp
+            # Avoid a console window flash on Windows; absolute path already resolved above
+            win_flags = _sp.CREATE_NO_WINDOW if os.name == "nt" else 0
+            res = _sp.run(rg_cmd, capture_output=True, text=True, encoding="utf-8",
+                          errors="replace", timeout=30, creationflags=win_flags)
+            if res.returncode in (0, 1):  # 0 = matches, 1 = no matches (clean)
+                rg_usable = True
+                raw_lines = [ln for ln in res.stdout.splitlines() if ln.strip()] if res.stdout else []
+                cwd = os.getcwd()
+
+                if not raw_lines:
+                    return f"No matches found for '{query}' in {path}."
+
+                if not match_per_line:
+                    # rg --count -> 'path:COUNT' (path separator forced to '/')
+                    rows, total = [], 0
+                    for ln in raw_lines[:max_results]:
+                        fpath, _, cnt = ln.rpartition(":")
+                        cnt = cnt.strip() if cnt.strip().isdigit() else "?"
+                        rel = os.path.relpath(fpath, cwd).replace("\\", "/") if fpath else ln
+                        rows.append(f"  - {rel} ({cnt} match{'es' if cnt != '1' else ''})")
+                        total += int(cnt) if cnt.isdigit() else 0
+                    header = f"[Matching Files for '{query}' | {len(rows)} file{'s' if len(rows) != 1 else ''} | {total} total matches]"
+                    return header + "\n" + "\n".join(rows)
+
+                formatted, seen = [], set()
+                _rg_line_re = re.compile(r"^(.*?):(\d+):(.*)$")
+                for ln in raw_lines:
+                    m = _rg_line_re.match(ln)
+                    if not m:
+                        continue
+                    fpath, lnum, content = m.group(1), m.group(2), m.group(3)
+                    snippet = " ".join(content.split())[:400]
+                    rel = os.path.relpath(fpath, cwd).replace("\\", "/")
+                    key = (rel, lnum.strip())
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    formatted.append(f"{rel}:{lnum.strip()}:{snippet}")
+                    if len(formatted) >= max_results:
+                        break
+                if not formatted:
+                    return f"No matches found for '{query}' in {path}."
+                truncated_note = f"\n… (+{len(raw_lines) - len(formatted)} more matches not shown; raise max_results to see more)" if len(raw_lines) > len(formatted) else ""
+                return (f"[Search Results for '{query}' | {len(formatted)} matches]"
+                        + "\n" + "\n".join(formatted) + truncated_note)
+        except Exception:
+            rg_usable = False
+        if not rg_usable:
+            pass  # fall through to the Python engine below
+
+    # ── Path B: hardened multithreaded Python engine ───────────────────────────
+    use_regex = pattern is not None
+    if not use_regex:
+        literal_lower = query.lower() if not case_sensitive else None
+
+    def _scan_file(full_file: str):
+        """Return (rel_path, [(line_no, snippet), ...]) or None."""
+        text = _grep_read_text(full_file)
+        if text is None:
+            return None
+        rel = os.path.relpath(full_file, os.getcwd()).replace("\\", "/")
+        hits = []
+        for i, line in enumerate(text.splitlines(), start=1):
+            matched = False
+            if use_regex:
+                if pattern.search(line):
+                    matched = True
+            else:
+                if case_sensitive:
+                    matched = query in line
+                else:
+                    matched = literal_lower in line.lower()
+            if matched:
+                hits.append((i, " ".join(line.split())[:400]))
+                if match_per_line and len(hits) >= max_results:
+                    break
+                if not match_per_line and len(hits) >= 5000:
+                    break  # sanity cap for per-file counting
+        if not hits:
+            return None
+        return (rel, hits)
+
+    candidates = list(_grep_iter_files(target_path, is_file_target, include_globs, exclude_globs))
+    if not candidates:
+        scope = "matching the include filters" if include_globs else "scannable"
+        return f"No matches found for '{query}' in {path} (no {scope} files)."
+
+    found = []
+    try:
+        with ThreadPoolExecutor(max_workers=min(8, max(2, (os.cpu_count() or 4)))) as pool:
+            for item in pool.map(_scan_file, candidates, chunksize=16):
+                if item:
+                    found.append(item)
+    except Exception as e:
+        return f"Error during search scan: {e}"
+
+    display_path = path if path else "."
 
     if not match_per_line:
-        if not file_counts:
-            return f"No matches found for '{query}' in {path}."
-        formatted_files = [f"  📄 {f} ({c} matches)" for f, c in file_counts.items()]
-        return f"[Matching Files for '{query}' | {len(formatted_files)} files]\n" + "\n".join(formatted_files)
+        if not found:
+            return f"No matches found for '{query}' in {display_path}."
+        found.sort(key=lambda t: t[0].lower())
+        rows = found[:max_results]
+        total = sum(len(h) for _, h in rows)
+        header = f"[Matching Files for '{query}' | {len(rows)} file{'s' if len(rows) != 1 else ''} | {total} total matches]"
+        body = "\n".join(f"  - {rel} ({len(h)} match{'es' if len(h) != 1 else ''})" for rel, h in rows)
+        extra = f"\n… (+{len(found) - len(rows)} more files not shown)" if len(found) > len(rows) else ""
+        return header + "\n" + body + extra
 
-    if not results:
-        return f"No matches found for '{query}' in {path}."
+    formatted, seen = [], set()
+    for rel, hits in found:
+        for lnum, snippet in hits:
+            key = (rel, lnum)
+            if key in seen:
+                continue
+            seen.add(key)
+            formatted.append(f"{rel}:{lnum}:{snippet}")
+            if len(formatted) >= max_results:
+                break
+        if len(formatted) >= max_results:
+            break
 
-    return f"[Search Results for '{query}' | {len(results)} matches]\n" + "\n".join(results)
+    if not formatted:
+        return f"No matches found for '{query}' in {display_path}."
+    truncated_note = f"\n… (results capped at {max_results}; raise max_results to see more)" if len(seen) >= max_results else ""
+    return f"[Search Results for '{query}' | {len(formatted)} matches]\n" + "\n".join(formatted) + truncated_note
 
 
 search = grep_search
@@ -3070,7 +3400,9 @@ def analyze_image(image_path: str, prompt: str) -> str:
 
     try:
         with open(image_path, "rb") as f:
-            encoded_image = base64.b64encode(f.read()).decode("utf-8")
+            _raw_img = f.read()
+            encoded_image = compress_image_base64(_raw_img, image_path)
+            mime_type = "image/jpeg"
     except Exception as e:
         return f"Error reading image file: {e}"
 
@@ -4130,14 +4462,14 @@ def generate_image(
                     except Exception:
                         err_str += f" - Response body: {e.response.text}"
                 
-                print(f"⚠️ Failed with model {model}: {err_str}", flush=True)
+                print(f"[WARNING] Failed with model {model}: {err_str}", flush=True)
                 last_err = Exception(err_str)
 
                 # If 422/400 and we had parameter fields, retry with minimal payload
                 if isinstance(e, requests.exceptions.HTTPError):
                     status_code = e.response.status_code if e.response is not None else 0
                     if (status_code == 422 or status_code == 400) and len(attempt_payload) > 1:
-                        print(f"🔄 Retrying model {model} with minimal prompt payload...", flush=True)
+                        print(f"[RETRY] Retrying model {model} with minimal prompt payload...", flush=True)
                         continue
                 break  # try next model
 
@@ -4391,6 +4723,73 @@ _BASE_UTIM_TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "invoke_subagents",
+            "description": (
+                "Spawn one or more parallel subagents, each with their OWN designated task, system prompt, "
+                "and user prompt — written by you (the main agent). All subagents run concurrently and "
+                "their results are returned to you as a single structured block when ALL complete.\n\n"
+                "Use this when:\n"
+                "  • A task can be decomposed into independent parallel workstreams (research + write + review)\n"
+                "  • You need multiple specialised agents to work simultaneously on sub-problems\n"
+                "  • Sequential execution would be unnecessarily slow\n\n"
+                "Rules:\n"
+                "  • Write a full, specific system_prompt and user_prompt for EACH subagent — do not be vague\n"
+                "  • Each subagent has full tool access (read_file, write_file, run_command, web_search, etc.)\n"
+                "  • Subagents CANNOT spawn their own subagents (max depth = 1)\n"
+                "  • Max 8 subagents per invocation\n"
+                "  • Results arrive in the same order as the tasks array"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "tasks": {
+                        "type": "array",
+                        "description": "Array of subagent task specifications. Each element defines one subagent.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "task_id": {
+                                    "type": "string",
+                                    "description": "Short unique identifier for this task, e.g. 'research-1', 'write-tests', 'code-review'."
+                                },
+                                "role": {
+                                    "type": "string",
+                                    "description": "Human-readable role label for this subagent, e.g. 'Researcher', 'Test Writer', 'Code Reviewer'."
+                                },
+                                "system_prompt": {
+                                    "type": "string",
+                                    "description": "Full system prompt for this subagent. Define its persona, scope, constraints, and output format. Be specific and detailed."
+                                },
+                                "user_prompt": {
+                                    "type": "string",
+                                    "description": "The actual task/instruction for this subagent. This is what it will work on. Be precise and complete."
+                                },
+                                "model_id": {
+                                    "type": "string",
+                                    "description": "Optional. Model to use for this subagent (e.g. 'anthropic/claude-sonnet-4.5'). Defaults to the parent model if omitted."
+                                },
+                                "max_iterations": {
+                                    "type": "integer",
+                                    "description": "Optional. Max LLM iterations for this subagent (default: 20). Increase for complex tasks."
+                                },
+                                "timeout_seconds": {
+                                    "type": "integer",
+                                    "description": "Optional. Wall-clock timeout in seconds (default: 300). Subagent is cancelled if it exceeds this."
+                                }
+                            },
+                            "required": ["task_id", "role", "system_prompt", "user_prompt"]
+                        },
+                        "minItems": 1,
+                        "maxItems": 8
+                    }
+                },
+                "required": ["tasks"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "read_file",
             "description": "Reads file content with line numbers. Supports range slicing (start_line/end_line), symbol_name lookup, or show_outline=True for AST structural outline.",
             "parameters": {
@@ -4425,13 +4824,13 @@ _BASE_UTIM_TOOLS = [
         "type": "function",
         "function": {
             "name": "grep_search",
-            "description": "Literal or regex search across workspace files. Use match_per_line=False for file-list mode.",
+            "description": "Reliable, ultra-fast literal or regex search across files. Defaults to literal matching (set is_regex=True only for real regex). Supports single-file or directory targets, include/exclude globs, case control, and match_per_line=False for a file-list with counts. Binary/noisy files are safely skipped.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "Exact text string or regex pattern to search for."
+                        "description": "Exact text string to find, or a regex pattern when is_regex=True."
                     },
                     "path": {
                         "type": "string",
@@ -4439,18 +4838,22 @@ _BASE_UTIM_TOOLS = [
                     },
                     "is_regex": {
                         "type": "boolean",
-                        "description": "Set to True if query is a regular expression pattern."
+                        "description": "Set to True only when query is a real regular expression. Leave False for literal text."
                     },
                     "case_sensitive": {
                         "type": "boolean",
-                        "description": "Set to True to perform case-sensitive search."
+                        "description": "Set to True for case-sensitive matching (default is case-insensitive)."
                     },
                     "includes": {
-                        "description": "Comma-separated glob string or list of globs (e.g. '*.py, *.js' or ['!.git/*'])."
+                        "description": "Comma-separated glob string or list of globs to include (e.g. '*.py, *.js'). Prefix a glob with '!' to exclude it (e.g. '*.py, !*_test.py')."
                     },
                     "match_per_line": {
                         "type": "boolean",
-                        "description": "If True (default), returns matching line snippets and line numbers. If False, returns unique matching file paths with match counts."
+                        "description": "If True (default), returns matching line snippets with line numbers. If False, returns unique matching file paths with per-file match counts."
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "description": "Maximum number of matches (or files, in file-list mode) to return. Default 50, hard cap 500."
                     }
                 },
                 "required": ["query"]
@@ -4969,6 +5372,8 @@ _BASE_TOOL_FUNCTIONS = {
     "background_tasks":  background_tasks,
 
     "generate_image":    generate_image,
+
+    "invoke_subagents":  None,  # Patched at dispatch time (needs session context)
 }
 
 def _load_miniagent_tools():

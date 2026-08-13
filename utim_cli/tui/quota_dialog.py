@@ -11,7 +11,7 @@ def _dialog_quota(orchestrator):
     ]
 
     def render_row(i, row, sel):
-        bg = 'bg:#006622 bold white' if sel else ''
+        bg = 'bg:#313244 fg:#ffffff bold' if sel else ''
         is_current = row["key"] == current_pref
         prefix = "➔ [Active] " if is_current else "   "
 

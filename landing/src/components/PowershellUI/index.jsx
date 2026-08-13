@@ -19,7 +19,9 @@ import profileMd from '../../docs_md/profile.md?raw';
 import referralMd from '../../docs_md/referral.md?raw';
 import ReactMarkdown from 'react-markdown';
 import PromoModal from '../PromoModal';
+import SEOHead from '../SEOHead';
 import './PowershellUI.css';
+
 
 const MD_FILES = {
   about: aboutMd,
@@ -39,34 +41,56 @@ const MD_FILES = {
 };
 
 const PromotionalBanner = ({ onOpenModal }) => {
+  const [timeLeft, setTimeLeft] = useState('');
   const [isDismissed, setIsDismissed] = useState(() => {
     try {
-      return localStorage.getItem('utim_v2_banner_closed') === 'true';
+      return localStorage.getItem('utim_promo_banner_closed') === 'true';
     } catch (e) {
       return false;
     }
   });
 
+  useEffect(() => {
+    const targetDate = new Date('2026-08-01T00:00:00'); // End of July 31, 2026
+    const timer = setInterval(() => {
+      const now = new Date();
+      const diff = targetDate - now;
+      if (diff <= 0) {
+        setTimeLeft('Promotion Ended');
+        clearInterval(timer);
+      } else {
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        const minutes = Math.floor((diff / (1000 * 60)) % 60);
+        const seconds = Math.floor((diff / 1000) % 60);
+        setTimeLeft(`${days}d ${hours}h ${minutes}m ${seconds}s`);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
   const handleDismiss = (e) => {
     e.stopPropagation();
     setIsDismissed(true);
     try {
-      localStorage.setItem('utim_v2_banner_closed', 'true');
+      localStorage.setItem('utim_promo_banner_closed', 'true');
     } catch (err) {}
   };
 
-  if (isDismissed) return null;
+  if (isDismissed || timeLeft === 'Promotion Ended') return null;
 
   return (
-    <div className="term-support-disclaimer term-promo-banner" style={{ borderTop: 'none', background: 'linear-gradient(90deg, rgba(166,227,161,0.2) 0%, rgba(203,166,247,0.2) 100%)', borderColor: '#a6e3a1' }}>
-      <div className="ts-badge" style={{ backgroundColor: '#a6e3a1', color: '#111', fontWeight: 'bold' }}>
-        🚀 UTIM V2 LIVE
+    <div className="term-support-disclaimer term-promo-banner" style={{ borderTop: 'none', background: 'linear-gradient(90deg, rgba(231,72,86,0.15) 0%, rgba(180,102,255,0.15) 100%)', borderColor: '#b466ff' }}>
+      <div className="ts-badge" style={{ backgroundColor: '#b466ff', color: '#fff', cursor: 'pointer' }} onClick={onOpenModal}>
+        ⚡ PROMO ACTIVE
       </div>
-      <div className="ts-text" style={{ color: '#cdd6f4' }}>
-        <strong>UTIM v2 is live!</strong> Install it with <code style={{ background: '#313244', padding: '2px 8px', borderRadius: '4px', color: '#a6e3a1', fontFamily: 'monospace' }}>npm install -g @emend-ai/utim</code>
+      <div className="ts-text" style={{ color: '#e5c7ff', cursor: 'pointer' }} onClick={onOpenModal}>
+        <strong>July Special:</strong> 50% OFF AI Image Gen & 20% OFF Blender 3D Model generation! Price drop for a few days grab it or loose it. Ends July 31st.
       </div>
-      <div className="ts-npm-pill" style={{ backgroundColor: '#1e1e2e', borderColor: '#a6e3a1', color: '#a6e3a1' }}>
-        <strong>v2.0.0</strong>
+      <div className="ts-npm-pill" style={{ backgroundColor: '#2d1b4e', borderColor: '#b466ff', cursor: 'pointer', color: '#e5c7ff' }} onClick={onOpenModal}>
+        Time Left: <strong>{timeLeft}</strong>
+        <span className="ts-copy-btn-label" style={{ background: '#b466ff', color: '#fff', marginLeft: '6px' }}>View Offer ↗</span>
       </div>
       <button 
         className="ts-close-btn" 
@@ -88,28 +112,24 @@ const asciiArt = `
 ╚██████╔╝   ██║   ██║██║ ╚═╝ ██║    ██║  ██║██║    ███████║╚██████╔╝██║     ██║     ╚██████╔╝██║  ██║   ██║   
  ╚═════╝    ╚═╝   ╚═╝╚═╝     ╚═╝    ╚═╝  ╚═╝╚═╝    ╚══════╝ ╚═════╝ ╚═╝     ╚═╝      ╚═════╝ ╚═╝  ╚═╝   ╚═╝   
 `;
-const getInitialHistory = (user, userProfile, version = '2.1.0') => {
-  const userEmail = user?.email || 'local@utim.dev';
-  const rawPlan = userProfile?.plan || 'free';
-  const planDisplayName = rawPlan === 'free' ? 'Community' : (rawPlan.charAt(0).toUpperCase() + rawPlan.slice(1));
-  const userType = `UTIM ${planDisplayName}`;
-  const bannerLine = `${userEmail}  •  ${userType}`;
-
+const getInitialHistory = (user, userProfile, version = '2.2.1') => {
   return [
-    { type: 'command', text: 'PS C:\\projects\\utim> utim' },
-    { type: 'ascii', text: asciiArt },
-    { type: 'text', text: `UTIM AI "SUPPORT" (Web Assistant) v${version}`, color: '#a6e3a1' },
-    { type: 'banner' },
+    { type: 'command', text: 'PS C:\\projects\\my-app> utim --version' },
+    { type: 'text', text: `UTIM AI CLI v${version} — Terminal AI Coding Agent & Ecosystem`, color: '#00F0FF' },
     { type: 'empty' },
     { type: 'box', text: [
-        "============= UTIM V2 IS LIVE! =============",
-        "  🎉 RELEASE:  UTIM v2.0 is live! Install with: npm install -g @emend-ai/utim",
-        "  ℹ️ NOTICE:   This web chat is the UTIM AI \"SUPPORT\" Assistant.",
-        "              To let UTIM build applications, edit code, and run shell",
-        "              commands, install the CLI locally on your machine.",
-        "  📦 Install:  npm install -g @emend-ai/utim",
-        "  🚀 Run CLI:  utim \"build a react dashboard\"",
-        "  🏪 MARKET:   Creators Ecosystem — browse, install & publish skills/miniagents!"
+        "=================== 🚀 UTIM AI CLI INSTALLATION GUIDE ===================",
+        "  ℹ️ WEB PREVIEW NOTICE:",
+        "      You are currently viewing the Interactive Web Demo & Support Assistant.",
+        "      The web interface cannot access your local hard drive or run local scripts.",
+        "",
+        "  💻 To let UTIM edit your local code files, run terminal commands,",
+        "     and build fullstack applications, install the CLI in your terminal:",
+        "",
+        "  📦 npm Install:   npm install -g @emend-ai/utim",
+        "  🐍 pip Install:   pip install utim",
+        "  🚀 Run Local CLI: utim \"build a react dashboard\"",
+        "========================================================================"
       ]
     },
     { type: 'empty' },
@@ -117,6 +137,7 @@ const getInitialHistory = (user, userProfile, version = '2.1.0') => {
     { type: 'empty' },
   ];
 };
+
 
 const SLASH_COMMANDS = [
   { cmd: '/home', desc: 'Navigate to Homepage' },
@@ -168,8 +189,8 @@ const PowershellUI = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [cliVersion, setCliVersion] = useState('2.1.0');
-  const [history, setHistory] = useState(() => getInitialHistory(user, userProfile, '2.1.0'));
+  const [cliVersion, setCliVersion] = useState('2.2.1');
+  const [history, setHistory] = useState(() => getInitialHistory(user, userProfile, '2.2.1'));
   const [input, setInput] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -191,18 +212,8 @@ const PowershellUI = () => {
     } catch (err) {}
   };
   const [npmBannerCopied, setNpmBannerCopied] = useState(false);
+  const [pipBannerCopied, setPipBannerCopied] = useState(false);
   const [isPromoModalOpen, setIsPromoModalOpen] = useState(false);
-  const [isAndroid, setIsAndroid] = useState(false);
-
-  useEffect(() => {
-    if (typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent)) {
-      setIsAndroid(true);
-      document.body.classList.add('termux-mode');
-    }
-    return () => {
-      document.body.classList.remove('termux-mode');
-    };
-  }, []);
 
   const handleCopyNpmBanner = (e) => {
     e.stopPropagation();
@@ -210,6 +221,14 @@ const PowershellUI = () => {
     setNpmBannerCopied(true);
     setTimeout(() => setNpmBannerCopied(false), 2000);
   };
+
+  const handleCopyPipBanner = (e) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText("pip install utim");
+    setPipBannerCopied(true);
+    setTimeout(() => setPipBannerCopied(false), 2000);
+  };
+
   
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
@@ -229,34 +248,6 @@ const PowershellUI = () => {
     else if (path === '/contacts' || path === '/support' || path === '/connect') targetCmd = '/contacts';
     
     setActiveTab(targetCmd);
-
-    // Dynamic SEO Title and Meta Description Updates per tab
-    const seoTitles = {
-      '/home': 'UTIM AI v2.0 – Elite Autonomous AI Coding Agent & Creators Marketplace',
-      '/features': 'Features | UTIM AI v2.0 – Creators Ecosystem & AI Agent Capabilities',
-      '/pricing': 'Pricing & Plans | UTIM AI – Flexible Credits & BYOK Models',
-      '/docs': 'Documentation | UTIM AI CLI v2.0 Setup & Command Reference',
-      '/changelog': 'Changelog & Release Notes | UTIM AI v2.0 Updates',
-      '/about': 'About UTIM AI – Architecting Next-Gen Autonomous AI Coding',
-      '/contacts': 'Support & Contacts | UTIM AI Assistant Community',
-      '/referral': 'Referral Program | Earn Credits & Quota Share with UTIM AI'
-    };
-
-    const seoDescs = {
-      '/home': 'UTIM AI v2.0 is the premier autonomous CLI coding assistant. Featuring Creators Ecosystem, dynamic context compression scaling, and miniagents.',
-      '/features': 'Discover UTIM AI capabilities: Creators Ecosystem marketplace, dynamic context scaling, miniagents, custom skills, and MCP server integrations.',
-      '/pricing': 'Explore UTIM AI pricing tiers, credit top-ups, rollover quota bank, and BYOK (Bring Your Own Key) unlimited access.',
-      '/docs': 'Read official UTIM CLI documentation: installation, command reference, configuration, and security guidelines.',
-      '/changelog': 'View complete version release notes, changelog history, and new features introduced in UTIM AI v2.0.'
-    };
-
-    if (seoTitles[targetCmd]) {
-      document.title = seoTitles[targetCmd];
-    }
-    const metaDescTag = document.querySelector('meta[name="description"]');
-    if (metaDescTag && seoDescs[targetCmd]) {
-      metaDescTag.setAttribute('content', seoDescs[targetCmd]);
-    }
     
     // Auto-fill terminal history based on active tab
     if (targetCmd === '/features') {
@@ -384,14 +375,10 @@ const PowershellUI = () => {
     }
   };
 
-  const filteredCommands = showDropdown
-    ? SLASH_COMMANDS.filter(cmd => cmd.cmd.startsWith(input))
-    : [];
-
   const handleChatQuery = async (query) => {
     setLoading(true);
     
-    const selectedModel = "openrouter/free";
+    const selectedModel = "cohere/north-mini-code:free";
     
     const userMessage = { role: 'user', content: query };
     const updatedMessages = [...chatMessages, userMessage];
@@ -595,16 +582,16 @@ Keep your response concise, polite, and under 150 words. Format with clean Markd
   };
 
   const handleKeyDown = (e) => {
-    if (showDropdown && filteredCommands.length > 0) {
+    if (showDropdown) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelectedIndex(prev => (prev + 1) % filteredCommands.length);
+        setSelectedIndex(prev => (prev + 1) % SLASH_COMMANDS.length);
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setSelectedIndex(prev => (prev - 1 + filteredCommands.length) % filteredCommands.length);
+        setSelectedIndex(prev => (prev - 1 + SLASH_COMMANDS.length) % SLASH_COMMANDS.length);
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        executeCommand(filteredCommands[selectedIndex]);
+        executeCommand(SLASH_COMMANDS[selectedIndex]);
       }
     } else {
       if (e.key === 'Enter') {
@@ -700,9 +687,77 @@ Keep your response concise, polite, and under 150 words. Format with clean Markd
     }
   };
 
+  // ── Dynamic Crawlable SEO Config ─────────────────────────────────────────
+  const getSeoMetadata = (path) => {
+    switch (path) {
+      case '/pricing':
+        return {
+          title: "UTIM AI Pricing — Free, Pro, Ultimate & Creator Plans",
+          description: "Simple transparent pricing for UTIM AI CLI. Free tier with 1,000 requests/day, Pro plan at $15/mo, Ultimate plan at $49/mo.",
+          canonical: "https://utim.dev/pricing"
+        };
+      case '/features':
+        return {
+          title: "UTIM AI Features — Vector RAG, MCP, Miniagents & Safety",
+          description: "Explore UTIM AI features: ChromaDB vector memory RAG, Model Context Protocol (MCP) tool servers, miniagents, and safety sandboxing.",
+          canonical: "https://utim.dev/features"
+        };
+      case '/docs':
+        return {
+          title: "UTIM AI Documentation — Getting Started, Commands & MCP",
+          description: "Complete documentation for UTIM AI CLI. Learn how to configure multi-model LLMs, MCP servers, subagents, and vector memory.",
+          canonical: "https://utim.dev/docs"
+        };
+      case '/vs-claude-code':
+        return {
+          title: "UTIM AI vs Claude Code — Feature & Price Comparison",
+          description: "Compare UTIM AI vs Claude Code. UTIM provides a $0 free tier, multi-LLM support, creators marketplace, vector memory RAG, and MCP integration.",
+          canonical: "https://utim.dev/vs-claude-code"
+        };
+      case '/vs-antigravity':
+        return {
+          title: "UTIM AI vs Antigravity — Terminal Native vs IDE Locking",
+          description: "Compare UTIM AI vs Antigravity. UTIM AI runs 100% terminal-native in Zsh/Bash/PowerShell/Tmux with zero IDE dependencies.",
+          canonical: "https://utim.dev/vs-antigravity"
+        };
+      case '/vs-cursor':
+        return {
+          title: "UTIM AI vs Cursor CLI — Open Ecosystem vs Proprietary Vendor Locking",
+          description: "Compare UTIM AI vs Cursor CLI. UTIM AI is an open, multi-provider terminal agent connecting to any LLM without proprietary vendor locking.",
+          canonical: "https://utim.dev/vs-cursor"
+        };
+      case '/vs-aider':
+        return {
+          title: "UTIM AI vs Aider — Advanced Subagent Orchestration & GUI TUI",
+          description: "Compare UTIM AI vs Aider. UTIM AI features a rich terminal UI, vector memory RAG, MCP tool servers, and executable miniagents.",
+          canonical: "https://utim.dev/vs-aider"
+        };
+      case '/marketplace':
+        return {
+          title: "UTIM Creators Marketplace — Monetize Miniagents & CLI Tools",
+          description: "Discover, install, buy, sell, and monetize miniagents and CLI extensions on the global UTIM Creators Marketplace with 95% creator revenue share.",
+          canonical: "https://utim.dev/marketplace"
+        };
+      default:
+        return {
+          title: "UTIM AI — Autonomous Terminal AI Agent & Creators Ecosystem",
+          description: "UTIM AI v2.1.3 is an autonomous, high-agency CLI AI coding agent and Creators Ecosystem marketplace for terminal-first developers.",
+          canonical: `https://utim.dev${path === '/' ? '' : path}`
+        };
+    }
+  };
+
+  const seoMeta = getSeoMetadata(location.pathname);
+
   return (
     <div className="term-wrapper">
+      <SEOHead
+        title={seoMeta.title}
+        description={seoMeta.description}
+        canonical={seoMeta.canonical}
+      />
       <div className="term-window">
+
         {/* Modern Windows Terminal Tab Bar acting as Navbar */}
         <div className="term-titlebar">
           <div className={`term-tab ${activeTab === '/home' ? 'active' : ''}`} onClick={() => executeCommand({cmd: '/home'})}>
@@ -760,17 +815,31 @@ Keep your response concise, polite, and under 150 words. Format with clean Markd
         {/* Web Support Agent Disclaimer Banner */}
         {showSupportBanner && (
           <div className="term-support-disclaimer">
-            <div className="ts-badge">
-              <span className="ts-pulse">●</span> WEB SUPPORT ASSISTANT
+            <div className="ts-badge-hero">
+              <span className="ts-pulse">●</span> INTERACTIVE DEMO & WEB ASSISTANT
             </div>
-            <div className="ts-text">
-              This chat is our <strong>Web Support Bot</strong>. To build apps, edit code, and run commands, install the UTIM CLI on your local computer.
+            <div className="ts-text-hero">
+              <strong>UTIM AI runs in your terminal</strong> (not in browser). To edit local code, execute commands & build apps, install the CLI:
             </div>
-            <div className="ts-npm-pill" onClick={handleCopyNpmBanner} title="Click to copy npm install command">
-              <code>npm install -g @emend-ai/utim</code>
-              <span className="ts-copy-btn-label">
-                {npmBannerCopied ? '✓ Copied!' : 'Copy'}
-              </span>
+            <div className="ts-install-pills-group">
+              <div className="ts-npm-pill" onClick={handleCopyNpmBanner} title="Click to copy npm install command">
+                <code>npm install -g @emend-ai/utim</code>
+                <span className="ts-copy-btn-label">
+                  {npmBannerCopied ? '✓ Copied!' : 'Copy'}
+                </span>
+              </div>
+              <div className="ts-pip-pill" onClick={handleCopyPipBanner} title="Click to copy pip install command">
+                <code>pip install utim</code>
+                <span className="ts-copy-btn-label">
+                  {pipBannerCopied ? '✓ Copied!' : 'Copy'}
+                </span>
+              </div>
+            </div>
+            <div className="ts-os-badges">
+              <span>🪟 Windows</span>
+              <span>🍎 macOS</span>
+              <span>🐧 Linux</span>
+              <span>📱 Termux</span>
             </div>
             <button 
               className="ts-close-btn" 
@@ -782,6 +851,7 @@ Keep your response concise, polite, and under 150 words. Format with clean Markd
             </button>
           </div>
         )}
+
 
         {/* July Special Promotional Banner */}
         <PromotionalBanner onOpenModal={() => setIsPromoModalOpen(true)} />
@@ -864,9 +934,9 @@ Keep your response concise, polite, and under 150 words. Format with clean Markd
         {/* Input Area and Dropdown */}
         <div className="term-input-area">
           {/* Dropdown Menu */}
-          {showDropdown && filteredCommands.length > 0 && (
+          {showDropdown && (
             <div className="term-dropdown">
-              {filteredCommands.map((cmd, idx) => (
+              {SLASH_COMMANDS.map((cmd, idx) => (
                 <div 
                   key={idx} 
                   className={`term-dropdown-item ${idx === selectedIndex ? 'active' : ''}`}
@@ -889,31 +959,9 @@ Keep your response concise, polite, and under 150 words. Format with clean Markd
             </div>
           </div>
 
-          {/* Termux Mobile Touch Extra Keys Bar */}
-          <div className="termux-keys-bar">
-            <button className="tk-btn" onClick={() => executeCommand({cmd: '/clear'})}>ESC</button>
-            <button className="tk-btn tk-accent" onClick={() => { setInput('/'); setShowDropdown(true); }}>/</button>
-            <button className="tk-btn" onClick={() => setInput(prev => prev + '-')}>-</button>
-            <button className="tk-btn" onClick={() => setInput(prev => prev + '~')}>~</button>
-            <button className="tk-btn" onClick={() => executeCommand({cmd: '/features'})}>Cap</button>
-            <button className="tk-btn" onClick={() => executeCommand({cmd: '/pricing'})}>Plan</button>
-            <button className="tk-btn" onClick={() => executeCommand({cmd: '/docs'})}>Docs</button>
-            <button className="tk-btn tk-enter" onClick={() => {
-              if (showDropdown) {
-                executeCommand(SLASH_COMMANDS[selectedIndex]);
-              } else if (input.trim()) {
-                const query = input.trim();
-                shouldScrollToBottom.current = true;
-                setHistory(prev => [...prev, { type: 'user', text: `> ${query}` }]);
-                setInput('');
-                handleChatQuery(query);
-              }
-            }}>▶</button>
-          </div>
-
           {/* Interactive Prompt */}
           <div className="term-prompt-row">
-            <span className="term-prompt-arrow">{isAndroid ? '~ $' : '▶'}</span>
+            <span className="term-prompt-arrow">▶</span>
             <input 
               ref={inputRef}
               type="text" 

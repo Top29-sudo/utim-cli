@@ -44,17 +44,17 @@ def _dialog_mcp(orchestrator):
 
         rows = []
         rows.append({
-            "name": "⚡ Install from Registry",
+            "name": "Install from Registry",
             "desc": "Choose from curated preset MCP servers (filesystem, GitHub, Postgres, etc.)",
             "action": "install",
         })
         rows.append({
-            "name": "🔧 Add Custom MCP Server",
+            "name": "Add Custom MCP Server",
             "desc": "Configure any stdio or SSE/HTTP MCP server with custom command, args, and env",
             "action": "custom",
         })
         rows.append({
-            "name": "❌ Exit",
+            "name": "Exit",
             "desc": "Return to the chat screen",
             "action": "cancel",
         })
@@ -73,18 +73,18 @@ def _dialog_mcp(orchestrator):
                 tools_list = mcp_manager.server_tools.get(srv, [])
                 tools_count = len(tools_list)
                 preview = ", ".join(tools_list[:3]) + ("..." if tools_count > 3 else "")
-                desc = f"✅ Connected  [{transport}]  •  {tools_count} tools ({preview})"
+                desc = f"Connected  [{transport}]  •  {tools_count} tools ({preview})"
             else:
-                desc = f"⚠️  Disconnected  [{transport}]"
+                desc = f" Disconnected  [{transport}]"
             rows.append({
-                "name": f"  🔌 {srv}",
+                "name": f"  {srv}",
                 "desc": desc,
                 "server_name": srv,
                 "action": "manage",
             })
 
         def render_row(idx, row, selected):
-            bg = "bg:#1e1e2e" if selected else ""
+            bg = "bg:#313244" if selected else ""
             act = row.get("action")
             if act == "install":
                 fg = "bold #a6e3a1" if selected else "#a6e3a1"
@@ -96,8 +96,8 @@ def _dialog_mcp(orchestrator):
                 fg = "dim #585b70"
             elif act == "manage":
                 is_conn = row["server_name"] in mcp_manager.sessions
-                fg = ("bold #cba6f7 bg:#313244" if selected else "#cba6f7") if is_conn else \
-                     ("bold #f9e2af bg:#313244" if selected else "#f9e2af")
+                fg = ("bold white bg:#313244" if selected else "#cdd6f4") if is_conn else \
+                     ("bold white bg:#313244" if selected else "#6c7086")
             else:
                 fg = "fg:#cdd6f4"
             return [
@@ -142,21 +142,24 @@ def _dialog_mcp_manage(orchestrator, server_name):
         is_connected = server_name in mcp_manager.sessions
 
         options = [
-            {"name": "🔍 View Available Tools", "desc": f"List all tools exposed by {server_name}", "key": "view"},
-            {"name": "📋 View Configuration", "desc": "Show current command, args, and env for this server", "key": "config"},
-            {"name": "🔄 Reconnect", "desc": f"Force reconnect to {server_name}", "key": "reconnect"},
-            {"name": "❌ Uninstall / Remove", "desc": f"Remove {server_name} from config and disconnect", "key": "uninstall"},
+            {"name": "View Available Tools", "desc": f"List all tools exposed by {server_name}", "key": "view"},
+            {"name": "View Configuration", "desc": "Show current command, args, and env for this server", "key": "config"},
+            {"name": "Update Token / Env Vars", "desc": f"Update API keys or environment variables for {server_name}", "key": "update_env"},
+            {"name": "Reconnect", "desc": f"Force reconnect to {server_name}", "key": "reconnect"},
+            {"name": "Uninstall / Remove", "desc": f"Remove {server_name} from config and disconnect", "key": "uninstall"},
             {"name": "◀  Back", "desc": "Return to the MCP menu", "key": "back"},
         ]
 
         def render_option_row(idx, row, selected):
-            bg = "bg:#1e1e2e" if selected else ""
+            bg = "bg:#313244" if selected else ""
             if row["key"] == "back":
                 fg = "bold #f9e2af" if selected else "#f9e2af"
             elif row["key"] == "uninstall":
                 fg = "bold #f38ba8" if selected else "#f38ba8"
             elif row["key"] == "reconnect":
                 fg = "bold #89dceb" if selected else "#89dceb"
+            elif row["key"] == "update_env":
+                fg = "bold #f5c2e7" if selected else "#f5c2e7"
             else:
                 fg = "bold #89b4fa" if selected else "#89b4fa"
             return [
@@ -178,7 +181,7 @@ def _dialog_mcp_manage(orchestrator, server_name):
         key = options[idx]["key"]
 
         if key == "view":
-            console.print(f"\n[bold #89b4fa]🔧 Tools exposed by {server_name}:[/bold #89b4fa]\n")
+            console.print(f"\n[bold #89b4fa]Tools exposed by {server_name}:[/bold #89b4fa]\n")
             tools = mcp_manager.get_tools()
             prefix = f"{server_name}__"
             count = 0
@@ -194,7 +197,7 @@ def _dialog_mcp_manage(orchestrator, server_name):
             _prompt_input("  Press Enter to return...")
 
         elif key == "config":
-            console.print(f"\n[bold #89b4fa]📋 Configuration for {server_name}:[/bold #89b4fa]\n")
+            console.print(f"\n[bold #89b4fa]Configuration for {server_name}:[/bold #89b4fa]\n")
             if srv_cfg:
                 console.print(f"  [dim]command:[/dim]  [white]{srv_cfg.get('command', '')}[/white]")
                 console.print(f"  [dim]args:[/dim]     [white]{' '.join(srv_cfg.get('args', []))}[/white]")
@@ -214,6 +217,47 @@ def _dialog_mcp_manage(orchestrator, server_name):
                 console.print("  [dim]No configuration found.[/dim]")
             console.print()
             _prompt_input("  Press Enter to return...")
+
+        elif key == "update_env":
+            cfg = _load_mcp_config()
+            srv = cfg.get("mcpServers", {}).get(server_name, {})
+            existing_env = srv.get("env", {})
+
+            console.print(f"\n[bold #f5c2e7]Update Environment Variables for [white]{server_name}[/white][/bold #f5c2e7]")
+            if existing_env:
+                console.print("  [dim]Current env keys (values masked):[/dim]")
+                for k, v in existing_env.items():
+                    masked = v[:4] + "****" if len(v) > 8 else "****"
+                    console.print(f"    [dim]{k}=[/dim][white]{masked}[/white]")
+            console.print("  [dim]Enter new values below. Leave blank to keep current value.\n[/dim]")
+
+            try:
+                new_env = dict(existing_env)  # copy
+                for k in list(existing_env.keys()):
+                    new_val = _prompt_input(f"  {k}: ").strip()
+                    if new_val:
+                        new_env[k] = new_val
+
+                # Also allow adding new key/value pairs
+                while True:
+                    extra = _prompt_input("  Add extra env var KEY=VALUE (leave blank to finish): ").strip()
+                    if not extra:
+                        break
+                    if "=" in extra:
+                        ek, ev = extra.split("=", 1)
+                        new_env[ek.strip()] = ev.strip()
+            except (EOFError, KeyboardInterrupt):
+                console.print("\n  [dim]Cancelled.[/dim]\n")
+                continue
+
+            srv["env"] = new_env
+            cfg.setdefault("mcpServers", {})[server_name] = srv
+            try:
+                _save_mcp_config(cfg)
+                console.print(f"  [bold #a6e3a1]✓ Saved updated env vars. Reconnecting...[/bold #a6e3a1]\n")
+                _restart_with_spinner(server_name)
+            except Exception as e:
+                console.print(f"\n  [bold red]✗ Failed to save config: {e}[/bold red]\n")
 
         elif key == "reconnect":
             _transient_status([f"[dim]Reconnecting to {server_name}...[/dim]"], hold=0.3)
@@ -264,12 +308,12 @@ def _dialog_mcp_add_custom(orchestrator):
     # ── Step 1: Transport type ────────────────────────────────────────────────
     transport_rows = [
         {
-            "name": "🔌 stdio  (recommended)",
+            "name": "stdio  (recommended)",
             "desc": "Spawn a local process. Communicate via stdin/stdout. Works with npx, python, node, etc.",
             "key": "stdio",
         },
         {
-            "name": "🌐 SSE / HTTP",
+            "name": "SSE / HTTP",
             "desc": "Connect to a remote or locally running HTTP server via Server-Sent Events.",
             "key": "sse",
         },
@@ -281,7 +325,7 @@ def _dialog_mcp_add_custom(orchestrator):
     ]
 
     def render_transport(idx, row, selected):
-        bg = "bg:#1e1e2e" if selected else ""
+        bg = "bg:#313244" if selected else ""
         if row["key"] == "cancel":
             fg = "bold #f38ba8" if selected else "#f38ba8"
         elif row["key"] == "stdio":
@@ -321,7 +365,7 @@ def _dialog_mcp_add_custom(orchestrator):
         if server_name in existing.get("mcpServers", {}):
             try:
                 overwrite = _prompt_input(
-                    f"  ⚠️  Server '{server_name}' already exists. Overwrite? [y/N]: "
+                    f"   Server '{server_name}' already exists. Overwrite? [y/N]: "
                 ).strip().lower()
             except (EOFError, KeyboardInterrupt):
                 return
@@ -510,7 +554,7 @@ def _dialog_mcp_install(orchestrator):
     presets.append({"name": "◀  Back to MCP Menu", "desc": "Return to the previous screen", "key": "back", "pkg": ""})
 
     def render_preset_row(idx, row, selected):
-        bg = "bg:#1e1e2e" if selected else ""
+        bg = "bg:#313244" if selected else ""
         if row["key"] == "back":
             fg = "bold #f38ba8" if selected else "#f38ba8"
         else:

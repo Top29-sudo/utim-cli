@@ -26,6 +26,11 @@ logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
 logging.getLogger("chromadb").setLevel(logging.ERROR)
 
 
+# Auto-detect if executed via utimlite command (pip script, npx, or cmd wrapper)
+_entry_script = os.path.basename(sys.argv[0] if sys.argv else "").lower()
+if "utimlite" in _entry_script:
+    os.environ["UTIM_LITE_MODE"] = "1"
+
 if os.name == 'nt':
     try:
         import ctypes
@@ -35,6 +40,22 @@ if os.name == 'nt':
     except Exception:
         pass
     os.system('chcp 65001 >nul 2>&1')
+    if os.name == 'nt':
+        try:
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            kernel32.SetConsoleCP(65001)
+            kernel32.SetConsoleOutputCP(65001)
+            
+            # Enable VT input mode on Windows 10/11 to support full emoji pasting and surrogate pair inputs
+            h_in = kernel32.GetStdHandle(-10)  # STD_INPUT_HANDLE
+            mode = ctypes.c_ulong()
+            if kernel32.GetConsoleMode(h_in, ctypes.byref(mode)):
+                ENABLE_VIRTUAL_TERMINAL_INPUT = 0x0200
+                kernel32.SetConsoleMode(h_in, mode.value | ENABLE_VIRTUAL_TERMINAL_INPUT)
+        except Exception:
+            pass
+
     # Set locale to UTF-8 for proper emoji rendering on Windows
     try:
         locale.setlocale(locale.LC_ALL, 'C.UTF-8')
@@ -54,6 +75,11 @@ if hasattr(sys.stderr, "reconfigure"):
 if hasattr(sys.stdin, "reconfigure"):
     try:
         sys.stdin.reconfigure(encoding="utf-8")
+    except:
+        pass
+if hasattr(sys, "__stdin__") and sys.__stdin__ and hasattr(sys.__stdin__, "reconfigure"):
+    try:
+        sys.__stdin__.reconfigure(encoding="utf-8")
     except:
         pass
 import shutil
@@ -405,7 +431,7 @@ def render_usage_menu(data: dict, con=console):
             monthly_pct = min(100.0, (monthly_used / FREE_MONTHLY_CAP) * 100.0) if FREE_MONTHLY_CAP > 0 else 0.0
             con.print(f"  [dim]Monthly allowance used: [bold cyan]{monthly_used:.0f}[/bold cyan] / [bold white]{FREE_MONTHLY_CAP:.0f}[/bold white] credits  ([bold yellow]{free_monthly_remaining:.0f}[/bold yellow] remaining)[/dim]")
         elif free_monthly_remaining is not None and free_monthly_remaining <= 0:
-            con.print(f"  [bold red]⚠ Monthly allowance EXHAUSTED: {FREE_MONTHLY_CAP:.0f} / {FREE_MONTHLY_CAP:.0f} credits used.[/bold red]")
+            con.print(f"  [bold red]Monthly allowance EXHAUSTED: {FREE_MONTHLY_CAP:.0f} / {FREE_MONTHLY_CAP:.0f} credits used.[/bold red]")
             con.print(f"  [dim red]No more requests allowed until the monthly cycle resets.[/dim red]")
             con.print(f"  [dim]Run [bold]utim upgrade[/bold] or visit [bold]utim.dev/pricing[/bold] to increase your limit.[/dim]")
 
@@ -429,7 +455,7 @@ def render_usage_menu(data: dict, con=console):
         if ":free" not in model_id and preferred_quota == "regular":
             con.print()
             con.print(
-                "[bold red]⚠ Warning: With your current plan you can't use premium models with your quota provided by the free plan. "
+                "[bold red]Warning: With your current plan you can't use premium models with your quota provided by the free plan. "
                 "if u want to use premium models on UTIM provided quota please upgrade your plan or please use your bonus quota[/bold red]"
             )
     else:
@@ -809,39 +835,23 @@ from utim_cli.state import STATE
 
 _tip_idx = 0
 _tip_request_count = 0   # increments every request; tip advances every 3
-_TIPS = [
-    "Tip: Use /help to see all available commands and the help panel",
-    "Tip: Press Ctrl+O to open a full-screen scrollable viewer of the last executed tool's inputs and outputs",
-    "Tip: Save your chat anytime with /resume save <tag> — restore it later with /resume load <tag>",
-    "Tip: Use /clear to wipe the conversation and start fresh without restarting the CLI",
-    "Tip: Enable or disable individual tools with /tools — customize the model's access",
-    "Tip: Press Shift+Tab to switch between auto-accept and manual review for file edits",
-    "Tip: Use /model to switch models mid-conversation — press 'a' to add a custom BYOK model",
-    "Tip: Check your quota limits and credit usage with /usage",
-    "Tip: Press Esc to cancel a running response or queue mid-stream",
-    "Tip: Use /rewind to undo the last file change made by the model and restore your code",
-    "Tip: Share your chat and a zip package of your workspace with a link using /share",
-    "Tip: Run /doctor to diagnose server connectivity and MCP issues",
-    "Tip: Paste multi-line code directly — UTIM handles large pastes automatically",
-    "Tip: Use /hint to inject a private instruction the model sees but you don't have to repeat",
-    "Tip: Connect external tools via MCP servers with /mcp",
-    "Tip: Rate the last response and submit feedback with /rate",
-    "Tip: Toggle SSL verification if behind a corporate proxy with /sslverify",
-    "Tip: Start a new conversation and clear the active screen with /new",
-    "Tip: Generate a redacted diagnostic support package for debugging with /report",
-    "Tip: Toggle automatic chat session state restoration on startup with /chatrestore",
-]
+_TIPS = []
 
 def _next_tip():
     """Advance the tip index every 3 model requests and return the current tip."""
     global _tip_idx, _tip_request_count
     _tip_request_count += 1
+    if not _TIPS:
+        return ""
     # Rotate to the next tip every 3 requests
     if _tip_request_count % 3 == 0:
         _tip_idx = (_tip_idx + 1) % len(_TIPS)
     return _TIPS[_tip_idx]
 
+
 # ─── Slash Commands ───────────────────────────────────────────────────────────
+from utim_cli.wheel import WHEEL_COMMANDS, is_wheel_command, execute_wheel_cli_flow
+
 COMMANDS = {
     "about":    "Show version info",
     "clear":    "Clear conversation history",
@@ -872,6 +882,7 @@ COMMANDS = {
     "usage":    "Check quota usage and refill limits",
     "rate":     "Rate the last response and submit feedback",
     "feedbacks": "View user feedbacks dashboard (Admin only)",
+    **WHEEL_COMMANDS
 }
 
 class SlashCommandCompleter(Completer):
@@ -1099,9 +1110,11 @@ def _get_chat_thinking():
     topic = STATE.get("thinking_topic") or "Thinking..."
     out.append(('class:sb-working', f'  {_spinner_frame()} {topic} (esc to cancel{elapsed})'))
     out.append(('', '\n'))
-    current_tip = _TIPS[_tip_idx % len(_TIPS)]
-    out.append(('class:dim', f'  \u2514 {current_tip}'))
+    if _TIPS:
+        current_tip = _TIPS[_tip_idx % len(_TIPS)]
+        out.append(('class:dim', f'  \u2514 {current_tip}'))
     return out
+
 def _get_status_bar_left():
     mode = STATE["mode"]
 
@@ -1119,24 +1132,20 @@ def _get_status_bar_left():
         l_hint = '  Shift+Tab to unfocus '
         left   = [('class:sb-manual', l_text), ('class:sb-dim', l_hint)]
     elif mode == "auto-accept edits":
-        l_text = ' auto-accept edits'
-        l_hint = '  Shift+Tab to manual '
-        left   = [('class:sb-auto', l_text), ('class:sb-dim', l_hint)]
+        left   = []
     else:
-        l_text = ' manual review'
-        l_hint = '  Shift+Tab to auto-accept '
-        left   = [('class:sb-manual', l_text), ('class:sb-dim', l_hint)]
+        left   = []
     return left
 
 def _get_status_bar_right():
-    r_text = _TIPS[_tip_idx % len(_TIPS)] + ' '
-    return [('class:sb-tip', r_text)]
+    return []
 
 def _get_footer_line1_left():
-    return [('class:ft-label', ' workspace (/directory)')]
+    return []
+
 
 def _get_footer_line1_right():
-    return [('class:ft-label', 'state | sandbox | plan ')]
+    return []
 
 def _get_footer_line2_left():
     cwd  = os.getcwd()
@@ -1144,21 +1153,8 @@ def _get_footer_line2_left():
     l2 = ("~" + cwd[len(home):]) if cwd.startswith(home) else cwd
     return [('class:ft-cwd', ' ' + l2)]
 def _get_footer_line2_right():
-    import utim_cli.tools as _t
-    sandbox_active = _t._SANDBOX_MODE
-    plan_name = config.get("user_plan", "free")
-    
-    footer_plan_map = {
-        "free": "free",
-        "hobby": "hobbyist",
-        "pro": "starter",
-        "max": "professional core",
-        "ultimate": "max"
-    }
-    mapped_plan = footer_plan_map.get(plan_name.lower().strip(), plan_name)
-    r2 = f"state: active | {'sandbox active' if sandbox_active else 'no sandbox'} | {mapped_plan} node"
-    r2_class = 'class:ft-sandbox' if sandbox_active else 'class:ft-nosandbox'
-    return [(r2_class, r2 + ' ')]
+    return []
+
 
 
 def _clear_terminal_screen():
@@ -1196,7 +1192,7 @@ def _print_animated_banner(animated: bool = True):
     else:
         console.print(f"[bold {color}]{BANNER_BIG}[/bold {color}]")
             
-    console.print(f" [bold white]U Think I Make[/bold white] [bold #cba6f7]v2.1.0[/bold #cba6f7]")
+    console.print(f" [bold white]U Think I Make[/bold white] [bold #cba6f7]v2.2.1[/bold #cba6f7]")
     user_email = config.email
     is_logged_in = bool(config.token and user_email and user_email.upper() != "GUEST")
     user_type = "Guest Mode" if not is_logged_in else "UTIM Community"
@@ -1232,6 +1228,8 @@ def _print_animated_banner(animated: bool = True):
             pass
     console.print(f" [dim]{user_email}  •  {user_type}[/dim]")
     console.print()
+
+
 
 NOTIFICATION = (
     "[bold #FFE066]We're building the next generation of UTIM CLI.[/bold #FFE066]\n"
@@ -1275,6 +1273,52 @@ def _set_inline_edit(field: str, label: str, default: str = ""):
         app.invalidate()
     except Exception:
         pass
+
+
+def _parse_rich_title_to_pt(title_str: str) -> list:
+    """Parse title strings containing rich tags like [dim]...[/dim] into prompt_toolkit tuples."""
+    import re
+    if not title_str:
+        return [('', '')]
+    
+    parts = []
+    tokens = re.split(r'(\[dim\].*?\[/dim\]|\[bold\].*?\[/bold\])', title_str)
+    for tok in tokens:
+        if not tok:
+            continue
+        if tok.startswith('[dim]') and tok.endswith('[/dim]'):
+            inner = tok[5:-6]
+            parts.append(('fg:#7f849c', inner))
+        elif tok.startswith('[bold]') and tok.endswith('[/bold]'):
+            inner = tok[6:-7]
+            parts.append(('bold fg:#89b4fa', inner))
+        else:
+            parts.append(('bold fg:#89b4fa', tok))
+    return [('bold fg:#89b4fa', '\n  '), *parts, ('', '\n')]
+
+
+def _sanitize_style_to_bw(style: str, selected: bool) -> str:
+    """
+    Apply clean modern dark theme styling to dialog elements.
+    Preserves rich accent colors (cyan, green, yellow, coral red, lavender) while adding
+    soft background highlights (#313244) for selected items.
+    """
+    if not style:
+        return 'bg:#313244 fg:#cdd6f4' if selected else 'fg:#cdd6f4'
+
+    style_lower = style.lower().strip()
+
+    if 'frame.border' in style_lower:
+        return 'fg:#585b70'
+    if 'search-field' in style_lower:
+        return 'bg:#1e1e2e fg:#cdd6f4'
+
+    if selected:
+        if 'bg:' in style_lower:
+            return style
+        return f"{style} bg:#313244"
+
+    return style
 
 
 def _run_list_dialog(rows, render_row_fn, title="", legend="", extra_keys=None, is_selectable_fn=None, on_enter=None):
@@ -1366,12 +1410,12 @@ def _run_list_dialog(rows, render_row_fn, title="", legend="", extra_keys=None, 
                 viewport_start[0] += 1
 
         out: list = []
-        out.append(('bold #42bcf5', f'\n  {title}\n'))
+        out.append(('bold white', f'\n  {title}\n'))
         out.append(('class:dim',    f'  {legend}\n\n'))
 
         # Show indicator for items above the viewport
         if viewport_start[0] > 0:
-            out.append(('class:dim fg:#f9e2af', f'    ▲ ... ({viewport_start[0]} more item{"s" if viewport_start[0] > 1 else ""} above) ... ▲\n\n'))
+            out.append(('class:dim', f'    ▲ ... ({viewport_start[0]} more item{"s" if viewport_start[0] > 1 else ""} above) ... ▲\n\n'))
 
         # Render rows that fit in available height
         rendered_height = 0
@@ -1460,13 +1504,14 @@ def _run_list_dialog(rows, render_row_fn, title="", legend="", extra_keys=None, 
                         text = (" " * (3 + len(ARROW_SYMBOL))) + text[4:]
                     elif "➔" in text:
                         text = text.replace("➔", ARROW_SYMBOL)
-                    processed_row.append((style, text, click_fn))
+                    sanitized_style = _sanitize_style_to_bw(style, i == sel[0])
+                    processed_row.append((sanitized_style, text, click_fn))
             out.extend(processed_row)
 
         # Show indicator for items below the viewport
         remaining = N - end_idx
         if remaining > 0:
-            out.append(('class:dim fg:#f9e2af', f'    ▼ ... ({remaining} more item{"s" if remaining > 1 else ""} below) ... ▼\n'))
+            out.append(('class:dim', f'    ▼ ... ({remaining} more item{"s" if remaining > 1 else ""} below) ... ▼\n'))
 
         out.append(('', '\n'))
         return out
@@ -1647,7 +1692,7 @@ def _run_list_dialog(rows, render_row_fn, title="", legend="", extra_keys=None, 
         )),
         key_bindings=kb2,
         full_screen=True,
-        style=PTStyle.from_dict({'dim': '#555577', '': 'bg:#0d0d16 fg:#cdd6f4'}),
+        style=PTStyle.from_dict({'dim': '#888888', '': 'bg:#000000 fg:#ffffff'}),
         mouse_support=True,
     )
     # Initialize inline edit state on the app
@@ -1656,6 +1701,7 @@ def _run_list_dialog(rows, render_row_fn, title="", legend="", extra_keys=None, 
     dialog_app._edit_label = ""
     dialog_app._edit_field = None
     dialog_app.run()
+    _flush_stdin_buffer()
     return act[0], sel[0]
 
 
@@ -1667,7 +1713,7 @@ def _run_search_list_dialog(
     title="",
     legend="",
     extra_keys=None,
-    search_prompt=" 🔍 Search: ",
+    search_prompt=" Search: ",
     search_title="Filter List",
     list_title="Items",
     initial_index=0
@@ -1736,7 +1782,7 @@ def _run_search_list_dialog(
         if N_filtered[0] == 0:
             return [
                 ('', '\n'),
-                ('bold #f38ba8', '    ⚠️  No matching items found.\n')
+                ('bold #f38ba8', '    No matching items found.\n')
             ]
 
         matching_heights = [row_heights[orig_idx] for orig_idx, _ in filtered_rows]
@@ -1753,7 +1799,7 @@ def _run_search_list_dialog(
 
         out = []
         if viewport_start[0] > 0:
-            out.append(('class:dim fg:#f9e2af', f'    ▲ ... ({viewport_start[0]} more above) ... ▲\n\n'))
+            out.append(('class:dim', f'    ▲ ... ({viewport_start[0]} more above) ... ▲\n\n'))
             available_height -= 2
 
         rendered_height = 0
@@ -1767,15 +1813,26 @@ def _run_search_list_dialog(
 
         for i in range(viewport_start[0], end_idx):
             orig_idx, row = filtered_rows[i]
-            out.extend(render_row_fn(orig_idx, row, i == sel[0]))
+            rendered_row = render_row_fn(orig_idx, row, i == sel[0])
+            processed_row = []
+            for item in rendered_row:
+                style = item[0]
+                text = item[1]
+                click_fn = item[2] if len(item) > 2 else None
+                sanitized_style = _sanitize_style_to_bw(style, i == sel[0])
+                if click_fn:
+                    processed_row.append((sanitized_style, text, click_fn))
+                else:
+                    processed_row.append((sanitized_style, text))
+            out.extend(processed_row)
 
         remaining = N_filtered[0] - end_idx
         if remaining > 0:
-            out.append(('class:dim fg:#f9e2af', f'\n    ▼ ... ({remaining} more below) ... ▼\n'))
+            out.append(('class:dim', f'\n    ▼ ... ({remaining} more below) ... ▼\n'))
 
         return out
 
-    title_window = Window(FormattedTextControl([('bold #42bcf5', f'\n  {title}\n')]), height=2)
+    title_window = Window(FormattedTextControl(_parse_rich_title_to_pt(title)), height=2)
 
     search_field = TextArea(
         multiline=False,
@@ -1877,32 +1934,32 @@ def _run_search_list_dialog(
     def get_legend():
         if dialog_app.layout.has_focus(search_field):
             return [
-                ('bold #a6e3a1', " MODE: SEARCH  "),
+                ('bold white', " MODE: SEARCH  "),
                 ('class:dim', "—  Type to filter  |  "),
-                ('bold #cba6f7', "TAB"),
+                ('bold white', "TAB"),
                 ('class:dim', " for List Shortcuts  |  "),
-                ('bold #89b4fa', "Ctrl+A/B/D/X"),
+                ('bold white', "Ctrl+A/B/D/X"),
                 ('class:dim', " Direct Actions  |  "),
-                ('bold #f38ba8', "ESC"),
+                ('bold white', "ESC"),
                 ('class:dim', " to quit")
             ]
         else:
             return [
-                ('bold #f9e2af', " MODE: SELECT  "),
+                ('bold white', " MODE: SELECT  "),
                 ('class:dim', "—  "),
-                ('bold #89b4fa', "a"),
+                ('bold white', "a"),
                 ('class:dim', "=Add  "),
-                ('bold #89b4fa', "b"),
+                ('bold white', "b"),
                 ('class:dim', "=BYOK  "),
-                ('bold #89b4fa', "d"),
+                ('bold white', "d"),
                 ('class:dim', "=Delete  "),
-                ('bold #89b4fa', "x"),
+                ('bold white', "x"),
                 ('class:dim', "=Disconnect  |  "),
-                ('bold #a6e3a1', "ENTER"),
+                ('bold white', "ENTER"),
                 ('class:dim', " Select  |  "),
-                ('bold #cba6f7', "TAB"),
+                ('bold white', "TAB"),
                 ('class:dim', " Search  |  "),
-                ('bold #f38ba8', "ESC/Q"),
+                ('bold white', "ESC/Q"),
                 ('class:dim', " Quit")
             ]
 
@@ -1921,10 +1978,10 @@ def _run_search_list_dialog(
         key_bindings=kb,
         full_screen=True,
         style=PTStyle.from_dict({
-            'dim': '#555577',
-            '': 'bg:#0d0d16 fg:#cdd6f4',
-            'frame.border': '#89b4fa',
-            'search-field': 'bg:#1e1e2e fg:#cdd6f4'
+            'dim': '#888888',
+            '': 'bg:#000000 fg:#ffffff',
+            'frame.border': '#ffffff',
+            'search-field': 'bg:#111111 fg:#ffffff'
         }),
         mouse_support=False,
     )
@@ -1932,6 +1989,7 @@ def _run_search_list_dialog(
     update_filtered_rows("", reset_selection=False)
     dialog_app.layout.focus(search_field)
     dialog_app.run()
+    _flush_stdin_buffer()
 
     if act[0] == 'select' and N_filtered[0] > 0:
         orig_idx, selected_row = filtered_rows[sel[0]]
@@ -1945,7 +2003,7 @@ def _run_search_list_dialog(
     return None, None
 
 
-def _run_mcp_search_list_dialog(rows, render_row_fn, title="", legend="", search_prompt=" 🔍 Search Presets: ", search_title="Filter Presets (Search Name, Key, Description, Author, or Package)", list_title="Available MCP Servers", initial_index=0):
+def _run_mcp_search_list_dialog(rows, render_row_fn, title="", legend="", search_prompt=" Search Presets: ", search_title="Filter Presets (Search Name, Key, Description, Author, or Package)", list_title="Available MCP Servers", initial_index=0):
     """
     Searchable interactive list dialog specifically for the MCP preset installer.
     Allows real-time search of name/description/pkg, and TAB key toggles focus
@@ -2002,7 +2060,7 @@ def _run_mcp_search_list_dialog(rows, render_row_fn, title="", legend="", search
         if N_filtered[0] == 0:
             return [
                 ('', '\n'),
-                ('bold #f38ba8', '    ⚠️  No matching MCP servers found.\n'),
+                ('bold #f38ba8', '    No matching MCP servers found.\n'),
                 ('class:dim', '    Try searching for different keywords (e.g. database, search, maps, slack).\n')
             ]
 
@@ -2197,7 +2255,7 @@ def _handle_command(cmd: str, orchestrator: Orchestrator, app_ref) -> None:
     c = parts[0].lower()
 
     if c in ("exit", "quit"):
-        console.print("\n[bold #42bcf5]Goodbye! See you next time. 👋[/bold #42bcf5]\n")
+        console.print("\n[bold #42bcf5]Goodbye! See you next time. [/bold #42bcf5]\n")
         app_ref.exit()
         return
 
@@ -2344,6 +2402,17 @@ def _handle_command(cmd: str, orchestrator: Orchestrator, app_ref) -> None:
         else:
             _run_captured_dialog("UTIM CLI — Balance", print_bal)
 
+    elif is_wheel_command(c):
+        def _render_wheel_flow(con):
+            from utim_cli.tui.rewards_tui import run_rewards_cli_flow
+            run_rewards_cli_flow(con)
+
+        if type(app_ref).__name__ in ('MagicMock', 'Mock'):
+            execute_wheel_cli_flow()
+        else:
+            _run_captured_dialog("UTIM Rewards Wheel", _render_wheel_flow)
+        return
+
     elif c == "status":
         def print_status(con):
             msg_count = len(orchestrator.messages)
@@ -2390,12 +2459,46 @@ def _handle_command(cmd: str, orchestrator: Orchestrator, app_ref) -> None:
             console.print("\n  [bold red]✗ Please provide a hint message.[/bold red]")
             console.print("  Usage: [bold]/hint <your directive or cheat text>[/bold]\n")
             return
-        STATE["hint"] = hint_text
-        if "hint_messages" not in STATE or not isinstance(STATE["hint_messages"], list):
-            STATE["hint_messages"] = []
-        STATE["hint_messages"].append(hint_text)
-        console.print(f"\n  [bold #e5ff00][+] HINT INJECTED FOR NEXT MODEL CALL:[/bold #e5ff00] \"{hint_text}\"")
-        console.print("  [dim]This directive will be injected directly into the system prompt on the very next model call.[/dim]\n")
+
+        if STATE.get("busy"):
+            # Agent is mid-turn: inject into STATE so the next system prompt
+            # build (which happens on every LLM API call iteration) picks it up.
+            STATE["hint"] = hint_text
+            if "hint_messages" not in STATE or not isinstance(STATE["hint_messages"], list):
+                STATE["hint_messages"] = []
+            STATE["hint_messages"].append(hint_text)
+            console.print(f"\n  [bold #e5ff00][+] LIVE HINT SENT:[/bold #e5ff00] \"{hint_text}\"")
+            console.print("  [dim]Injected into the active model call — agent will follow it on its next reasoning step.[/dim]\n")
+        else:
+            # Agent is idle: fire the hint immediately as a real task so the
+            # user doesn't have to send another message to trigger it.
+            directive = f"[HINT DIRECTIVE — follow this instruction immediately]: {hint_text}"
+            console.print(f"\n  [bold #e5ff00][+] HINT FIRED IMMEDIATELY:[/bold #e5ff00] \"{hint_text}\"")
+            console.print("  [dim]Running now — no need to send another message.[/dim]\n")
+
+            STATE["busy"] = True
+            STATE["busy_start"] = __import__("time").time()
+            STATE["_task_gen"] = STATE.get("_task_gen", 0) + 1
+            my_gen = STATE["_task_gen"]
+
+            def _run_hint_task():
+                try:
+                    orchestrator.run_task(directive)
+                except Exception:
+                    pass
+                if STATE.get("_task_gen", my_gen) == my_gen:
+                    STATE["busy"] = False
+                    try:
+                        app_ref.invalidate()
+                    except Exception:
+                        pass
+
+            import threading as _threading
+            _threading.Thread(target=_run_hint_task, daemon=True, name="utim-hint-task").start()
+            try:
+                app_ref.invalidate()
+            except Exception:
+                pass
 
     elif c == "rewind":
         if type(app_ref).__name__ in ('MagicMock', 'Mock'):
@@ -2578,7 +2681,7 @@ def _handle_command(cmd: str, orchestrator: Orchestrator, app_ref) -> None:
 
     elif c == "login":
         if config.token and config.email and config.email.upper() != "GUEST":
-            console.print(f"\n[yellow]⚠  You are already logged in as [bold]{config.email}[/bold].[/yellow]")
+            console.print(f"\n[yellow]You are already logged in as [bold]{config.email}[/bold].[/yellow]")
             console.print("[dim]Run [white]/logout[/white] first if you want to switch accounts.[/dim]\n")
         else:
             def _do_login():
@@ -2663,7 +2766,7 @@ def _handle_command(cmd: str, orchestrator: Orchestrator, app_ref) -> None:
                 lines.append(f"OPENROUTER_API_KEY={new_key}")
                 global_env.write_text("\n".join(lines) + "\n", encoding="utf-8")
             except Exception as e:
-                console.print(f"[dim yellow]⚠  Could not write to global env: {e}[/dim yellow]")
+                console.print(f"[dim yellow]Could not write to global env: {e}[/dim yellow]")
 
             # Activate immediately in this session
             import os as _os2
@@ -2749,6 +2852,7 @@ def _is_system_note(content) -> bool:
         or "Context Stabilization Summary" in text
         or "TASK STATE ANCHOR" in text
         or "INTERMEDIATE STEPS COMPRESSED" in text
+        or "[SYSTEM DIRECTIVE]" in text
     )
 
 def _print_session_history(orchestrator, messages, topic):
@@ -2884,6 +2988,14 @@ def _print_session_history(orchestrator, messages, topic):
                             
                         orchestrator._render_result(func_name, args, res_str, color, expand=STATE.get("tools_expanded", False))
                         console.print()
+
+    try:
+        from utim_cli.tui.thinking_display import global_thinking_manager
+        thinking_block = global_thinking_manager.render(console)
+        if thinking_block:
+            console.print(thinking_block)
+    except Exception:
+        pass
                             
     console.print(Rule('[dim]Continue below[/dim]', style='dim'))
     console.print()
@@ -3315,11 +3427,11 @@ def _manual_confirm_internal(tool_name: str, arguments: dict, diff_lines: list =
     src  = arguments.get("source") or arguments.get("src", "")
 
     label_map = {
-        "write_file":  "✏  Write",
-        "edit_file":   "✏  Edit",
-        "delete_file": "🗑  Delete",
-        "move_file":   "📦  Move",
-        "run_command": "⚡  Run",
+        "write_file":  "Write",
+        "edit_file":   "Edit",
+        "delete_file": "Delete",
+        "move_file":   "Move",
+        "run_command": "Run",
     }
     label = label_map.get(tool_name, f"●  {tool_name}")
 
@@ -3597,6 +3709,36 @@ def confirm_y_n(prompt_text: str) -> bool:
     except (KeyboardInterrupt, EOFError):
         return False
 
+def _is_standalone_share_input(text: str) -> bool:
+    """Return True only when the input is a bare UTIM share link/ID.
+
+    A share link by itself (optionally wrapped in quotes, brackets, or with
+    surrounding whitespace) is treated as a download command. If the link is
+    embedded within other prose (e.g. "check this link <share link>"), it is
+    treated as a normal prompt instead.
+    """
+    stripped = text.strip()
+    if not stripped:
+        return False
+    # Remove a single layer of common wrapping (quotes, angle/paren/square brackets)
+    if len(stripped) >= 2 and stripped[0] in "\"'([<" and stripped[-1] in "\"')]>":
+        inner = stripped[1:-1].strip()
+        # Only unwrap if the closing char matches the opening char
+        pairs = {'"': '"', "'": "'", '(': ')', '[': ']', '<': '>'}
+        if pairs.get(stripped[0]) == stripped[-1]:
+            stripped = inner
+    # After unwrapping, the entire input must be exactly one share token,
+    # or a full share download URL containing nothing but that token.
+    if re.fullmatch(r"share_[a-f0-9]{12}", stripped):
+        return True
+    # Full URL form: <scheme>://<host>/shares/download/share_xxxx
+    _m = re.search(r"share_[a-f0-9]{12}", stripped)
+    if not _m:
+        return False
+    # Only accept if the token is the last path segment of a /shares/download/ URL
+    return bool(re.fullmatch(r"https?://[^\s/]+/shares/download/share_[a-f0-9]{12}", stripped))
+
+
 def handle_download_share(url_or_id: str, dest_dir: str = "."):
     import re
     import requests
@@ -3616,7 +3758,7 @@ def handle_download_share(url_or_id: str, dest_dir: str = "."):
     _clear_terminal_screen()
 
     target_abs = os.path.abspath(dest_dir)
-    console.print(f"\n  [bold cyan]📥 Detected UTIM share link/ID: {share_id}[/bold cyan]")
+    console.print(f"\n  [bold cyan]Detected UTIM share link/ID: {share_id}[/bold cyan]")
     console.print(f"  Do you want to download and extract this shared project into [bold white]{target_abs}[/bold white]?\n")
     if not confirm_y_n("  Confirm download and extraction? (Y/n): "):
         console.print("\n  [yellow]Download cancelled.[/yellow]\n")
@@ -3659,6 +3801,19 @@ def handle_download_share(url_or_id: str, dest_dir: str = "."):
     # 2. Extract files individually and show progress bar
     try:
         zip_data.seek(0)
+        # Pre-check: verify the downloaded bytes are actually a ZIP archive
+        # (guards against error HTML pages or network-truncated responses)
+        magic = zip_data.read(4)
+        zip_data.seek(0)
+        # ZIP magic bytes: PK\x03\x04 (local file header) or PK\x05\x06 (empty) or PK\x07\x08
+        if not magic.startswith(b'PK'):
+            console.print(
+                "  [bold red]✗ The downloaded file is not a valid ZIP archive.[/bold red]\n"
+                "  [dim]This usually means the share link has expired, the package was corrupted during upload,\n"
+                "  or the server returned an error page. Ask the sender to re-share.[/dim]\n"
+            )
+            return
+
         with zipfile.ZipFile(zip_data) as zip_ref:
             infolist = zip_ref.infolist()
             total_items = len(infolist)
@@ -3677,10 +3832,17 @@ def handle_download_share(url_or_id: str, dest_dir: str = "."):
         if os.path.exists("chat_history.md"):
             console.print("  [dim]Check [white]chat_history.md[/white] to view the shared conversation.[/dim]")
         console.print()
+    except zipfile.BadZipFile:
+        console.print(
+            "  [bold red]✗ Failed to extract package: The downloaded file is corrupt or not a ZIP.[/bold red]\n"
+            "  [dim]The share may have expired, or the file was damaged during transfer.\n"
+            "  Ask the sender to create a new share link.[/dim]\n"
+        )
     except Exception as exc:
         console.print(f"  [bold red]✗ Failed to extract package: {exc}[/bold red]\n")
 
     confirm_y_n("  Press Enter to return...")
+
 
 
 def _handle_input_text_changed(buffer):
@@ -3716,6 +3878,7 @@ def _build_pt_app(orchestrator, last_sigint, initial_prompt=None):
 
 
     _combined_completer = CombinedCompleter()
+    from prompt_toolkit.layout.dimension import Dimension as D
     input_field = TextArea(
         prompt=[('class:input-prompt', f' {PROMPT_SYMBOL}  ')],
         style='class:input-field',
@@ -3730,7 +3893,9 @@ def _build_pt_app(orchestrator, last_sigint, initial_prompt=None):
             )
         ),
         dont_extend_height=True,
+        height=D(min=1, max=12),
         scrollbar=False,
+
         lexer=ImagePathLexer(),
         input_processors=[PlaceholderProcessor('Type "/" for menu  •  @tag for agent  •  #file for files')],
         read_only=Condition(lambda: _confirm_active[0]),
@@ -3797,6 +3962,11 @@ def _build_pt_app(orchestrator, last_sigint, initial_prompt=None):
             return
         from utim_cli.state import STATE
         STATE["tools_expanded"] = not STATE.get("tools_expanded", False)
+        try:
+            from utim_cli.tui.thinking_display import global_thinking_manager
+            global_thinking_manager.toggle_expand()
+        except Exception:
+            pass
 
         def toggle_inline():
             _clear_terminal_screen()
@@ -4054,7 +4224,7 @@ def _build_pt_app(orchestrator, last_sigint, initial_prompt=None):
         STATE["last_ctrl_c"] = now
 
         if double_press:
-            sys.stdout.write("\n\033[1;34mGoodbye! See you next time. \U0001f44b\033[0m\n\n")
+            sys.stdout.write("\n\033[1;34mGoodbye! See you next time.\033[0m\n\n")
             sys.stdout.flush()
             import os
             os._exit(0)
@@ -4111,23 +4281,7 @@ def _build_pt_app(orchestrator, last_sigint, initial_prompt=None):
             elif len(k) == 1:           shell_send_input(k)
         event.app.invalidate()
 
-    @kb.add('enter')
-    def _on_enter(event):
-        if _confirm_active[0]:
-            return
-        buf = input_field.buffer
-
-        # ── If completion menu is open, accept completion and close menu ──
-        # Always just accept + close. User presses Enter again to submit.
-        if buf.complete_state is not None:
-            comp = buf.complete_state.current_completion
-            if comp is None and buf.complete_state.completions:
-                comp = buf.complete_state.completions[0]
-            if comp is not None:
-                buf.apply_completion(comp)
-            buf.cancel_completion()  # properly closes dropdown UI
-            return  # close only — second Enter submits
-
+    def _submit_current_text(event):
         text = input_field.text.strip()
         input_field.text = ''
         _hist_state["cursor"] = -1
@@ -4150,9 +4304,9 @@ def _build_pt_app(orchestrator, last_sigint, initial_prompt=None):
                     words[0] = cmd_word
                     text = " ".join(words)
             cmd_name = cmd_word.lstrip('/')
-            CONCURRENT_COMMANDS = {"usage", "hint", "tools", "skills", "subagents", "miniagents", "marketplace", "help", "about", "doctor", "report", "chatrestore", "sslverify", "rate", "feedback", "feedbacks", "quota", "quotashare", "redeem"}
+            CONCURRENT_COMMANDS = {"rewards", "usage", "hint", "tools", "skills", "subagents", "miniagents", "marketplace", "help", "about", "doctor", "report", "chatrestore", "sslverify", "rate", "feedback", "feedbacks", "quota", "quotashare", "redeem"}
             if STATE["busy"] and cmd_name not in CONCURRENT_COMMANDS:
-                console.print(f"\n[dim yellow]⚠ Cannot execute command {text} while agent is busy.[/dim yellow]")
+                console.print(f"\n[dim yellow]Cannot execute command {text} while agent is busy.[/dim yellow]")
                 return
             def _exec_cmd():
                 _handle_command(text, orchestrator, event.app)
@@ -4176,9 +4330,9 @@ Miniagents are custom executable tools stored in `.utim/miniagents/<id>/` that t
 
 ## File layout
 .utim/miniagents/<id>/
-  ├── agent.json   ← tool schema (id, name, description, lang, main, parameters)
-  ├── agent.py     ← main executable (or index.js for Node)
-  └── helpers.py   ← (optional) shared utilities
+├── agent.json   ← tool schema (id, name, description, lang, main, parameters)
+├── agent.py     ← main executable (or index.js for Node)
+└── helpers.py   ← (optional) shared utilities
 
 ## agent.json — must be valid JSON, NO comments
 {"id":"<id>","name":"miniagent_<id>","description":"<precise description of what this does and when the LLM should call it>","lang":"python","main":"agent.py","parameters":{"type":"object","properties":{"arg":{"type":"string","description":"..."}},"required":["arg"]}}
@@ -4242,7 +4396,7 @@ description: <string>          # Clear trigger criteria explaining EXACTLY when 
 
 ## Anti-Patterns & Pitfalls to Avoid
 - **Avoid**: <Common mistake>
-  - **Correction**: <Proper alternative>
+- **Correction**: <Proper alternative>
 
 ## Operational Checklist
 - [ ] Verification step 1
@@ -4252,8 +4406,8 @@ description: <string>          # Clear trigger criteria explaining EXACTLY when 
 1. **Identify Domain & Trigger Criteria**: Define the skill scope, name, and exact prompt triggers.
 2. **Create Storage Folder**: Ensure directory `.utim/skills/<skill-name>/` exists.
 3. **Write Guideline Files**:
-   - Write `.utim/skills/<skill-name>/SKILL.md` with YAML frontmatter and comprehensive guidelines.
-   - Write `.utim/skills/<skill-name>/README.md` containing full documentation, trigger criteria, and usage examples for marketplace listing.
+- Write `.utim/skills/<skill-name>/SKILL.md` with YAML frontmatter and comprehensive guidelines.
+- Write `.utim/skills/<skill-name>/README.md` containing full documentation, trigger criteria, and usage examples for marketplace listing.
 4. **Confirm to User**: Display a summary of the skill name, trigger criteria, and file paths."""
 
             _CREATION_PROMPTS = {
@@ -4304,12 +4458,16 @@ description: <string>          # Clear trigger criteria explaining EXACTLY when 
             orchestrator.active_tag = None
             orchestrator.active_tag_system_prompt = None
 
-        # Check if the user pasted a UTIM share URL/ID
-        if re.search(r"share_[a-f0-9]{12}", text):
+        # Check if the user pasted ONLY a UTIM share URL/ID (no other text).
+        # If the share link is embedded within a larger prompt (e.g. "check this
+        # link <share link>"), treat it as a normal prompt instead of a download.
+        _share_match = re.search(r"share_[a-f0-9]{12}", text)
+        if _share_match and _is_standalone_share_input(text):
             _run_in_terminal_safe(lambda: handle_download_share(text, dest_dir=os.getcwd()))
             return
 
-        if not config.get("api_key"):
+        is_logged_in = bool(config.token and config.email and config.email.upper() != "GUEST")
+        if not is_logged_in:
             console.print("\n  [bold red]✗ Authentication Required.[/bold red] You must log in before sending a prompt.")
             def run_auth_login():
                 try:
@@ -4398,6 +4556,37 @@ description: <string>          # Clear trigger criteria explaining EXACTLY when 
 
         threading.Thread(target=_run_queue, daemon=True).start()
 
+    @kb.add('enter')
+    def _on_enter(event):
+        if _confirm_active[0]:
+            return
+        buf = input_field.buffer
+
+        # ── If completion menu is open, accept completion and close menu ──
+        if buf.complete_state is not None:
+            comp = buf.complete_state.current_completion
+            if comp is None and buf.complete_state.completions:
+                comp = buf.complete_state.completions[0]
+            if comp is not None:
+                buf.apply_completion(comp)
+            buf.cancel_completion()  # properly closes dropdown UI
+            return  # close only
+
+        _submit_current_text(event)
+
+    @kb.add('escape', 'enter')
+    def _on_newline(event):
+        if _confirm_active[0]:
+            return
+        event.current_buffer.insert_text("\n")
+
+    def _get_line_content():
+        try:
+            width = shutil.get_terminal_size().columns
+        except Exception:
+            width = 80
+        return [('class:dim', '─' * max(1, width))]
+
     layout = Layout(
         FloatContainer(
             content=HSplit([
@@ -4433,7 +4622,14 @@ description: <string>          # Clear trigger criteria explaining EXACTLY when 
                             ),
                         ], style='class:status-bar'),
                         input_field,
+                        Window(
+                            content=FormattedTextControl(_get_line_content, focusable=False),
+                            dont_extend_height=True,
+                            height=1,
+                            wrap_lines=False,
+                        ),
                         HSplit([
+
                             VSplit([
                                 Window(
                                     content=FormattedTextControl(_get_footer_line1_left, focusable=False),
@@ -4579,7 +4775,8 @@ description: <string>          # Clear trigger criteria explaining EXACTLY when 
             text = str(initial_prompt).strip()
             if not text:
                 return
-            if not config.get("api_key"):
+            is_logged_in = bool(config.token and config.email and config.email.upper() != "GUEST")
+            if not is_logged_in:
                 console.print("\n  [bold red]✗ Authentication Required.[/bold red] You must log in before sending a prompt.")
                 def run_auth_login():
                     try:
@@ -4686,7 +4883,7 @@ def check_and_update_background():
                 return
 
             latest_ver = resp.json().get("version", "")
-            current_ver = "2.1.0"
+            current_ver = "2.2.1"
 
             def parse_ver(v):
                 return [int(x) for x in v.split(".") if x.isdigit()]
@@ -4740,9 +4937,9 @@ def start_chat(initial_prompt: Optional[str] = None):
         from utim_cli.config import config
         from utim_cli.auth import SERVER_URL
 
-        last_bonus = None
         while True:
-            time.sleep(10)
+            time.sleep(90)
+
             api_key = config.get("api_key")
             if not api_key:
                 continue
@@ -4786,7 +4983,7 @@ def start_chat(initial_prompt: Optional[str] = None):
             amount_usd = float(bonus_credited) / 1000.0
             console.print()
             console.print(
-                f"  [bold #e5ff00]✦ Yay!! Bonus Quota of {int(float(bonus_credited))} credits (${amount_usd:.2f}) Credited Let's Go Build! 🚀[/bold #e5ff00]"
+                f"  [bold #e5ff00]✦ Yay!! Bonus Quota of {int(float(bonus_credited))} credits (${amount_usd:.2f}) Credited Let's Go Build! [/bold #e5ff00]"
             )
             console.print(
                 f"  [bold green]Premium models are now unlocked while your bonus lasts.[/bold green]\n"
@@ -4842,14 +5039,6 @@ def start_chat(initial_prompt: Optional[str] = None):
 
     # Print startup banner ONCE before entering the loop
     _print_animated_banner()
-    console.print(Panel(
-        Text.from_markup(NOTIFICATION),
-        border_style="#FFE066",
-        padding=(0, 2),
-        expand=False,
-        width=min(100, console.size.width - 4),
-    ))
-    console.print()
 
     # Start background version check and update loop
     check_and_update_background()
@@ -4891,7 +5080,7 @@ def start_chat(initial_prompt: Optional[str] = None):
             if _SHELL["active"] and _SHELL["focused"]:
                 return
             if double_press:
-                sys.stdout.write("\n\033[1;34mGoodbye! See you next time. \U0001f44b\033[0m\n\n")
+                sys.stdout.write("\n\033[1;34mGoodbye! See you next time.\033[0m\n\n")
                 sys.stdout.flush()
                 os._exit(0)
             if STATE["busy"]:
@@ -5247,7 +5436,8 @@ def task(
         raise typer.Exit(code=code)
 
     # Require login before executing task in interactive mode
-    if not config.get("api_key"):
+    is_logged_in = bool(config.token and config.email and config.email.upper() != "GUEST")
+    if not is_logged_in:
         console.print("\n  [bold red]✗ Authentication Required.[/bold red] You must log in before sending a prompt.")
         try:
             import utim_cli.auth as auth
@@ -5660,7 +5850,7 @@ def login():
     import utim_cli.auth as auth
 
     if config.token:
-        console.print(f"\n  [yellow]⚠ You are already logged in as [bold]{config.email}[/bold].[/yellow]")
+        console.print(f"\n  [yellow]You are already logged in as [bold]{config.email}[/bold].[/yellow]")
         console.print("  [dim]Run [white]utim logout[/white] first if you want to switch accounts.[/dim]\n")
         return
 
@@ -5740,6 +5930,10 @@ KNOWN_COMMANDS = {
 
 def main_cli_entry():
     import sys
+    import os
+    _entry_script = os.path.basename(sys.argv[0] if sys.argv else "").lower()
+    if "utimlite" in _entry_script:
+        os.environ["UTIM_LITE_MODE"] = "1"
     if len(sys.argv) == 2:
         first_arg = sys.argv[1].strip()
         if not first_arg.startswith("-") and first_arg.lower() not in KNOWN_COMMANDS and ' ' in first_arg:

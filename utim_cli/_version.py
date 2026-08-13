@@ -11,4 +11,4 @@
 # from here so every surface stays in sync automatically.
 # ─────────────────────────────────────────────────────────────────────────────
 
-VERSION = "2.1.0"
+VERSION = "2.2.1"

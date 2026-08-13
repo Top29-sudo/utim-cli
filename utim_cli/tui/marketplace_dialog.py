@@ -95,53 +95,53 @@ _API_BASE = "https://api.utim.dev"
 
 CATEGORIES = [
 
-    ("all",           "🌐  All Extensions"),
+    ("all",           "All Extensions"),
 
-    ("productivity",  "⚡  Productivity"),
+    ("productivity",  "Productivity"),
 
-    ("coding",        "💻  Coding & Dev"),
+    ("coding",        "Coding & Dev"),
 
-    ("ai",            "🤖  AI & Agents"),
+    ("ai",            "AI & Agents"),
 
-    ("writing",       "✍️   Writing & Docs"),
+    ("writing",       "Writing & Docs"),
 
-    ("data",          "📊  Data & Analysis"),
+    ("data",          "Data & Analysis"),
 
-    ("devops",        "🔧  DevOps & Shell"),
+    ("devops",        "DevOps & Shell"),
 
-    ("design",        "🎨  Design & UI"),
+    ("design",        "Design & UI"),
 
-    ("research",      "🔍  Research"),
+    ("research",      "Research"),
 
-    ("other",         "📦  Other"),
+    ("other",         "Other"),
 
 ]
 
 TYPE_BADGES = {
 
-    "skill":     ("📦 SKILL",     "#89b4fa"),
+    "skill":     ("SKILL",     "#89b4fa"),
 
-    "miniagent": ("🤖 MINI-AGENT", "#cba6f7"),
+    "miniagent": ("MINI-AGENT", "#cba6f7"),
 
-    "tool":      ("🔧 TOOL",      "#f9e2af"),
+    "tool":      ("TOOL",      "#f9e2af"),
 
-    "mcp":       ("🔌 MCP SERVER", "#89dceb"),
+    "mcp":       ("MCP SERVER", "#89dceb"),
 
 }
 
 SORT_OPTIONS = [
 
-    ("featured",   "⭐  Featured"),
+    ("featured",   "Featured"),
 
-    ("popular",    "🔥  Most Popular"),
+    ("popular",    "Most Popular"),
 
-    ("newest",     "🆕  Newest Additions"),
+    ("newest",     "Newest Additions"),
 
-    ("top_rated",  "🏆  Top Rated"),
+    ("top_rated",  "Top Rated"),
 
-    ("free",       "🆓  Free Only"),
+    ("free",       "Free Only"),
 
-    ("paid",       "💎  Premium Only"),
+    ("paid",       "Premium Only"),
 
 ]
 
@@ -399,7 +399,7 @@ def _format_price_pill(price: float, is_paid: bool) -> str:
 
 def _format_type_badge(item_type: str) -> tuple[str, str]:
 
-    badge_info = TYPE_BADGES.get(item_type, ("📦 EXTENSION", _BLUE))
+    badge_info = TYPE_BADGES.get(item_type, ("EXTENSION", _BLUE))
 
     return badge_info[0], badge_info[1]
 
@@ -564,17 +564,17 @@ def _dialog_browse(console, initial_category: str = "all", initial_sort: str = "
 
         sort_str = f"Sort: {sort_by[0].replace('_', ' ').title()}"
 
-        rows.append({"type": "header_bar", "text": f"🏷️ {cat_str}  │  ←• {sort_str}  │  🔍 {filter_str}", "status": status_msg[0]})
+        rows.append({"type": "header_bar", "text": f"{cat_str}  │  {sort_str}  │  {filter_str}", "status": status_msg[0]})
 
         rows.append({"type": "sep"})
 
         # Clean Toolbar Actions
 
-        rows.append({"type": "ctrl", "action": "search",   "icon": "🔍", "label": "Search & Filter Extensions",  "hint": "Set keyword, category, or sorting order"})
+        rows.append({"type": "ctrl", "action": "search",   "icon": "Search", "label": "Search & Filter Extensions",  "hint": "Set keyword, category, or sorting order"})
 
-        rows.append({"type": "ctrl", "action": "publish",  "icon": "📤", "label": "Publish Your Extension",     "hint": "Share skills, miniagents or tools globally"})
+        rows.append({"type": "ctrl", "action": "publish",  "icon": "Publish", "label": "Publish Your Extension",     "hint": "Share skills, miniagents or tools globally"})
 
-        rows.append({"type": "ctrl", "action": "my_items", "icon": "🗃",  "label": "My Published Extensions",   "hint": "View and manage your extensions"})
+        rows.append({"type": "ctrl", "action": "my_items", "icon": "Folder",  "label": "My Published Extensions",   "hint": "View and manage your extensions"})
 
         rows.append({"type": "ctrl", "action": "exit",     "icon": "✕",  "label": "Return to Terminal Chat",    "hint": "Close marketplace"})
 
@@ -588,7 +588,7 @@ def _dialog_browse(console, initial_category: str = "all", initial_sort: str = "
 
         elif not items:
 
-            rows.append({"type": "info_text", "text": "  📭  No extensions found matching your search and category filters."})
+            rows.append({"type": "info_text", "text": "   No extensions found matching your search and category filters."})
 
         else:
 
@@ -706,7 +706,7 @@ def _dialog_browse(console, initial_category: str = "all", initial_sort: str = "
 
                 card_border = f"bold {_MAUVE}" if selected else f"{_BORDER}"
 
-                action_btn = "[ ⚡ CLICK TO VIEW & BUY ]" if selected else "[ View Package ]"
+                action_btn = "[ CLICK TO VIEW & BUY ]" if selected else "[ View Package ]"
 
                 lines = [
 
@@ -714,7 +714,7 @@ def _dialog_browse(console, initial_category: str = "all", initial_sort: str = "
 
                     (bg or f"fg:{_FG}", f"    │   {desc}\n"),
 
-                    (bg or f"{_MUTED}", f"    └── by @{author}  │  ⬇ {dl_cnt:,} installs  │  ⭐ {star_str}  ──────────  "),
+                    (bg or f"{_MUTED}", f"    └── by @{author}  │  ↓ {dl_cnt:,} installs  │  ★ {star_str}  ──────────  "),
 
                     (bg or (f"bold {_GREEN}" if selected else f"{_BLUE}"), f"{action_btn}\n\n"),
 
@@ -724,7 +724,7 @@ def _dialog_browse(console, initial_category: str = "all", initial_sort: str = "
 
             return [("class:dim", f"  {str(row)}\n")]
 
-        title = "UTIM EXTENSION MARKETPLACE  🛒"
+        title = "UTIM EXTENSION MARKETPLACE"
 
         legend = "UP/DOWN: Navigate  •  ENTER: Open  •  S: Search  •  W: Wallet  •  ESC: Back"
 
@@ -778,9 +778,9 @@ def _dialog_browse(console, initial_category: str = "all", initial_sort: str = "
 
                 [
 
-                    ("query", f"🔍 Search Term: '{query[0]}'" if query[0] else "🔍 Enter Keyword Search..."),
+                    ("query", f"Search Term: '{query[0]}'" if query[0] else "Enter Keyword Search..."),
 
-                    ("category", f"🗂 Category Domain: {category[0].title()}"),
+                    ("category", f"Category Domain: {category[0].title()}"),
 
                     ("sort", f"←• Sort Order: {sort_by[0].replace('_', ' ').title()}"),
 
@@ -794,7 +794,7 @@ def _dialog_browse(console, initial_category: str = "all", initial_sort: str = "
 
             if opt == "query":
 
-                new_q = _prompt_text(console, "  🔍 Enter search terms: ", default=query[0])
+                new_q = _prompt_text(console, "  Enter search terms: ", default=query[0])
 
                 if new_q is not None:
 
@@ -1456,7 +1456,7 @@ def _dialog_item_detail(console, slug: str, preview: dict) -> Optional[str]:
 
     # Title & Metadata Header Box
 
-    rows.append({"type": "info", "text": f"\n  [bold {_WHITE}]📦  {name}[/bold {_WHITE}]  {price_str}"})
+    rows.append({"type": "info", "text": f"\n  [bold {_WHITE}] {name}[/bold {_WHITE}]  {price_str}"})
 
     rows.append({"type": "info", "text": f"  [dim {_MUTED}]Type:[/dim {_MUTED}] [bold {_BLUE}]{type_tag}[/bold {_BLUE}]  │  [dim {_MUTED}]Publisher:[/dim {_MUTED}] [bold {_MAUVE}]@{seller_name}[/bold {_MAUVE}]  │  [dim {_MUTED}]Version:[/dim {_MUTED}] v{version}"})
 
@@ -1498,19 +1498,19 @@ def _dialog_item_detail(console, slug: str, preview: dict) -> Optional[str]:
 
     # Primary Action Buttons
 
-    rows.append({"type": "action", "action": "install", "label": "⚡  INSTALL EXTENSION NOW", "color": _GREEN, "hint": f"Download and unpack {name} into your workspace"})
+    rows.append({"type": "action", "action": "install", "label": "INSTALL EXTENSION", "color": _GREEN, "hint": f"Download and unpack {name} into your workspace"})
 
-    rows.append({"type": "action", "action": "seller_info", "label": f"👤  View Publisher Profile (@{seller_name})", "color": _MAUVE, "hint": "View seller details, bio & published extensions"})
+    rows.append({"type": "action", "action": "seller_info", "label": f"View Publisher Profile (@{seller_name})", "color": _MAUVE, "hint": "View seller details, bio & published extensions"})
 
-    rows.append({"type": "action", "action": "readme",  "label": "📖  Read Full Documentation & README", "color": _CYAN, "hint": "View comprehensive instructions"})
+    rows.append({"type": "action", "action": "readme",  "label": "Read Full Documentation & README", "color": _CYAN, "hint": "View comprehensive instructions"})
 
-    rows.append({"type": "action", "action": "review",  "label": "⭐  Submit Rating & Review", "color": _YELLOW, "hint": "Share feedback on this extension"})
+    rows.append({"type": "action", "action": "review",  "label": "Submit Rating & Review", "color": _YELLOW, "hint": "Share feedback on this extension"})
 
-    rows.append({"type": "action", "action": "reviews", "label": f"💬  View All Reviews ({rating_cnt})", "color": _BLUE, "hint": "Read user comments"})
+    rows.append({"type": "action", "action": "reviews", "label": f"View All Reviews ({rating_cnt})", "color": _BLUE, "hint": "Read user comments"})
 
     if is_owner:
 
-        pub_label = "🚫  UNPUBLISH EXTENSION" if is_published else "📤  PUBLISH EXTENSION"
+        pub_label = "UNPUBLISH EXTENSION" if is_published else "PUBLISH EXTENSION"
 
         pub_color = _YELLOW if is_published else _GREEN
 
@@ -1622,7 +1622,7 @@ def _dialog_item_detail(console, slug: str, preview: dict) -> Optional[str]:
                 _th.Thread(target=_place_order, daemon=True).start()
                 # Show connecting dialog (exits when done)
                 connecting_rows = [
-                    {"type": "info", "text": f"  ⏳  Connecting to payment server...\n"},
+                    {"type": "info", "text": f"  Connecting to payment server...\n"},
                     {"type": "info", "text": f"  Extension: {name}"},
                     {"type": "info", "text": f"  Price:     ${price:.2f} USD\n"},
                     {"type": "info", "text": "  Please wait..."},
@@ -1645,7 +1645,7 @@ def _dialog_item_detail(console, slug: str, preview: dict) -> Optional[str]:
                 if status_code == 401:
                     # Show auth error
                     err_rows = [
-                        {"type": "info", "text": f"  ❌  AUTHENTICATION REQUIRED\n"},
+                        {"type": "info", "text": f"  AUTHENTICATION REQUIRED\n"},
                         {"type": "info", "text": "  You must be logged in to purchase extensions."},
                         {"type": "info", "text": "  Run /login in the chat to authenticate.\n"},
                         {"type": "sep"},
@@ -1660,7 +1660,7 @@ def _dialog_item_detail(console, slug: str, preview: dict) -> Optional[str]:
                             lines.append(("", "\n"))
                             return lines
                         if rt == "action":
-                            ptr = "  ➞ " if s else "    "
+                            ptr = "  " if s else "    "
                             c = r.get("color", _RED)
                             st = f"bold {c}" if s else c
                             return [(st, f"{ptr}[ {r.get('label','')} ]\n")]
@@ -1676,11 +1676,11 @@ def _dialog_item_detail(console, slug: str, preview: dict) -> Optional[str]:
                     # Show error with fallback to free install option
                     err_msg = f"HTTP {status_code}" if status_code else "Could not reach payment server"
                     err_rows = [
-                        {"type": "info", "text": f"  ⚠️  PAYMENT SERVER UNAVAILABLE\n"},
+                        {"type": "info", "text": f"  PAYMENT SERVER UNAVAILABLE\n"},
                         {"type": "info", "text": f"  Error: {err_msg}\n"},
                         {"type": "sep"},
                         {"type": "action", "action": "retry",  "label": "↻  Retry Connection",           "color": _YELLOW, "hint": "Try reaching payment server again"},
-                        {"type": "action", "action": "install","label": "⚡  Install Anyway (Skip Payment)","color": _GREEN,  "hint": "Install without payment verification (demo mode)"},
+                        {"type": "action", "action": "install","label": "Install Anyway (Skip Payment)","color": _GREEN,  "hint": "Install without payment verification (demo mode)"},
                         {"type": "action", "action": "back",   "label": "←  Return to Extension Details", "color": _RED},
                     ]
                     _err_act = [None]
@@ -1699,7 +1699,7 @@ def _dialog_item_detail(console, slug: str, preview: dict) -> Optional[str]:
             sp = _api_get(f"/marketplace/seller-profile/{owner_id or 'community'}") or {}
             s_name = sp.get("display_name", seller_name)
             s_bio = sp.get("bio", "UTIM Extension Publisher")
-            s_emoji = sp.get("avatar_emoji", "🧑‍💻")
+            s_emoji = sp.get("avatar_emoji", "‍")
             s_verified = sp.get("is_verified", True)
             v_status = "✓ VERIFIED PUBLISHER" if s_verified else "Community Publisher"
 
@@ -1710,15 +1710,15 @@ def _dialog_item_detail(console, slug: str, preview: dict) -> Optional[str]:
                 {"type": "info", "text": f"  Bio:            {s_bio}"},
                 {"type": "info", "text": f"  Extensions:     {sp.get('total_published', 1)} published"},
                 {"type": "info", "text": f"  Total Installs: {sp.get('total_downloads', dl_count):,} downloads"},
-                {"type": "info", "text": f"  Average Rating: ⭐ {sp.get('average_rating', rating_avg):.1f}\n"},
+                {"type": "info", "text": f"  Average Rating: {sp.get('average_rating', rating_avg):.1f}\n"},
                 {"type": "sep"},
             ]
             listings = sp.get("listings") or []
             if listings:
-                pub_rows.append({"type": "info", "text": "  📦 Published Extensions Catalog:"})
+                pub_rows.append({"type": "info", "text": "  Published Extensions Catalog:"})
                 for l in listings[:8]:
                     p_str = "FREE" if l.get("price_usd", 0.0) == 0 else f"${l.get('price_usd'):.2f}"
-                    pub_rows.append({"type": "info", "text": f"   • {l.get('name')} [{l.get('type').upper()}] [{p_str}] ⭐ {l.get('rating_avg', 0.0):.1f}"})
+                    pub_rows.append({"type": "info", "text": f"   • {l.get('name')} [{l.get('type').upper()}] [{p_str}] ★ {l.get('rating_avg', 0.0):.1f}"})
                 pub_rows.append({"type": "sep"})
 
             pub_rows.append({"type": "action", "action": "back", "label": "←  Return to Extension Details", "color": _GREEN})
@@ -1738,7 +1738,7 @@ def _dialog_item_detail(console, slug: str, preview: dict) -> Optional[str]:
             doc_lines = doc_text.splitlines()
 
             doc_rows = [
-                {"type": "info", "text": f"  📖  DOCUMENTATION — {name}\n"},
+                {"type": "info", "text": f"  DOCUMENTATION — {name}\n"},
                 {"type": "sep"},
             ]
             for line in doc_lines:
@@ -1759,7 +1759,7 @@ def _dialog_item_detail(console, slug: str, preview: dict) -> Optional[str]:
 
         if act == "reviews":
             rev_rows = [
-                {"type": "info", "text": f"  💬  USER REVIEWS — {name} ({rating_cnt} reviews, {_format_stars(rating_avg, rating_cnt)})\n"},
+                {"type": "info", "text": f"  USER REVIEWS — {name} ({rating_cnt} reviews, {_format_stars(rating_avg, rating_cnt)})\n"},
                 {"type": "sep"},
             ]
             if not reviews:
@@ -1776,7 +1776,7 @@ def _dialog_item_detail(console, slug: str, preview: dict) -> Optional[str]:
                     rev_rows.append({"type": "spacer"})
 
             rev_rows.append({"type": "sep"})
-            rev_rows.append({"type": "action", "action": "write", "label": "⭐  Submit Rating & Review", "color": _YELLOW, "hint": "Write a review"})
+            rev_rows.append({"type": "action", "action": "write", "label": "Submit Rating & Review", "color": _YELLOW, "hint": "Write a review"})
             rev_rows.append({"type": "action", "action": "back", "label": "←  Return to Extension Details", "color": _GREEN})
 
             rev_action = ["back"]
@@ -1838,14 +1838,14 @@ def _dialog_write_review(console, slug: str, name: str):
         return "★" * full + ("½" if half else "") + "☆" * empty
 
     rows: list[dict] = [
-        {"type": "info", "bold": True, "color": _YELLOW, "text": f"⭐  SUBMIT REVIEW — '{name}'"},
+        {"type": "info", "bold": True, "color": _YELLOW, "text": f"SUBMIT REVIEW — '{name}'"},
         {"type": "info", "color": _MUTED, "text": "Share your feedback and star rating with the UTIM community."},
         {"type": "spacer"},
         {"type": "field", "field": "rating", "label": "Rating Stars", "color": _YELLOW, "hint": "Press ENTER to cycle star rating (1.0 to 5.0 stars)"},
         {"type": "field", "field": "comment", "label": "Review Comment", "color": _WHITE, "hint": "Press ENTER to edit comment text (optional)"},
         {"type": "spacer"},
         {"type": "sep"},
-        {"type": "action", "action": "submit", "label": "⭐  Submit Review", "color": _GREEN, "hint": "Submit rating & comment to marketplace."},
+        {"type": "action", "action": "submit", "label": "Submit Review", "color": _GREEN, "hint": "Submit rating & comment to marketplace."},
         {"type": "action", "action": "cancel", "label": "←  Cancel", "color": _RED, "hint": "Cancel and return to extension details."},
     ]
 
@@ -1954,26 +1954,26 @@ def _dialog_write_review(console, slug: str, name: str):
 
         if status in (200, 201):
             msg_rows = [
-                {"type": "info", "bold": True, "color": _GREEN, "text": f"✓  Thank you! Your review for '{name}' has been submitted."},
+                {"type": "info", "bold": True, "color": _GREEN, "text": f"Thank you! Your review for '{name}' has been submitted."},
                 {"type": "spacer"},
                 {"type": "action", "action": "ok", "label": "←  Return to Extension Details", "color": _GREEN},
             ]
         elif status == 409:
             msg_rows = [
-                {"type": "info", "bold": True, "color": _YELLOW, "text": "⚠  You have already submitted a review for this extension."},
+                {"type": "info", "bold": True, "color": _YELLOW, "text": "You have already submitted a review for this extension."},
                 {"type": "spacer"},
                 {"type": "action", "action": "ok", "label": "←  Return to Extension Details", "color": _YELLOW},
             ]
         elif status == 401:
             msg_rows = [
-                {"type": "info", "bold": True, "color": _RED, "text": "✗  Authentication required. Please sign in to submit reviews."},
+                {"type": "info", "bold": True, "color": _RED, "text": "Authentication required. Please sign in to submit reviews."},
                 {"type": "spacer"},
                 {"type": "action", "action": "ok", "label": "←  Return", "color": _RED},
             ]
         else:
             err = (data or {}).get("detail", f"HTTP {status}")
             msg_rows = [
-                {"type": "info", "bold": True, "color": _RED, "text": f"✗  Review submission failed: {err}"},
+                {"type": "info", "bold": True, "color": _RED, "text": f"Review submission failed: {err}"},
                 {"type": "spacer"},
                 {"type": "action", "action": "ok", "label": "←  Return", "color": _RED},
             ]
@@ -2053,7 +2053,7 @@ def _list_local_extensions(ext_type: str = "skill") -> list[tuple[str, str]]:
 
                             seen.add(resolved)
 
-                            items.append((resolved, f"📦 Skill: {entry.name} ({entry.parent.name})"))
+                            items.append((resolved, f"Skill: {entry.name} ({entry.parent.name})"))
 
     if ext_type in ("miniagent", "all"):
 
@@ -2087,7 +2087,7 @@ def _list_local_extensions(ext_type: str = "skill") -> list[tuple[str, str]]:
 
                             seen.add(resolved)
 
-                            items.append((resolved, f"🤖 Miniagent: {entry.name} ({entry.parent.name})"))
+                            items.append((resolved, f"Miniagent: {entry.name} ({entry.parent.name})"))
 
     if ext_type in ("tool", "all"):
 
@@ -2119,7 +2119,7 @@ def _list_local_extensions(ext_type: str = "skill") -> list[tuple[str, str]]:
 
                             seen.add(resolved)
 
-                            items.append((resolved, f"🛠️ Tool: {entry.name} ({entry.parent.name})"))
+                            items.append((resolved, f"Tool: {entry.name} ({entry.parent.name})"))
 
     if ext_type in ("mcp", "all"):
 
@@ -2151,7 +2151,7 @@ def _list_local_extensions(ext_type: str = "skill") -> list[tuple[str, str]]:
 
                             seen.add(resolved)
 
-                            items.append((resolved, f"🔌 MCP: {entry.name} ({entry.parent.name})"))
+                            items.append((resolved, f"MCP: {entry.name} ({entry.parent.name})"))
 
     return items
 
@@ -2311,7 +2311,7 @@ def _prompt_text(console, label: str, default: str = "") -> Optional[str]:
 
     header = Window(
         content=FormattedTextControl(
-            text=[("class:label", f"  ✏️  {label}\n"), ("class:dim", "  (Press Enter to confirm, ESC to cancel)\n\n")]
+            text=[("class:label", f"   {label}\n"), ("class:dim", "  (Press Enter to confirm, ESC to cancel)\n\n")]
         ),
         height=3,
     )
@@ -2355,11 +2355,11 @@ def _dialog_manage_my_extension(console, item: dict) -> bool:
 
         rows = [
 
-            {"type": "title", "text": f"⚙️  MANAGE: {name.upper()}"},
+            {"type": "title", "text": f"MANAGE: {name.upper()}"},
 
-            {"type": "action", "action": "view", "label": "🔍  View Details"},
+            {"type": "action", "action": "view", "label": "View Details"},
 
-            {"type": "action", "action": "delete", "label": "🗑️  Remove / Delete Extension", "color": _RED},
+            {"type": "action", "action": "delete", "label": "Remove / Delete Extension", "color": _RED},
 
             {"type": "sep"},
 
@@ -2438,11 +2438,11 @@ def _confirm_delete_dialog(console, name: str, slug: str) -> bool:
     from utim_cli.utim import _run_list_dialog
 
     rows: list[dict] = [
-        {"type": "info", "bold": True, "color": _RED, "text": f"🗑️  PERMANENTLY REMOVE EXTENSION '{name}'?"},
+        {"type": "info", "bold": True, "color": _RED, "text": f"PERMANENTLY REMOVE EXTENSION '{name}'?"},
         {"type": "info", "color": _MUTED, "text": "This action cannot be undone. The extension listing will be deleted from UTIM Marketplace."},
         {"type": "spacer"},
         {"type": "sep"},
-        {"type": "action", "action": "confirm", "label": "🗑️  Yes, Permanently Delete Extension", "color": _RED, "hint": "Deletes listing and package version records from marketplace."},
+        {"type": "action", "action": "confirm", "label": "Yes, Permanently Delete Extension", "color": _RED, "hint": "Deletes listing and package version records from marketplace."},
         {"type": "action", "action": "cancel", "label": "←  Cancel & Keep Extension", "color": _GREEN, "hint": "Return to item details without deleting."},
     ]
 
@@ -2546,7 +2546,7 @@ def _dialog_my_items(console):
 
         rows: list[dict] = []
 
-        rows.append({"type": "title", "text": "🗃  MY PUBLISHED EXTENSIONS"})
+        rows.append({"type": "title", "text": "MY PUBLISHED EXTENSIONS"})
 
         rows.append({"type": "action", "action": "back", "label": "←  Return to Marketplace Home", "color": _RED})
 
@@ -2556,9 +2556,9 @@ def _dialog_my_items(console):
 
         if not items:
 
-            rows.append({"type": "info", "text": "  📭  You haven't published any extensions yet."})
+            rows.append({"type": "info", "text": "  You haven't published any extensions yet."})
 
-            rows.append({"type": "info", "text": "  Use '📤 Publish Your Extension' from the main marketplace menu."})
+            rows.append({"type": "info", "text": "  Use 'Publish Your Extension' from the main marketplace menu."})
 
         else:
 
@@ -2794,21 +2794,21 @@ def _dialog_seller_hub(console):
 
     # Header
 
-    rows.append({"type": "title", "text": "👤  SELLER PROFILE & WALLET"})
+    rows.append({"type": "title", "text": "SELLER PROFILE & WALLET"})
 
     rows.append({"type": "sep"})
 
     if has_profile:
 
-        emoji = profile_data.get("avatar_emoji", "🧑💻")
+        emoji = profile_data.get("avatar_emoji", "")
 
         name = profile_data.get("display_name") or "(no display name set)"
 
         bio = profile_data.get("bio") or "(no bio set)"
 
-        rows.append({"type": "info", "text": f"  {emoji}  {name}  {'✅ Verified' if profile_data.get('is_verified') else ''}" })
+        rows.append({"type": "info", "text": f"  {emoji}  {name}  {'Verified' if profile_data.get('is_verified') else ''}" })
 
-        rows.append({"type": "info", "text": f"  📭  {bio}"})
+        rows.append({"type": "info", "text": f"   {bio}"})
 
         rows.append({"type": "spacer"})
 
@@ -2822,11 +2822,11 @@ def _dialog_seller_hub(console):
 
         pending = w.get("pending_withdrawal_usd", 0.0)
 
-        rows.append({"type": "info", "text": f"  💰  Wallet Balance:    [bold #a6e3a1]${balance:.3f}[/bold #a6e3a1] available"})
+        rows.append({"type": "info", "text": f"   Wallet Balance:    [bold #a6e3a1]${balance:.3f}[/bold #a6e3a1] available"})
 
-        rows.append({"type": "info", "text": f"  💰  Total Earned:     [bold #89b4fa]${earned:.3f}[/bold #89b4fa] all time"})
+        rows.append({"type": "info", "text": f"   Total Earned:     [bold #89b4fa]${earned:.3f}[/bold #89b4fa] all time"})
 
-        rows.append({"type": "info", "text": f"  🏦  Total Withdrawn:  [bold #f9e2af]${withdrawn:.3f}[/bold #f9e2af]"})
+        rows.append({"type": "info", "text": f"   Total Withdrawn:  [bold #f9e2af]${withdrawn:.3f}[/bold #f9e2af]"})
 
         if pending > 0:
 
@@ -2836,7 +2836,7 @@ def _dialog_seller_hub(console):
 
     else:
 
-        rows.append({"type": "info", "text": "  📭  No seller profile set up yet."})
+        rows.append({"type": "info", "text": "  No seller profile set up yet."})
 
         rows.append({"type": "info", "text": "  Create one to start publishing paid extensions and receiving payments."})
 
@@ -2850,35 +2850,35 @@ def _dialog_seller_hub(console):
 
     if upi:
 
-        rows.append({"type": "info", "text": f"  📱  Saved UPI: [bold #89dceb]{upi}[/bold #89dceb]"})
+        rows.append({"type": "info", "text": f"  Saved UPI: [bold #89dceb]{upi}[/bold #89dceb]"})
 
     if bank_acc:
 
-        rows.append({"type": "info", "text": f"  🏛  Saved Bank A/C: ••••{bank_acc[-4:]}"})
+        rows.append({"type": "info", "text": f"  Saved Bank A/C: ••••{bank_acc[-4:]}"})
 
     if not upi and not bank_acc:
 
-        rows.append({"type": "info", "text": f"  ⚠   No payment method saved. Set one below before withdrawing."})
+        rows.append({"type": "info", "text": f"  No payment method saved. Set one below before withdrawing."})
 
     rows.append({"type": "sep"})
 
     # Actions
 
-    rows.append({"type": "action", "action": "setup_profile", "label": "✏️   Setup / Edit Seller Profile", "color": _MAUVE, "hint": "Set display name, bio, avatar emoji"})
+    rows.append({"type": "action", "action": "setup_profile", "label": "  Setup / Edit Seller Profile", "color": _MAUVE, "hint": "Set display name, bio, avatar emoji"})
 
     rows.append({"type": "spacer"})
 
-    rows.append({"type": "action", "action": "set_payment", "label": "💳  Set Withdrawal Payment Method", "color": _CYAN, "hint": "Save UPI ID or bank account locally"})
+    rows.append({"type": "action", "action": "set_payment", "label": "Set Withdrawal Payment Method", "color": _CYAN, "hint": "Save UPI ID or bank account locally"})
 
     rows.append({"type": "spacer"})
 
     if has_profile:
 
-        rows.append({"type": "action", "action": "withdraw", "label": "💸  Request Withdrawal", "color": _GREEN, "hint": "Transfer earnings to your bank/UPI"})
+        rows.append({"type": "action", "action": "withdraw", "label": "Request Withdrawal", "color": _GREEN, "hint": "Transfer earnings to your bank/UPI"})
 
         rows.append({"type": "spacer"})
 
-    rows.append({"type": "action", "action": "history", "label": "📜  View Withdrawal History", "color": _BLUE, "hint": "See all past withdrawal requests"})
+    rows.append({"type": "action", "action": "history", "label": "View Withdrawal History", "color": _BLUE, "hint": "See all past withdrawal requests"})
 
     rows.append({"type": "spacer"})
 
@@ -2888,7 +2888,7 @@ def _dialog_seller_hub(console):
 
     if is_admin:
 
-        rows.append({"type": "action", "action": "admin_payouts", "label": "👑  Admin Payout Approvals", "color": _YELLOW, "hint": "Review & approve pending seller withdrawal requests"})
+        rows.append({"type": "action", "action": "admin_payouts", "label": "Admin Payout Approvals", "color": _YELLOW, "hint": "Review & approve pending seller withdrawal requests"})
 
         rows.append({"type": "spacer"})
 
@@ -2946,7 +2946,7 @@ def _dialog_seller_hub(console):
 
             rows, render_row,
 
-            title="Seller Hub  👤  Profile & Wallet",
+            title="Seller Hub — Profile & Wallet",
 
             legend="UP/DOWN: Navigate  •  ENTER: Select  •  ESC/Q: Back",
 
@@ -3020,7 +3020,7 @@ def _dialog_setup_seller_profile(console):
 
         "bio": existing.get("bio", ""),
 
-        "avatar_emoji": existing.get("avatar_emoji", "🧑‍💻"),
+        "avatar_emoji": existing.get("avatar_emoji", "‍"),
 
     }
 
@@ -3030,21 +3030,21 @@ def _dialog_setup_seller_profile(console):
 
         val_bio = form["bio"] or "(not set)"
 
-        val_emoji = form["avatar_emoji"] or "🧑‍💻"
+        val_emoji = form["avatar_emoji"] or "‍"
 
         rows: list[dict] = [
 
-            {"type": "title", "text": "👤  PROFILE SETUP"},
+            {"type": "title", "text": "PROFILE SETUP"},
 
             {"type": "info",  "text": "  Your profile is public and shown on marketplace activity."},
 
             {"type": "sep"},
 
-            {"type": "field", "field": "display_name", "label": f"👤  Display Name / Handle :  [bold #89dceb]{val_name}[/bold #89dceb]", "hint": "ENTER: Edit Display Name"},
+            {"type": "field", "field": "display_name", "label": f"Display Name / Handle :  [bold #89dceb]{val_name}[/bold #89dceb]", "hint": "ENTER: Edit Display Name"},
 
-            {"type": "field", "field": "bio",          "label": f"📝  Short Bio            :  [bold #89dceb]{val_bio}[/bold #89dceb]", "hint": "ENTER: Edit Bio"},
+            {"type": "field", "field": "bio",          "label": f"Short Bio            :  [bold #89dceb]{val_bio}[/bold #89dceb]", "hint": "ENTER: Edit Bio"},
 
-            {"type": "field", "field": "avatar_emoji", "label": f"🧑‍💻  Avatar Emoji         :  [bold #f9e2af]{val_emoji}[/bold #f9e2af]", "hint": "ENTER: Edit Avatar Emoji"},
+            {"type": "field", "field": "avatar_emoji", "label": f"Avatar Emoji         :  [bold #f9e2af]{val_emoji}[/bold #f9e2af]", "hint": "ENTER: Edit Avatar Emoji"},
 
             {"type": "sep"},
 
@@ -3180,7 +3180,7 @@ def _dialog_set_payment_method(console):
 
         rows: list[dict] = [
 
-            {"type": "title", "text": "💳  WITHDRAWAL PAYMENT METHOD SETUP"},
+            {"type": "title", "text": "WITHDRAWAL PAYMENT METHOD SETUP"},
 
             {"type": "info",  "text": "  Payment details are saved locally on your device only."},
 
@@ -3188,7 +3188,7 @@ def _dialog_set_payment_method(console):
 
             {"type": "sep"},
 
-            {"type": "field", "field": "method", "label": f"📱  Payment Method :  [{'bold #89dceb' if form['method'] == 'upi' else 'bold #cba6f7'}]{form['method'].upper()}[/]", "hint": "ENTER: Toggle between UPI and Bank Account"},
+            {"type": "field", "field": "method", "label": f"Payment Method :  [{'bold #89dceb' if form['method'] == 'upi' else 'bold #cba6f7'}]{form['method'].upper()}[/]", "hint": "ENTER: Toggle between UPI and Bank Account"},
 
         ]
 
@@ -3196,7 +3196,7 @@ def _dialog_set_payment_method(console):
 
             val_upi = form["upi_id"] or "(not set)"
 
-            rows.append({"type": "field", "field": "upi_id", "label": f"📱  UPI VPA ID      :  [bold #89dceb]{val_upi}[/bold #89dceb]", "hint": "ENTER: Edit UPI ID (e.g. name@upi)"})
+            rows.append({"type": "field", "field": "upi_id", "label": f"UPI VPA ID      :  [bold #89dceb]{val_upi}[/bold #89dceb]", "hint": "ENTER: Edit UPI ID (e.g. name@upi)"})
 
         else:
 
@@ -3206,11 +3206,11 @@ def _dialog_set_payment_method(console):
 
             val_ifsc = form["ifsc_code"] or "(not set)"
 
-            rows.append({"type": "field", "field": "account_name",   "label": f"👤  Account Name    :  [bold #89dceb]{val_name}[/bold #89dceb]", "hint": "ENTER: Edit Account Holder Name"})
+            rows.append({"type": "field", "field": "account_name",   "label": f"Account Name    :  [bold #89dceb]{val_name}[/bold #89dceb]", "hint": "ENTER: Edit Account Holder Name"})
 
-            rows.append({"type": "field", "field": "account_number", "label": f"🏦  Account Number  :  [bold #a6e3a1]{val_num}[/bold #a6e3a1]", "hint": "ENTER: Edit Bank Account Number"})
+            rows.append({"type": "field", "field": "account_number", "label": f"Account Number  :  [bold #a6e3a1]{val_num}[/bold #a6e3a1]", "hint": "ENTER: Edit Bank Account Number"})
 
-            rows.append({"type": "field", "field": "ifsc_code",       "label": f"🏛  IFSC Code       :  [bold #f9e2af]{val_ifsc}[/bold #f9e2af]", "hint": "ENTER: Edit Bank IFSC Code"})
+            rows.append({"type": "field", "field": "ifsc_code",       "label": f"IFSC Code       :  [bold #f9e2af]{val_ifsc}[/bold #f9e2af]", "hint": "ENTER: Edit Bank IFSC Code"})
 
         rows.append({"type": "sep"})
 
@@ -3338,7 +3338,7 @@ def _show_insufficient_balance_dialog(requested: float, balance: float):
 
     shortfall = requested - balance
     rows = [
-        {"type": "info", "bold": True, "color": _RED, "text": "🚫  INSUFFICIENT BALANCE FOR WITHDRAWAL"},
+        {"type": "info", "bold": True, "color": _RED, "text": "INSUFFICIENT BALANCE FOR WITHDRAWAL"},
         {"type": "info", "color": _MUTED, "text": "Your requested withdrawal amount exceeds your available wallet balance:"},
         {"type": "spacer"},
         {"type": "info", "bold": True, "color": _YELLOW, "text": f"  • Requested Amount:   ${requested:.3f} USD"},
@@ -3391,18 +3391,18 @@ def _dialog_request_withdrawal(console, profile_data: dict, payment_info: dict):
 
     while True:
         rows: list[dict] = [
-            {"type": "title", "text": "💸  REQUEST WITHDRAWAL"},
+            {"type": "title", "text": "REQUEST WITHDRAWAL"},
             {"type": "info",  "text": f"  Available Balance :  [bold #a6e3a1]${balance:.3f} USD[/bold #a6e3a1]"},
         ]
 
         if not upi and not bank_acc:
-            rows.append({"type": "info", "text": "  [bold #f38ba8]⚠  No payment method configured. Please set a payment method first in Seller Hub.[/bold #f38ba8]\n"})
+            rows.append({"type": "info", "text": "  [bold #f38ba8] No payment method configured. Please set a payment method first in Seller Hub.[/bold #f38ba8]\n"})
             rows.append({"type": "sep"})
             rows.append({"type": "action", "action": "back", "label": "←  Return to Seller Hub", "color": _RED})
         else:
             payout_dest = f"UPI: {upi}" if method == "upi" and upi else f"Bank: ••••{bank_acc[-4:] if bank_acc else ''}"
-            rows.append({"type": "field", "field": "amount", "label": f"💵  Withdrawal Amount  :  [bold #a6e3a1]${amount[0]:.3f} USD[/bold #a6e3a1]", "hint": "ENTER: Change amount to withdraw"})
-            rows.append({"type": "field", "field": "method", "label": f"🏦  Payout Destination :  [bold #89dceb]{payout_dest}[/bold #89dceb]", "hint": "ENTER: Switch between UPI and Bank Account"})
+            rows.append({"type": "field", "field": "amount", "label": f"Withdrawal Amount  :  [bold #a6e3a1]${amount[0]:.3f} USD[/bold #a6e3a1]", "hint": "ENTER: Change amount to withdraw"})
+            rows.append({"type": "field", "field": "method", "label": f"Payout Destination :  [bold #89dceb]{payout_dest}[/bold #89dceb]", "hint": "ENTER: Switch between UPI and Bank Account"})
             rows.append({"type": "sep"})
             rows.append({"type": "action", "action": "submit", "label": "✓  Submit Withdrawal Request", "color": _GREEN, "hint": "Submit payout request to UTIM Admin"})
             rows.append({"type": "action", "action": "back", "label": "←  Cancel", "color": _RED})
@@ -3554,7 +3554,7 @@ def _dialog_withdrawal_history(console, wallet_data: Optional[dict]):
 
     rows: list[dict] = []
 
-    rows.append({"type": "title", "text": "📜  WITHDRAWAL HISTORY"})
+    rows.append({"type": "title", "text": "WITHDRAWAL HISTORY"})
 
     rows.append({"type": "action", "action": "back", "label": "←  Return to Seller Hub", "color": _RED})
 
@@ -3574,7 +3574,7 @@ def _dialog_withdrawal_history(console, wallet_data: Optional[dict]):
 
     if not withdrawals:
 
-        rows.append({"type": "info", "text": "  📭  No withdrawal requests yet."})
+        rows.append({"type": "info", "text": "  No withdrawal requests yet."})
 
     else:
 
@@ -3657,7 +3657,7 @@ def _dialog_admin_payouts(console):
 
         rows: list[dict] = [
 
-            {"type": "title", "text": "👑  ADMIN PAYOUT APPROVALS"},
+            {"type": "title", "text": "ADMIN PAYOUT APPROVALS"},
 
             {"type": "action", "action": "back", "label": "←  Return to Seller Hub", "color": _RED},
 
@@ -3671,13 +3671,13 @@ def _dialog_admin_payouts(console):
 
         if not withdrawals:
 
-            rows.append({"type": "info", "text": "  📭  No withdrawal requests found."})
+            rows.append({"type": "info", "text": "  No withdrawal requests found."})
 
         else:
 
             if pending_list:
 
-                rows.append({"type": "info", "text": f"  ⏳  PENDING APPROVALS ({len(pending_list)}):"})
+                rows.append({"type": "info", "text": f"  PENDING APPROVALS ({len(pending_list)}):"})
 
                 for w in pending_list:
 
@@ -3703,7 +3703,7 @@ def _dialog_admin_payouts(console):
 
             if completed_list:
 
-                rows.append({"type": "info", "text": f"  📜  PAST WITHDRAWALS ({len(completed_list)}):"})
+                rows.append({"type": "info", "text": f"  PAST WITHDRAWALS ({len(completed_list)}):"})
 
                 for w in completed_list:
 
@@ -3797,7 +3797,7 @@ def _dialog_admin_payouts(console):
 
             appr_rows = [
 
-                {"type": "info", "text": f"  👑  WITHDRAWAL REQUEST DETAILS\n"},
+                {"type": "info", "text": f"  WITHDRAWAL REQUEST DETAILS\n"},
 
                 {"type": "info", "text": f"  Withdrawal ID   :  {w_id}"},
 
@@ -3813,15 +3813,15 @@ def _dialog_admin_payouts(console):
 
                 upi_val = w.get("upi_id") or "Not provided"
 
-                appr_rows.append({"type": "info", "text": f"  📱  UPI VPA ID      :  [bold #89dceb]{upi_val}[/bold #89dceb]\n"})
+                appr_rows.append({"type": "info", "text": f"  UPI VPA ID      :  [bold #89dceb]{upi_val}[/bold #89dceb]\n"})
 
             else:
 
-                appr_rows.append({"type": "info", "text": f"  👤  Account Name    :  [bold #89dceb]{w.get('account_name', 'N/A')}[/bold #89dceb]"})
+                appr_rows.append({"type": "info", "text": f"  Account Name    :  [bold #89dceb]{w.get('account_name', 'N/A')}[/bold #89dceb]"})
 
-                appr_rows.append({"type": "info", "text": f"  🏦  Account Number  :  [bold #a6e3a1]{w.get('account_number', 'N/A')}[/bold #a6e3a1]"})
+                appr_rows.append({"type": "info", "text": f"  Account Number  :  [bold #a6e3a1]{w.get('account_number', 'N/A')}[/bold #a6e3a1]"})
 
-                appr_rows.append({"type": "info", "text": f"  🏛  IFSC Code       :  [bold #f9e2af]{w.get('ifsc_code', 'N/A')}[/bold #f9e2af]\n"})
+                appr_rows.append({"type": "info", "text": f"  IFSC Code       :  [bold #f9e2af]{w.get('ifsc_code', 'N/A')}[/bold #f9e2af]\n"})
 
             appr_rows.append({"type": "sep"})
 
@@ -3909,19 +3909,19 @@ def _dialog_marketplace(orchestrator=None):
 
         # Quick Actions Menu
 
-        rows.append({"type": "action", "action": "browse",   "icon": "🌐", "label": "Browse & Filter All Extensions (All)", "hint": "Explore by category, tags, ratings & price"})
+        rows.append({"type": "action", "action": "browse",   "icon": "", "label": "Browse & Filter All Extensions (All)", "hint": "Explore by category, tags, ratings & price"})
 
         rows.append({"type": "spacer"})
 
-        rows.append({"type": "action", "action": "publish",  "icon": "📤", "label": "Publish Your Extension",              "hint": "Share skills, miniagents or tools globally"})
+        rows.append({"type": "action", "action": "publish",  "icon": "Publish", "label": "Publish Your Extension",              "hint": "Share skills, miniagents or tools globally"})
 
         rows.append({"type": "spacer"})
 
-        rows.append({"type": "action", "action": "my_items", "icon": "🗃",  "label": "My Published Extensions",            "hint": "Manage your extension portfolio"})
+        rows.append({"type": "action", "action": "my_items", "icon": "Folder",  "label": "My Published Extensions",            "hint": "Manage your extension portfolio"})
 
         rows.append({"type": "spacer"})
 
-        rows.append({"type": "action", "action": "seller_profile", "icon": "👤", "label": "Profile & Wallet",                   "hint": "Set up your profile, view earnings & withdraw"})
+        rows.append({"type": "action", "action": "seller_profile", "icon": "", "label": "Profile & Wallet",                   "hint": "Set up your profile, view earnings & withdraw"})
 
         rows.append({"type": "spacer"})
 
@@ -3931,23 +3931,23 @@ def _dialog_marketplace(orchestrator=None):
 
         if loading[0]:
 
-            rows.append({"type": "info", "text": "  ⏳  Connecting to UTIM extension registry..."})
+            rows.append({"type": "info", "text": "  Connecting to UTIM extension registry..."})
 
         else:
 
             # 1. LATEST EXTENSIONS (LAST 72 HOURS)
 
-            rows.append({"type": "section", "title": "⚡  LATEST EXTENSIONS (UPLOADED IN LAST 72 HOURS)"})
+            rows.append({"type": "section", "title": "LATEST EXTENSIONS (UPLOADED IN LAST 72 HOURS)"})
 
             if latest_72h:
 
                 for item in latest_72h:
 
-                    rows.append({"type": "card", "item": item, "badge": "⚡ 72h"})
+                    rows.append({"type": "card", "item": item, "badge": "72h"})
 
             else:
 
-                rows.append({"type": "info", "text": "  ℹ️  No extensions uploaded in the last 72 hours. Browse the full catalog below!"})
+                rows.append({"type": "info", "text": "  No extensions uploaded in the last 72 hours. Browse the full catalog below!"})
 
             rows.append({"type": "sep"})
 
@@ -3955,7 +3955,7 @@ def _dialog_marketplace(orchestrator=None):
 
             if featured:
 
-                rows.append({"type": "section", "title": "⭐  SPOTLIGHT & FEATURED EXTENSIONS"})
+                rows.append({"type": "section", "title": "SPOTLIGHT & FEATURED EXTENSIONS"})
 
                 for item in featured:
 
@@ -3967,7 +3967,7 @@ def _dialog_marketplace(orchestrator=None):
 
             if popular:
 
-                rows.append({"type": "section", "title": "🔥  MOST POPULAR COMMUNITY EXTENSIONS"})
+                rows.append({"type": "section", "title": "MOST POPULAR COMMUNITY EXTENSIONS"})
 
                 for item in popular:
 
@@ -3979,7 +3979,7 @@ def _dialog_marketplace(orchestrator=None):
 
             if all_items:
 
-                rows.append({"type": "section", "title": f"🌐  ALL EXTENSIONS CATALOG ({len(all_items)} Available)"})
+                rows.append({"type": "section", "title": f"ALL EXTENSIONS CATALOG ({len(all_items)} Available)"})
 
                 for item in all_items:
 
@@ -3989,7 +3989,7 @@ def _dialog_marketplace(orchestrator=None):
 
             if not latest_72h and not featured and not popular and not all_items:
 
-                rows.append({"type": "info", "text": "  📭  Marketplace catalog is ready. Be the first to publish an extension!"})
+                rows.append({"type": "info", "text": "  Marketplace catalog is ready. Be the first to publish an extension!"})
 
         def render_row(idx: int, row: dict, selected: bool):
 
@@ -4011,9 +4011,9 @@ def _dialog_marketplace(orchestrator=None):
 
                     (f"bold {_MAUVE}", "  ╔══════════════════════════════════════════════════════════════════════════════╗\n"),
 
-                    (f"bold {_WHITE}", "  ║  🛍️   UTIM EXTENSION STORE  │  The Premier AI Agent & Tool Marketplace        ║\n"),
+                    (f"bold {_WHITE}", "  ║     UTIM EXTENSION STORE  │  The Premier AI Agent & Tool Marketplace         ║\n"),
 
-                    (f"{_CYAN}",   "  ║  ⚡ Instant Install  •  95% Creator Revenue  •  Verified Package Security    ║\n"),
+                    (f"{_CYAN}",   "  ║    Instant Install  •  95% Creator Revenue  •  Verified Package Security     ║\n"),
 
                     (f"bold {_MAUVE}", "  ╚══════════════════════════════════════════════════════════════════════════════╝\n"),
 
@@ -4095,7 +4095,7 @@ def _dialog_marketplace(orchestrator=None):
 
                 card_border = f"bold {_MAUVE}" if selected else f"{_BORDER}"
 
-                action_btn = "[ ⚡ CLICK TO VIEW & BUY ]" if selected else "[ View Package ]"
+                action_btn = "[ CLICK TO VIEW & BUY ]" if selected else "[ View Package ]"
 
                 lines = [
 
@@ -4103,7 +4103,7 @@ def _dialog_marketplace(orchestrator=None):
 
                     (bg or f"fg:{_FG}", f"    │   {desc}\n"),
 
-                    (bg or f"{_MUTED}", f"    └── ⬇ {dl_cnt:,} installs  │  ⭐ {stars:.1f} rating  ──────────  "),
+                    (bg or f"{_MUTED}", f"    └── ↓ {dl_cnt:,} installs  │  ★ {stars:.1f} rating  ──────────  "),
 
                     (bg or (f"bold {_GREEN}" if selected else f"{_BLUE}"), f"{action_btn}\n\n"),
 
@@ -4119,7 +4119,7 @@ def _dialog_marketplace(orchestrator=None):
 
             render_row,
 
-            title="UTIM Marketplace  🛒  Discover Extensions",
+            title="UTIM Extension Marketplace",
 
             legend="UP/DOWN: Navigate  •  ENTER: Select  •  ESC/Q: Exit",
 

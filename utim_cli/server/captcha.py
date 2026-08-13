@@ -183,7 +183,6 @@ def _header_token(x_captcha_token: Optional[str] = None) -> Optional[str]:
 from fastapi import Header
 
 def verify_captcha_with_header(
-    captcha_token: Optional[str] = Form(default=None),
     x_captcha_token: Optional[str] = Header(default=None, alias="X-Captcha-Token"),
 ) -> bool:
     """Dependency variant for non-form endpoints (CLI JSON bodies)."""
@@ -191,7 +190,7 @@ def verify_captcha_with_header(
     if provider == "off":
         return True
 
-    token = (captcha_token or x_captcha_token or "").strip()
+    token = (x_captcha_token or "").strip()
     if not token:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

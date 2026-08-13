@@ -5,6 +5,45 @@ import textwrap
 import time
 from utim_cli.config import config
 
+_LIVE_OPENROUTER_FREE_CACHE = set()
+_LAST_LIVE_FETCH_TIME = 0.0
+
+def fetch_active_openrouter_free_models() -> set[str]:
+    """Fetch live free models directly from OpenRouter API to filter out removed/stale models."""
+    global _LIVE_OPENROUTER_FREE_CACHE, _LAST_LIVE_FETCH_TIME
+    import time
+    now = time.time()
+    if _LIVE_OPENROUTER_FREE_CACHE and (now - _LAST_LIVE_FETCH_TIME) < 600:
+        return _LIVE_OPENROUTER_FREE_CACHE
+
+    try:
+        import requests
+        resp = requests.get("https://openrouter.ai/api/v1/models", timeout=3.5)
+        if resp.status_code == 200:
+            data = resp.json().get("data", [])
+            live_free = set()
+            for m in data:
+                mid = m.get("id", "")
+                pricing = m.get("pricing", {})
+                p_in = str(pricing.get("prompt", "1"))
+                p_out = str(pricing.get("completion", "1"))
+                if mid.endswith(":free") or (p_in == "0" and p_out == "0"):
+                    live_free.add(mid)
+            if live_free:
+                _LIVE_OPENROUTER_FREE_CACHE = live_free
+                _LAST_LIVE_FETCH_TIME = now
+                return live_free
+    except Exception:
+        pass
+
+    return _LIVE_OPENROUTER_FREE_CACHE
+
+def _dialog_hide_model(model_id: str):
+    hidden = config.get("hidden_models") or []
+    if model_id not in hidden:
+        hidden.append(model_id)
+        config.set("hidden_models", hidden)
+
 def _safe_prompt(prompt_text: str, color: str = None, is_password: bool = False) -> str:
     """Bulletproof replacement for prompt_toolkit's prompt() when nested inside run_in_terminal context.
     Prevents asyncio / nest_asyncio event loop crashes on Python 3.13.
@@ -336,7 +375,7 @@ def _dialog_modelsettings(orchestrator):
                         except ValueError:
                             console.print("[red]✗ Error: Invalid number[/red]")
                 except KeyboardInterrupt:
-                    console.print("\n[yellow]⚠ Cancelled temperature change.[/yellow]\n")
+                    console.print("\n[yellow]Cancelled temperature change.[/yellow]\n")
                 time.sleep(1.0)
                 
             elif key == "max_tokens":
@@ -359,7 +398,7 @@ def _dialog_modelsettings(orchestrator):
                         except ValueError:
                             console.print("[red]✗ Error: Invalid integer[/red]")
                 except KeyboardInterrupt:
-                    console.print("\n[yellow]⚠ Cancelled max output tokens change.[/yellow]\n")
+                    console.print("\n[yellow]Cancelled max output tokens change.[/yellow]\n")
                 time.sleep(1.0)
                 
             elif key == "reasoning_enabled":
@@ -413,13 +452,13 @@ def _dialog_model(orchestrator):
         main_model = orchestrator.model_id
 
         rows = [
-            {"key": "main", "label": "🤖 Configure Main Agent Model", "desc": f"Currently: {main_model}"},
-            {"key": "sub_menu", "label": "🧠 Configure Sub-Agent Models...", "desc": "Configure models for specific subagents (Investigator, Search, Planner, Expander)"},
+            {"key": "main", "label": "Configure Main Agent Model", "desc": f"Currently: {main_model}"},
+            {"key": "sub_menu", "label": "Configure Sub-Agent Models...", "desc": "Configure models for specific subagents (Investigator, Search, Planner, Expander)"},
             {"key": "back", "label": "Back to Chat", "desc": "Return to the previous screen"}
         ]
 
         def _render(idx, row, selected):
-            bg = 'bg:#1e1e2e' if selected else ''
+            bg = 'bg:#313244' if selected else ''
             if row["key"] == "back":
                 fg = 'bold #f38ba8' if selected else '#f38ba8'
             elif row["key"] == "main":
@@ -436,7 +475,7 @@ def _dialog_model(orchestrator):
             rows, _render,
             title="Model Settings Selection",
             legend="ENTER to select, ESC/Q to return to chat",
-            search_prompt=" 🔍 Search Options: ",
+            search_prompt=" Search Options: ",
             search_title="Filter Options",
             list_title="Available Model Configurations"
         )
@@ -466,29 +505,25 @@ def _dialog_subagents_menu(orchestrator):
             return val or default
 
         rows = [
-            {"key": "web_search", "label": "🌐 Deep Research Agent (web_search)",
+            {"key": "web_search", "label": "Deep Research Agent (web_search)",
              "desc": f"Currently: {_cur('subagent_model_web_search', f'Default ({DEFAULT_MODEL})')}"},
-            {"key": "plan_project", "label": "📋 Planner Agent (plan_project)",
+            {"key": "plan_project", "label": "Planner Agent (plan_project)",
              "desc": f"Currently: {_cur('subagent_model_plan_project', f'Default ({DEFAULT_MODEL})')}"},
-            {"key": "generate_image", "label": "🎨 Prompt Expander Model (generate_image)",
+            {"key": "generate_image", "label": "Prompt Expander Model (generate_image)",
              "desc": f"Currently: {_cur('subagent_model_generate_image', f'Default ({DEFAULT_MODEL})')}"},
-            {"key": "image_gen", "label": "🖼️ Image Generator Model (image_gen)",
+            {"key": "image_gen", "label": "Image Generator Model (image_gen)",
              "desc": f"Currently: {_cur('subagent_model_image_gen', 'Default (openrouter/free)')}"},
-            {"key": "analyze_image", "label": "👁️ Image Analyzer Agent (analyze_image)",
-             "desc": f"Currently: {_cur('subagent_model_analyze_image', 'Default (google/gemini-3.1-flash-image)')}"},
-            {"key": "blender_vision", "label": "📦 Blender Vision Analyzer (blender_vision)",
-             "desc": f"Currently: {_cur('subagent_model_blender_vision', 'Default (google/gemini-3.1-flash-image)')}"},
-            {"key": "blender_code", "label": "⚙️ Blender Script Writer (blender_code)",
+            {"key": "blender_code", "label": "Blender Script Writer (blender_code)",
              "desc": f"Currently: {_cur('subagent_model_blender_code', f'Default ({DEFAULT_MODEL})')}"},
-            {"key": "blender_3d", "label": "🧊 Tripo 3D Generator Model (blender_3d)",
+            {"key": "blender_3d", "label": "Tripo 3D Generator Model (blender_3d)",
              "desc": f"Currently: {_cur('subagent_model_blender_3d', 'Default (v3.1)')}"},
-            {"key": "blender_3d_mode", "label": "⚙️ Tripo 3D Generation Mode (auto/manual)",
+            {"key": "blender_3d_mode", "label": "Tripo 3D Generation Mode (auto/manual)",
              "desc": f"Currently: {config.get('subagent_model_blender_3d_mode', 'auto').upper()}"},
             {"key": "back", "label": "Back to Main Model Settings", "desc": "Return to the previous screen"}
         ]
 
         def _render(idx, row, selected):
-            bg = 'bg:#1e1e2e' if selected else ''
+            bg = 'bg:#313244' if selected else ''
             if row["key"] == "back":
                 fg = 'bold #f38ba8' if selected else '#f38ba8'
             elif row["key"].startswith("blender"):
@@ -496,7 +531,7 @@ def _dialog_subagents_menu(orchestrator):
             else:
                 fg = 'bold #a6e3a1' if selected else '#a6e3a1'
             return [
-                (bg, '  ➤ ' if selected else '    '),
+                (bg, '  ' if selected else '    '),
                 (bg or fg, f"{row['label']}\n"),
                 (bg or 'class:dim', f"      {row['desc']}\n"),
             ]
@@ -505,7 +540,7 @@ def _dialog_subagents_menu(orchestrator):
             rows, _render,
             title="Configure Sub-Agent Models",
             legend="ENTER to select, ESC/Q to go back",
-            search_prompt=" 🔍 Search Subagents: ",
+            search_prompt=" Search Subagents: ",
             search_title="Filter Subagents",
             list_title="Available Subagents",
             initial_index=subagent_menu_index
@@ -554,7 +589,7 @@ def _dialog_model_main(orchestrator, target="main"):
             models.insert(0, current_item)
             
         def render_model(i, m, sel):
-            bg = 'bg:#a6e3a1 bold #1e1e2e' if sel else ''
+            bg = 'bg:#313244 bold white' if sel else ''
             mid = m['model_id']
             display_id = mid.upper()
             
@@ -581,7 +616,7 @@ def _dialog_model_main(orchestrator, target="main"):
             models, render_model,
             title=title_str,
             legend="Use ↑↓ to navigate, Enter to select, Escape/q to cancel",
-            search_prompt=" 🔍 Search Tripo Models: ",
+            search_prompt=" Search Tripo Models: ",
             search_title="Filter Models",
             list_title="Available Engines"
         )
@@ -589,7 +624,7 @@ def _dialog_model_main(orchestrator, target="main"):
             selected_model = models[idx]["model_id"]
             config.set("subagent_model_blender_3d", selected_model)
             config.set("subagent_model_blender_3d_source", "utim")
-            console.print(f"\n[bold #f9e2af]✓ blender_3d subagent model set to {selected_model}[/bold #f9e2af]\n")
+            console.print(f"\n[bold white]✓ blender_3d subagent model set to {selected_model}[/bold white]\n")
             time.sleep(1.0)
         return
 
@@ -614,199 +649,8 @@ def _dialog_model_main(orchestrator, target="main"):
         except Exception:
             pass
 
-    if target == 'main':
-        approved_set = {
-            DEFAULT_MODEL
-        }
-        if is_paid_plan:
-            approved_set.update({
-                "anthropic/claude-sonnet-4.6",
-                "anthropic/claude-sonnet-4.5",
-                "anthropic/claude-sonnet-5",
-                "anthropic/claude-opus-4.5",
-                "anthropic/claude-opus-4.6",
-                "anthropic/claude-opus-4.7",
-                "anthropic/claude-opus-4.8",
-                "anthropic/claude-fable-5",
-                "inclusionai/ling-2.6-flash",
-                "inclusionai/ling-2.6-1t",
-                "xiaomi/mimo-v2.5",
-                "xiaomi/mimo-v2.5-pro",
-                "deepseek/deepseek-v4-flash",
-                "deepseek/deepseek-v4-flash-0731",
-                "deepseek/deepseek-v4-pro",
-                "deepseek/deepseek-r1",
-                "openai/gpt-5.5",
-                "openai/gpt-5.4",
-                "openai/gpt-5.4-mini",
-                "openai/gpt-5.3-codex",
-                "moonshotai/kimi-k2.6",
-                "moonshotai/kimi-k2.7-code",
-                "moonshotai/kimi-k2.5",
-                "moonshotai/kimi-k3",
-                "google/gemini-3.1-pro-preview-customtools",
-                "google/gemini-3.5-flash",
-                "google/gemini-3.6-flash",
-                "minimax/minimax-m2.7",
-                "minimax/minimax-m2.5",
-                "minimax/minimax-m3",
-                "kwaipilot/kat-coder-pro-v2",
-                "z-ai/glm-5.1",
-                "z-ai/glm-5-turbo",
-                "z-ai/glm-4.7",
-                "z-ai/glm-5",
-                "z-ai/glm-5.2",
-                "nex-agi/nex-n2-pro",
-                "x-ai/grok-4.3",
-                "x-ai/grok-4.20",
-                "x-ai/grok-build-0.1",
-                "qwen/qwen3.7-max",
-                "qwen/qwen3.7-plus",
-                "qwen/qwen3.6-plus",
-                "stepfun/step-3.7-flash",
-                "thinkingmachines/inkling",
-                "meta/muse-spark-1.1",
-                "poolside/laguna-s-2.1:free",
-            })
-    elif target.startswith('subagent_') and target not in ('subagent_image_gen', 'subagent_blender_vision', 'subagent_analyze_image', 'subagent_blender_code'):
-        approved_set = {
-            DEFAULT_MODEL,
-            "google/gemma-4-31b-it:free",
-            "poolside/laguna-s-2.1:free",
-            "openrouter/free",
-        }
-        if is_paid_plan:
-            approved_set.update({
-                DEFAULT_MODEL,
-                "anthropic/claude-sonnet-4.6",
-                "inclusionai/ling-2.6-flash",
-                "xiaomi/mimo-v2.5",
-                "xiaomi/mimo-v2.5-pro",
-                "deepseek/deepseek-v4-flash",
-                "deepseek/deepseek-v4-pro",
-                "openai/gpt-5.5",
-                "inclusionai/ling-2.6-1t",
-                "moonshotai/kimi-k2.6",
-                "openai/gpt-5.3-codex",
-                "google/gemini-3.1-pro-preview-customtools",
-                "openai/gpt-5.4",
-                "minimax/minimax-m2.7",
-                "kwaipilot/kat-coder-pro-v2",
-                "z-ai/glm-5.1",
-                "anthropic/claude-fable-5",
-                "nex-agi/nex-n2-pro",
-                "minimax/minimax-m3",
-                "moonshotai/kimi-k2.7-code",
-                "deepseek/deepseek-r1",
-                "x-ai/grok-4.3",
-                "google/gemini-3.5-flash",
-                "google/gemini-3.6-flash",
-                "qwen/qwen3.7-max",
-                "stepfun/step-3.7-flash",
-            
-                "anthropic/claude-sonnet-4.5",
-                "anthropic/claude-sonnet-4.6",
-                "anthropic/claude-opus-4.5",
-                "anthropic/claude-opus-4.6",
-                "anthropic/claude-opus-4.7",
-                "anthropic/claude-opus-4.8",
-                "anthropic/claude-sonnet-5",
-                "z-ai/glm-5-turbo",
-                "z-ai/glm-4.7",
-                "z-ai/glm-5",
-                "z-ai/glm-5.2",
-                "qwen/qwen3.7-plus",
-                "qwen/qwen3.7-max",
-                "qwen/qwen3.6-plus",
-                "openai/gpt-5.4-mini",
-                "x-ai/grok-4.20",
-                "x-ai/grok-build-0.1",
-                "moonshotai/kimi-k2.5",
-                "thinkingmachines/inkling",
-                "moonshotai/kimi-k3",
-                "meta/muse-spark-1.1",
-                "poolside/laguna-s-2.1:free",
-            })
-    elif target == "subagent_image_gen":
-        # subagent_image_gen
-        approved_set = {
-            "sourceful/riverflow-v2.5-fast",
-            "black-forest-labs/flux.2-klein-4b",
-            "krea/krea-2",
-        }
-        if is_paid_plan:
-            approved_set.update({
-                "krea/krea-2",
-                "recraft/recraft-v4.1",
-                "recraft/recraft-v4.1-pro",
-                "recraft/recraft-v4.1-utility",
-                "recraft/recraft-v4.1-utility-pro",
-                "recraft/recraft-v4.1-vector",
-                "recraft/recraft-v4.1-pro-vector",
-                "x-ai/grok-imagine-image-quality",
-                "microsoft/mai-image-2.5",
-                "sourceful/riverflow-v2.5-fast",
-                "sourceful/riverflow-v2.5-pro",
-                "google/gemini-3-pro-image",
-                "google/gemini-3.1-flash-image",
-                "openai/gpt-image-1",
-                "openai/gpt-image-1-mini",
-                "openai/gpt-image-2",
-                "google/gemini-2.5-flash-image",
-                "openai/gpt-5-image",
-                "openai/gpt-5-image-mini",
-                "google/gemini-3-pro-image-preview",
-                "black-forest-labs/flux.2-pro",
-                "black-forest-labs/flux.2-flex",
-                "black-forest-labs/flux.2-max",
-                "bytedance-seed/seedream-4.5",
-                "black-forest-labs/flux.2-klein-4b",
-                "sourceful/riverflow-v2-fast",
-                "sourceful/riverflow-v2-pro",
-                "google/gemini-3.1-flash-image-preview",
-                "openai/gpt-image-2"
-            })
-
-    elif target in ("subagent_blender_vision", "subagent_analyze_image"):
-        approved_set = {
-            "google/gemma-4-31b-it:free",
-            "google/gemma-4-26b-a4b-it:free",
-            "nvidia/nemotron-nano-12b-v2-vl:free",
-            "openrouter/free",
-        }
-        if is_paid_plan:
-            approved_set.update({
-                "google/gemini-3.5-flash",
-                "google/gemini-3.1-pro-preview",
-                "anthropic/claude-sonnet-4.6",
-                "anthropic/claude-opus-4.6",
-                "xiaomi/mimo-v2.5",
-                "xiaomi/mimo-v2.5-pro",
-                "openai/gpt-5.3-codex",
-                "openai/gpt-5.4",
-                "x-ai/grok-4.3",
-            })
-
-    elif target == "subagent_blender_code":
-        approved_set = {
-            DEFAULT_MODEL,
-        }
-        if is_paid_plan:
-            approved_set.update({
-                "anthropic/claude-sonnet-4.6",
-                "anthropic/claude-opus-4.6",
-                "openai/gpt-5.3-codex",
-                "openai/gpt-5.4",
-                "openai/gpt-5.5",
-                "deepseek/deepseek-v4-pro",
-                "moonshotai/kimi-k2.7-code",
-                "x-ai/grok-4.3",
-                "minimax/minimax-m2.7",
-                "google/gemini-3.5-flash",
-            })
-    
-    else:
-        approved_set = {DEFAULT_MODEL}
+    # Dynamically initialize approved_set — server catalog will populate all active models for this target
+    approved_set = {DEFAULT_MODEL}
 
     # Cost hierarchy for paid plans
     cost_hierarchy = {
@@ -901,6 +745,8 @@ def _dialog_model_main(orchestrator, target="main"):
     # Clean description mapping for supported models
     model_descs = {
         DEFAULT_MODEL: ("Default free coding & agent orchestration model.", ["default"]),
+
+
         "anthropic/claude-sonnet-4.6": ("Primary premium model for main agent and reasoning tasks.", ["premium"]),
         "inclusionai/ling-2.6-flash": ("Fast, cost-effective agent model by InclusionAI.", []),
         "xiaomi/mimo-v2.5": ("Highly capable multimodal model by Xiaomi.", []),
@@ -1048,23 +894,33 @@ def _dialog_model_main(orchestrator, target="main"):
     server_catalog: dict = {}
     try:
         import requests as _req
-        cat_resp = _req.get(f"{SERVER_URL.rstrip('/')}/models/catalog", timeout=5)
+        cat_resp = _req.get(f"{SERVER_URL.rstrip('/')}/models/catalog", timeout=3)
         if cat_resp.status_code == 200:
             server_catalog = cat_resp.json() or {}
     except Exception:
         pass
 
+    if not server_catalog:
+        try:
+            from utim_cli.server.models import get_model_catalog
+            server_catalog = get_model_catalog()
+        except Exception:
+            pass
+
     # Determine which catalog list to use for this target
     _target_to_catalog_key = {
         "main":                    "main_agent",
         "subagent_plan_project":   "plan_project",
+        "subagent_web_search":     "subagent_text",
+        "subagent_blender_code":   "subagent_text",
         "subagent_analyze_image":  "analyze_image",
         "subagent_blender_vision": "analyze_image",
         "subagent_image_gen":      "image_gen",
-        "subagent_generate_image": "main_agent",
+        "subagent_generate_image": "image_gen",
     }
 
-    catalog_key = _target_to_catalog_key.get(target, "main_agent")
+    default_key = "subagent_text" if target.startswith("subagent_") else "main_agent"
+    catalog_key = _target_to_catalog_key.get(target, default_key)
 
     # Inject server catalog models into approved_set and live_descs
     if server_catalog:
@@ -1135,29 +991,6 @@ def _dialog_model_main(orchestrator, target="main"):
             pass
 
 
-    try:
-        import requests
-        resp = requests.get("https://openrouter.ai/api/v1/models", timeout=4)
-        if resp.status_code == 200:
-            all_openrouter_raw.extend(resp.json().get("data", []))
-    except Exception:
-        pass
-
-    for rm in all_openrouter_raw:
-        mid = rm.get("id")
-        if not mid:
-            continue
-        if mid in model_descs:
-            live_descs[mid] = rm.get("description", "")
-        
-        # Only add to approved_set if it is part of UTIM's curated model_descs or recommended list
-        if mid in model_descs or mid in recommended_set:
-            if not is_paid_plan:
-                if (mid.endswith(":free") or ":free" in mid) and target != "subagent_image_gen":
-                    approved_set.add(mid)
-            else:
-                approved_set.add(mid)
-
     def is_image_output_model(mid: str, tags: list) -> bool:
         mid_lower = mid.lower()
         if "image" in tags:
@@ -1174,8 +1007,12 @@ def _dialog_model_main(orchestrator, target="main"):
                 tags_val = list(tags_val) + ["free"]
 
         # Main agent and non-image subagents only accept models that output text!
+        # Image generation subagents only accept models that output images!
         if target != "subagent_generate_image" and target != "subagent_image_gen":
             if is_image_output_model(mid, tags_val):
+                continue
+        else:
+            if not is_image_output_model(mid, tags_val):
                 continue
                 
         primary_models.append({
@@ -1188,6 +1025,23 @@ def _dialog_model_main(orchestrator, target="main"):
     # Sort based on cost hierarchy
     primary_models = sorted(primary_models, key=lambda x: (cost_hierarchy.get(x["model_id"], (9, ""))[0], x["model_id"]))
 
+    # ── Live OpenRouter Free Model Verification & Hidden Model Purge ───────────
+    hidden_models = set(config.get("hidden_models") or [])
+    live_free_models = fetch_active_openrouter_free_models()
+
+    filtered_primary = []
+    for m in primary_models:
+        mid = m["model_id"]
+        # Skip if hidden by user
+        if mid in hidden_models:
+            continue
+        # If model ends with :free and live_free_models was retrieved, verify it is still active
+        if live_free_models and mid.endswith(":free") and mid not in live_free_models and mid != DEFAULT_MODEL:
+            continue
+        filtered_primary.append(m)
+
+    primary_models = filtered_primary
+
     # ── Prepend user-defined custom models ───────────────────────────────────
     custom_entries = [
         {
@@ -1197,6 +1051,7 @@ def _dialog_model_main(orchestrator, target="main"):
             "desc": f"Custom model via {m.get('provider_name', 'Custom')}."
         }
         for m in config.custom_models
+        if m["model_id"] not in hidden_models
     ]
     models = custom_entries + primary_models
 
@@ -1204,12 +1059,13 @@ def _dialog_model_main(orchestrator, target="main"):
     # "Non-Agent Tool" — disables the LLM loop, tool runs in simple direct mode
     # "None" — only available for generate_image, so main agent writes the prompt
     _BLENDER_TARGETS = ('subagent_blender_vision', 'subagent_blender_code')
-    if target.startswith('subagent_') and target not in ('subagent_image_gen',) + _BLENDER_TARGETS:
+    if target.startswith('subagent_') and target not in ('subagent_image_gen', 'subagent_generate_image') + _BLENDER_TARGETS:
+
         non_agent_desc = (
             "Disable the LLM subagent loop. Tool runs in direct/simple mode (e.g. web search = raw results, "
             "codebase investigator = file content only, planner = task list from main agent)."
         )
-        sentinel_label = "🚫  Non-Agent Tool  (direct mode)"
+        sentinel_label = " Non-Agent Tool  (direct mode)"
         if target in ("subagent_generate_image",):
             sentinel_label = "⬜  None  (main agent writes the image prompt)"
             non_agent_desc = "Disable the prompt expander entirely — the main agent writes the image prompt directly."
@@ -1265,7 +1121,7 @@ def _dialog_model_main(orchestrator, target="main"):
         return
 
     def render_model(i, m, sel):
-        bg  = 'bg:#a6e3a1 bold #1e1e2e' if sel else ''
+        bg  = 'bg:#313244 bold white' if sel else ''
         mid = m['model_id']
         source = _normalize_source(m.get('source'))
 
@@ -1291,7 +1147,7 @@ def _dialog_model_main(orchestrator, target="main"):
         # Sentinel items: Non-Agent Tool / None
         if source == 'sentinel':
             label = m.get('label', mid)
-            sentinel_style = 'bg:#f9e2af bold #1e1e2e' if sel else 'bold #f9e2af'
+            sentinel_style = 'bg:#313244 bold white' if sel else 'bold white'
             desc_style = bg or 'fg:#585b70'
             current_mark = ''
             subkey = target.split('_', 1)[1] if target.startswith('subagent_') else ''
@@ -1422,7 +1278,7 @@ def _dialog_model_main(orchestrator, target="main"):
             orchestrator.model_source = source
             config.set("main_model", selected_model)
             config.set("main_model_source", source)
-            console.print(f"\n[bold #f9e2af]✓ Main Agent model set to {label}{selected_model}[/bold #f9e2af]\n")
+            console.print(f"\n[bold white]✓ Main Agent model set to {label}{selected_model}[/bold white]\n")
             
             # Initialize settings for the chosen model instantly
             init_model_settings(selected_model)
@@ -1441,7 +1297,7 @@ def _dialog_model_main(orchestrator, target="main"):
             subkey = target.split('_', 1)[1]
             config.set(f"subagent_model_{subkey}", selected_model)
             config.set(f"subagent_model_{subkey}_source", source)
-            console.print(f"\n[bold #f9e2af]✓ {subkey} subagent model set to {label}{selected_model}[/bold #f9e2af]\n")
+            console.print(f"\n[bold white]✓ {subkey} subagent model set to {label}{selected_model}[/bold white]\n")
 
             # Initialize settings for the chosen model
             init_model_settings(selected_model)
@@ -1459,10 +1315,13 @@ def _dialog_model_main(orchestrator, target="main"):
     elif action == 'delete_custom':
         if models and idx < len(models):
             target_item = models[idx]
+            mid = target_item['model_id']
             if target_item.get('source') == 'custom':
-                _dialog_delete_custom_model(orchestrator, target_item['model_id'])
+                _dialog_delete_custom_model(orchestrator, mid)
+            elif target_item.get('source') == 'sentinel':
+                console.print("\n[yellow]Cannot remove built-in sentinel option.[/yellow]\n")
             else:
-                console.print("\n[yellow]Only custom models can be deleted.[/yellow]\n")
+                _dialog_hide_model_interactive(orchestrator, mid)
 
     elif action == 'disconnect_provider':
         _dialog_disconnect_provider(orchestrator)
@@ -1580,7 +1439,7 @@ def _dialog_byok_import(orchestrator):
                 err_msg = "HTTP 401 Unauthorized: The API key you entered was rejected by the provider. Please verify that your API key is correct and active."
             elif code == 403 or str(code) == "403":
                 err_msg = "HTTP 403 Forbidden: Access denied by the provider. Please check your account permissions/billing."
-        byok_console.print(f"\n[red]❌ Failed to fetch models: {err_msg}[/red]\n")
+        byok_console.print(f"\n[red]Failed to fetch models: {err_msg}[/red]\n")
         return
 
     model_list = []
@@ -1596,7 +1455,7 @@ def _dialog_byok_import(orchestrator):
                     break
 
     if not model_list:
-        byok_console.print("\n[red]❌ Could not parse any models from the endpoint response.[/red]\n")
+        byok_console.print("\n[red]Could not parse any models from the endpoint response.[/red]\n")
         return
 
     byok_console.print(f"\n[bold #a6e3a1]✓ Successfully fetched {len(model_list)} models![/bold #a6e3a1]")
@@ -1772,6 +1631,34 @@ def _dialog_add_custom_model(orchestrator):
         add_console.print(f"\n[bold #a6e3a1]✓ Now using {model_id}[/bold #a6e3a1]\n")
     else:
         add_console.print("\n[dim]Model saved. Use /model to select it anytime.[/dim]\n")
+
+
+def _dialog_hide_model_interactive(orchestrator, model_id: str):
+    """Confirm and hide any catalog model (e.g. stale/deprecated free model) by model_id."""
+    from utim_cli.utim import console, custom_theme
+    import sys, time
+    from rich.console import Console as RichConsole
+
+    del_console = RichConsole(file=sys.__stdout__, highlight=False, theme=custom_theme)
+    time.sleep(0.05)
+
+    del_console.print(f"\n[yellow]Remove / Hide model [bold]{model_id}[/bold] from catalog?[/yellow]")
+    try:
+        confirm = _safe_prompt("  Type 'yes' to confirm: ", color="#f38ba8").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        confirm = ""
+
+    if confirm == "yes":
+        hidden = config.get("hidden_models") or []
+        if not isinstance(hidden, list):
+            hidden = []
+        if model_id not in hidden:
+            hidden.append(model_id)
+            config.set("hidden_models", hidden)
+        del_console.print(f"\n[bold #a6e3a1]✓ Removed {model_id} from catalog.[/bold #a6e3a1]\n")
+        time.sleep(1.0)
+    else:
+        del_console.print("\n[dim]Cancelled.[/dim]\n")
 
 
 def _dialog_delete_custom_model(orchestrator, model_id: str):

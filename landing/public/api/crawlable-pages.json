@@ -1,0 +1,139 @@
+{
+  "site": "UTIM AI CLI",
+  "domain": "https://utim.dev",
+  "version": "2.2.1",
+  "updated_at": "2026-08-13",
+  "active_models_count": 66,
+  "pages": [
+    {
+      "route": "/",
+      "url": "https://utim.dev/",
+      "title": "UTIM AI — Autonomous Terminal AI Agent & Creators Ecosystem",
+      "meta_description": "UTIM AI v2.2.1 is an autonomous, high-agency CLI AI coding agent and Creators Ecosystem marketplace for terminal-first developers with 66 active models.",
+      "category": "home",
+      "crawlable_data": {
+        "h1": "Autonomous Terminal AI Coding Agent & Creators Ecosystem",
+        "sections": [
+          {
+            "heading": "Features",
+            "content": "Free Tier, 66 Multi-LLM active models (Claude 3.7/4.6, GPT-5.6, DeepSeek V4/R1, Gemini 3.6, Qwen 3.8, Ollama), Vector Memory RAG, MCP stdio/SSE server support, isolated subagents, creators marketplace."
+          },
+          {
+            "heading": "Installation",
+            "content": "npm install -g @emend-ai/utim OR pip install utim"
+          }
+        ]
+      }
+    },
+    {
+      "route": "/pricing",
+      "url": "https://utim.dev/pricing",
+      "title": "UTIM AI Pricing — Free, Pro, Ultimate & Creator Plans",
+      "meta_description": "Simple transparent pricing for UTIM AI CLI. Free tier with 1,000 free requests/day, Pro plan at $15/mo, Ultimate plan at $49/mo.",
+      "category": "pricing",
+      "crawlable_data": {
+        "h1": "Transparent Pricing & Recalculation Engine for Terminal-First Developers",
+        "recalculation_engine": "5-hour slot refills, Rollover Quota Bank, deduction cascade, and BYOK overrides.",
+        "plans": [
+          {
+            "name": "Free",
+            "price": "$0/mo",
+            "features": "1,000 free requests/day for coding & debugging, full CLI agent, stdio MCP support, Ollama integration."
+          },
+          {
+            "name": "Pro",
+            "price": "$15/mo",
+            "features": "2,500 monthly credits, Claude 3.7 / Sonnet 4.6, GPT-5.6, DeepSeek R1, Vector RAG, unlimited MCP servers."
+          },
+          {
+            "name": "Ultimate",
+            "price": "$49/mo",
+            "features": "10,000 monthly credits, priority execution, 5GB workspace sharing, 24/7 dedicated support."
+          }
+        ]
+      }
+    },
+    {
+      "route": "/rewards",
+      "url": "https://utim.dev/rewards",
+      "title": "UTIM Rewards Wheel Hub — Win 24-Hour Unlimited Access",
+      "meta_description": "Spin the UTIM Rewards Wheel to unlock 24-hour unlimited model access. Dynamic probability recalculation and model omissions.",
+      "category": "rewards",
+      "crawlable_data": {
+        "h1": "UTIM Rewards Wheel Hub",
+        "description": "Spin wheel rewards hub with 24-hour zero quota access to active AI models."
+      }
+    },
+    {
+      "route": "/vs-claude-code",
+      "url": "https://utim.dev/vs-claude-code",
+      "title": "UTIM AI vs Claude Code — Feature & Capability Comparison",
+      "meta_description": "Compare UTIM AI vs Claude Code. UTIM provides a free agent tier, multi-model routing, creators marketplace, ChromaDB vector memory RAG, and MCP integration.",
+      "category": "comparison",
+      "crawlable_data": {
+        "h1": "UTIM AI vs Claude Code",
+        "verdict": "UTIM AI provides multi-model freedom, a zero-cost free tier, persistent vector memory, and an open marketplace."
+      }
+    },
+    {
+      "route": "/vs-antigravity",
+      "url": "https://utim.dev/vs-antigravity",
+      "title": "UTIM AI vs Google Antigravity — Feature Comparison",
+      "meta_description": "Compare UTIM AI vs Google Antigravity. UTIM AI runs 100% terminal-native in Zsh/Bash/PowerShell/Tmux with 66 active models and vector memory RAG.",
+      "category": "comparison",
+      "crawlable_data": {
+        "h1": "UTIM AI vs Google Antigravity",
+        "verdict": "UTIM AI is 100% terminal-native with <150MB RAM footprint, zero IDE locking, and a global miniagent marketplace."
+      }
+    },
+    {
+      "route": "/vs-cursor",
+      "url": "https://utim.dev/vs-cursor",
+      "title": "UTIM AI vs Cursor — CLI Agent Comparison",
+      "meta_description": "Compare UTIM AI vs Cursor CLI. UTIM AI is an open, multi-provider terminal agent connecting to any LLM without proprietary vendor locking.",
+      "category": "comparison",
+      "crawlable_data": {
+        "h1": "UTIM AI vs Cursor CLI",
+        "verdict": "UTIM AI offers open model flexibility, native MCP integration, and creator monetization."
+      }
+    },
+    {
+      "route": "/vs-aider",
+      "url": "https://utim.dev/vs-aider",
+      "title": "UTIM AI vs Aider — Pair Programming Comparison",
+      "meta_description": "Compare UTIM AI vs Aider. UTIM AI features a rich terminal UI, vector memory RAG, MCP tool servers, and executable miniagents.",
+      "category": "comparison",
+      "crawlable_data": {
+        "h1": "UTIM AI vs Aider",
+        "verdict": "UTIM AI expands beyond basic git diffs into full autonomous subagent orchestration and tool ecosystems."
+      }
+    },
+    {
+      "route": "/features",
+      "url": "https://utim.dev/features",
+      "title": "UTIM AI Features — Vector RAG, MCP, Miniagents & Safety",
+      "meta_description": "Explore UTIM AI features: ChromaDB vector memory RAG, Model Context Protocol (MCP) tool servers, miniagents, and safety sandboxing.",
+      "category": "features",
+      "crawlable_data": {
+        "h1": "Autonomous Engine & Architectural Features",
+        "components": [
+          "Vector Memory RAG (ChromaDB)",
+          "Model Context Protocol (MCP) Stdio & SSE",
+          "Miniagent & Subagent Orchestration",
+          "Dry-Run & Safety Sandboxing"
+        ]
+      }
+    },
+    {
+      "route": "/marketplace",
+      "url": "https://utim.dev/marketplace",
+      "title": "UTIM Creators Marketplace — Monetize Miniagents & CLI Tools",
+      "meta_description": "Discover, install, buy, sell, and monetize miniagents and CLI extensions on the global UTIM Creators Marketplace with up to 95% creator revenue share.",
+      "category": "marketplace",
+      "crawlable_data": {
+        "h1": "Global Creators Marketplace for Terminal AI Tools",
+        "creator_share": "Up to 95% revenue share to creators"
+      }
+    }
+  ]
+}

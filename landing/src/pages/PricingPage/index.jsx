@@ -1,9 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { getApiUrl } from '../../lib/api';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import '../../components/PowershellUI/PowershellUI.css';
+import ScrollytellingHeaderNav from '../../components/ScrollytellingHeaderNav';
+import ScrollytellingFooter from '../../components/ScrollytellingFooter';
+import SEOHead from '../../components/SEOHead';
 import CreditTopup from '../../components/CreditTopup';
+import { 
+  Sparkles, Check, Zap, Rocket, Shield, 
+  Star, Crown, CreditCard, AlertCircle, 
+  CheckCircle2, RefreshCw, HelpCircle 
+} from 'lucide-react';
+import '../../components/ScrollytellingMain.css';
 
 const detectIsIndian = () => {
   try {
@@ -15,9 +23,6 @@ const detectIsIndian = () => {
     if (locale.toLowerCase().includes('-in')) {
       return true;
     }
-    if (navigator.languages && navigator.languages.some(l => l.toLowerCase().includes('-in'))) {
-      return true;
-    }
   } catch (e) {}
   return false;
 };
@@ -25,109 +30,128 @@ const detectIsIndian = () => {
 const pricingTiers = [
   {
     id: "free",
-    name: "Free Node",
-    price: "$0",
-    period: "mo",
-    cores: "Standard Compute (Low Priority)",
-    limits: "100 Credits (Refilled every 5 hours)",
+    name: "Free Plan",
+    icon: Zap,
+    priceMonthlyUsd: 0,
+    priceMonthlyInr: 0,
+    credits: "100 credits / 5 hrs",
+    target: "Community developers testing UTIM with free models and 5-hour auto-refills.",
+    popular: false,
     features: [
-      "Capped at 3,000 monthly credits with no quota bank (no stacking)",
-      "Access to Free-tier models only (cohere/north-mini-code, nvidia/nemotron-nano, qwen3-coder)",
-      "Standard local workspace tools (file editing, command execution)",
-      "Standard ChromaDB semantic memory database",
-      "Community support (Discord)"
-    ],
-    color: "#888888"
+      "100 credits auto-refilled every 5 hours",
+      "Up to 3,000 credits/mo allowance",
+      "Free models at $0.02 in / $0.03 out per 1M",
+      "Standard local workspace tools",
+      "Full CLI Agent & subagent execution",
+      "Stdio MCP server integration"
+    ]
   },
   {
     id: "hobby",
-    name: "Hobbyist Node",
-    price: "$7",
-    period: "mo",
-    cores: "Personal Compute (Normal Priority)",
-    limits: "4,000 Monthly Credits (+500 bonus credits on first purchase)",
+    name: "Hobby Plan",
+    icon: Rocket,
+    priceMonthlyUsd: 7,
+    priceMonthlyInr: 700,
+    credits: "4,000 credits (+500 1st purchase bonus)",
+    target: "Indie developers exploring coding MoEs and low-cost reasoning tools.",
+    popular: false,
     features: [
-      "Access to Hobby-tier MoEs & reasoning (deepseek-r1, kimi-k2.7-code, minimax-m3)",
-      "Full local semantic experiences database & cross-folder auto-sync",
-      "Unused credit rollover allowed for up to 2 months",
-      "Standard email support (within 48 hours)"
-    ],
-    color: "#ec4899"
+      "4,000 monthly credits + 500 1st purchase bonus",
+      "10x discount on free models ($0.002 in / $0.003 out)",
+      "Coding MoEs & reasoning models",
+      "Local ChromaDB semantic memory",
+      "Unused credit rollover (up to 2 mos)",
+      "BYOK custom provider keys",
+      "Standard email support"
+    ]
   },
   {
-    id: "starter",
-    name: "Starter Node",
-    price: "$25",
-    period: "mo",
-    cores: "Dedicated Compute (High Priority)",
-    limits: "18,000 Monthly Credits (+2,000 bonus credits on first purchase)",
+    id: "pro",
+    name: "Pro Plan",
+    icon: Shield,
+    priceMonthlyUsd: 25,
+    priceMonthlyInr: 2500,
+    credits: "18,000 credits (+2,000 1st purchase bonus)",
+    target: "Professional developers seeking the perfect balance of reasoning power and budget.",
+    popular: true,
     features: [
-      "Access to Pro-tier elite reasoning (claude-sonnet-4.6, gpt-5.4, gemini-3.5-flash)",
-      "Fully supports custom Model Context Protocol (MCP) server registries",
-      "Share Chat & Zip exports for up to 5 project workspaces (1-month link retention)",
-      "Standard developer support SLA (within 24 hours)"
-    ],
-    color: "#00F0FF"
+      "18,000 monthly credits + 2,000 1st purchase bonus",
+      "10x discount on free models ($0.002 in / $0.003 out)",
+      "Full registry of premium models",
+      "Priority compute allocation",
+      "Unlimited MCP Stdio & SSE servers",
+      "Priority developer support"
+    ]
   },
   {
-    id: "professional",
-    name: "Professional Core",
-    price: "$55",
-    period: "mo",
-    cores: "Architecture Lock (Top Priority)",
-    limits: "45,000 Monthly Credits (+5,000 bonus credits on first purchase)",
+    id: "max",
+    name: "Max Plan",
+    icon: Star,
+    priceMonthlyUsd: 55,
+    priceMonthlyInr: 5500,
+    credits: "45,000 credits (+5,000 1st purchase bonus)",
+    target: "Advanced builders running heavy scrollytelling visual agents and complex structures.",
+    popular: false,
     features: [
-      "Access to all model tiers (including gpt-5.3-codex, claude-opus-4.6, claude-fable-5)",
-      "Share Chat & Zip exports for up to 20 project workspaces (6-month link retention)",
-      "Mini-agents orchestration, custom workspace rules, & UI buttons integration",
-      "Priority developer support SLA (within 12 hours)"
-    ],
-    color: "#e8c97a"
+      "45,000 monthly credits + 5,000 1st purchase bonus",
+      "10x discount on free models ($0.002 in / $0.003 out)",
+      "Visual Analysis Engine & Image Gen",
+      "Heavy model batching & subagents",
+      "Custom model overrides per agent",
+      "24/7 dedicated support"
+    ]
   },
   {
     id: "ultimate",
-    name: "MAX Node",
-    price: "$110",
-    period: "mo",
-    cores: "Quantum Cluster (Instant Execution)",
-    limits: "90,000 Monthly Credits (+12,000 bonus credits on first purchase)",
+    name: "Ultimate Plan",
+    icon: Crown,
+    priceMonthlyUsd: 110,
+    priceMonthlyInr: 11000,
+    credits: "90,000 credits (+12,000 1st purchase bonus)",
+    target: "Elite power users utilizing ultra-premium heavy models without constraints.",
+    popular: false,
     features: [
-      "Access to all models with maximum throughput limits",
-      "Unlimited project zip exports & lifetime storage retention",
-      "Unlimited local vector memory database",
-      "Elite cognitive testing, layout-visual QA, and multi-agent regression loops",
-      "Premium 24/7 dedicated engineering support SLA (within 1 hour)"
-    ],
-    color: "#00FF66"
-  },
-  {
-    id: "payg",
-    name: "Pay As You Go",
-    price: "Top-up",
-    period: "one-time",
-    cores: "Flexible Credit Purchases",
-    limits: "1,000 credits = $1.00 USD",
-    features: [
-      "No recurring monthly subscription fees",
-      "Topped-up credits are added directly to your bonus quota bank",
-      "Full access to the model registry and advanced local workspace tools",
-      "Pay securely via card, netbanking, or UPI payments"
-    ],
-    color: "#ffc107"
+      "90,000 monthly credits + 12,000 1st purchase bonus",
+      "10x discount on free models ($0.002 in / $0.003 out)",
+      "Maximum priority unthrottled bandwidth",
+      "Unlimited custom model overrides",
+      "Team quota pooling & distribution",
+      "24/7 VIP priority response"
+    ]
   }
 ];
 
-const PricingPage = () => {
-  const { user, getToken, refreshProfile } = useAuth();
-  const location = useLocation();
-  const [tierIndex, setTierIndex] = useState(3); // Default to Professional
-  const [billingPeriod, setBillingPeriod] = useState('monthly'); // 'monthly' or 'yearly'
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [message, setMessage] = useState('');
-  const currentTier = pricingTiers[tierIndex];
+export default function PricingPage() {
+  const { user, userProfile, getToken, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [isIndian, setIsIndian] = useState(detectIsIndian());
   const [referralInfo, setReferralInfo] = useState(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [statusMessage, setStatusMessage] = useState(null);
+  const [errorMessage, setErrorMessage] = useState(null);
+  const [dynamicPopularPlanId, setDynamicPopularPlanId] = useState('pro');
+  const [plansList, setPlansList] = useState([]);
+
+  useEffect(() => {
+    const fetchPopularPlan = async () => {
+      try {
+        const apiUrl = getApiUrl();
+        const res = await fetch(`${apiUrl}/api/plans`);
+        if (res.ok) {
+          const plans = await res.json();
+          setPlansList(plans);
+          const popular = plans.find(p => p.is_most_popular);
+          if (popular && popular.name) {
+            setDynamicPopularPlanId(popular.name.toLowerCase());
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch popular plan details:', err);
+      }
+    };
+    fetchPopularPlan();
+  }, []);
+
 
   useEffect(() => {
     if (user) {
@@ -150,134 +174,61 @@ const PricingPage = () => {
     }
   }, [user]);
 
-  const getDiscountPct = (tierId) => {
-    if (!referralInfo || !referralInfo.discounts) return 0;
-    let dbPlanId = tierId;
-    if (tierId === 'starter') dbPlanId = 'pro';
-    if (tierId === 'professional') dbPlanId = 'max';
-    return referralInfo.discounts[dbPlanId] || 0;
-  };
-
-  const getDisplayPrice = (tier) => {
-    if (tier.id === 'free') return '$0';
-    if (tier.id === 'payg') return 'Top-up';
-    
-    const discountPct = getDiscountPct(tier.id);
-    
-    if (isIndian) {
-      const inrPrices = {
-        hobby: 700,
-        starter: 2500,
-        professional: 5500,
-        ultimate: 11000
-      };
-      const basePrice = inrPrices[tier.id] || 0;
-      if (discountPct > 0) {
-        const discountedPrice = Math.round(basePrice * (1 - discountPct / 100));
-        return {
-          price: `Rs. ${discountedPrice}/mo`,
-          original: `Rs. ${basePrice}/mo`,
-          discount: discountPct
-        };
-      }
-      return `Rs. ${basePrice}/mo`;
-    } else {
-      const usdPrices = {
-        hobby: 7,
-        starter: 25,
-        professional: 55,
-        ultimate: 110
-      };
-      const basePrice = usdPrices[tier.id] || 0;
-      if (discountPct > 0) {
-        const discountedPrice = Math.round(basePrice * (1 - discountPct / 100));
-        return {
-          price: `$${discountedPrice}/mo`,
-          original: `$${basePrice}/mo`,
-          discount: discountPct
-        };
-      }
-      return `${tier.price}/mo`;
-    }
-  };
-
-  const renderPrice = (tier) => {
-    const data = getDisplayPrice(tier);
-    if (typeof data === 'string') {
-      return <span>{data}</span>;
-    }
-    if (data.original) {
-      return (
-        <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.8rem', color: '#777', textDecoration: 'line-through' }}>
-            {data.original}
-          </span>
-          <span style={{ color: tier.color || '#fff' }}>
-            {data.price}
-          </span>
-          <span style={{ fontSize: '0.7rem', color: '#00FF66', background: 'rgba(0, 255, 102, 0.1)', padding: '2px 6px', borderRadius: '4px', marginTop: '4px', display: 'inline-block' }}>
-            {data.discount}% OFF (Referrals)
-          </span>
-        </span>
-      );
-    }
-    return <span>{data.price}</span>;
-  };
-
-  // Dynamically detect user country via GeoIP with timezone fallback
-  useEffect(() => {
-    fetch('https://ipapi.co/json/')
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.country_code) {
-          setIsIndian(data.country_code === 'IN');
-        }
-      })
-      .catch(() => {
-        // Keeps the default timezone/locale detection state if GeoIP fetch is blocked
-      });
-  }, []);
-
-  const getSavingsText = (tier) => {
-    return null;
-  };
-
-  // Parse plan from query param on mount
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const planParam = params.get('plan');
-    if (planParam) {
-      const idx = pricingTiers.findIndex(t => t.id === planParam);
-      if (idx !== -1) {
-        setTierIndex(idx);
-      }
-    }
-  }, [location.search]);
-
-  // Primary admin account for quick switching
-  const isAdmin = user && user.uid === 'WOCbb9RlPwgmIpi1dM7gv80gPHu2';
-
-  // Dynamically load Razorpay SDK
   useEffect(() => {
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.async = true;
     document.body.appendChild(script);
-    
     return () => {
-      document.body.removeChild(script);
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
     };
   }, []);
 
-  const handlePurchase = async () => {
+  const getDiscountPct = (tierId) => {
+    if (!referralInfo || !referralInfo.discounts) return 0;
+    return referralInfo.discounts[tierId] || 0;
+  };
+
+  const getPriceDisplay = (tier) => {
+    if (tier.priceMonthlyUsd === 0) return { main: '$0', sub: 'Forever free' };
+
+    const discountPct = getDiscountPct(tier.id);
+    const baseUsd = tier.priceMonthlyUsd;
+    const baseInr = tier.priceMonthlyInr;
+
+    if (isIndian) {
+      const price = discountPct > 0 ? Math.round(baseInr * (1 - discountPct / 100)) : baseInr;
+      return {
+        main: `₹${price.toLocaleString()}`,
+        sub: '/ month',
+        original: discountPct > 0 ? `₹${baseInr.toLocaleString()}` : null,
+        discountPct
+      };
+    } else {
+      const price = discountPct > 0 ? Math.round(baseUsd * (1 - discountPct / 100)) : baseUsd;
+      return {
+        main: `$${price}`,
+        sub: '/ month',
+        original: discountPct > 0 ? `$${baseUsd}` : null,
+        discountPct
+      };
+    }
+  };
+
+  const handleSubscribe = async (tier) => {
     if (!user) {
-      navigate('/auth?callback=/pricing-checkout');
+      navigate('/auth?redirect=/pricing');
       return;
     }
 
-    if (currentTier.id === 'free') {
+    setErrorMessage(null);
+    setStatusMessage(null);
+
+    if (tier.id === 'free') {
       setIsUpdating(true);
-      setMessage('Switching compute node to Free Tier...');
+      setStatusMessage('Switching to Free Tier...');
       try {
         const token = await getToken();
         const apiUrl = getApiUrl();
@@ -291,13 +242,13 @@ const PricingPage = () => {
         });
         const data = await response.json();
         if (data.success) {
-          setMessage('SUCCESS: Node reconfigured to Free Tier');
+          setStatusMessage('✓ Successfully switched to Free Tier.');
           await refreshProfile();
         } else {
-          setMessage(`ERROR: ${data.error || 'Failed to switch to Free Tier'}`);
+          setErrorMessage(data.error || 'Failed to switch to Free Tier');
         }
       } catch (err) {
-        setMessage('ERROR: Network failure during reconfiguration');
+        setErrorMessage('Network error during plan switch.');
       } finally {
         setIsUpdating(false);
       }
@@ -305,7 +256,7 @@ const PricingPage = () => {
     }
 
     setIsUpdating(true);
-    setMessage('Initializing secure subscription channel...');
+    setStatusMessage('Initializing checkout session...');
 
     try {
       const token = await getToken();
@@ -318,7 +269,7 @@ const PricingPage = () => {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ 
-          plan: currentTier.id, 
+          plan: tier.id, 
           interval: 'monthly',
           currency: isIndian ? 'INR' : 'USD'
         })
@@ -330,11 +281,11 @@ const PricingPage = () => {
         const options = {
           key: data.keyId,
           subscription_id: data.subscriptionId,
-          name: 'U.T.I.M AI',
-          description: `${currentTier.name} Subscription (Autopay)`,
-          handler: async function (response) {
+          name: 'UTIM AI',
+          description: `${tier.name} Compute Plan`,
+          handler: async function (resp) {
             try {
-              setMessage('Verifying subscription signature...');
+              setStatusMessage('Verifying subscription signature...');
               const verifyRes = await fetch(`${apiUrl}/api/subscription/verify`, {
                 method: 'POST',
                 headers: { 
@@ -342,21 +293,20 @@ const PricingPage = () => {
                   'Content-Type': 'application/json' 
                 },
                 body: JSON.stringify({
-                  razorpay_subscription_id: response.razorpay_subscription_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature
+                  razorpay_subscription_id: resp.razorpay_subscription_id,
+                  razorpay_payment_id: resp.razorpay_payment_id,
+                  razorpay_signature: resp.razorpay_signature
                 })
               });
               const verifyData = await verifyRes.json();
               if (verifyData.success) {
-                setMessage(`SUCCESS: Node reconfigured to ${currentTier.name} (Autopay Active)`);
-                // Update profile state instantly
+                setStatusMessage(`✓ Welcome to ${tier.name}! Your quota is now active.`);
                 await refreshProfile();
               } else {
-                setMessage(`ERROR: ${verifyData.error || 'Subscription verification failed'}`);
+                setErrorMessage(verifyData.error || 'Subscription verification failed.');
               }
             } catch (err) {
-              setMessage('ERROR: Network failure during verification');
+              setErrorMessage('Network failure during verification.');
             } finally {
               setIsUpdating(false);
             }
@@ -365,322 +315,180 @@ const PricingPage = () => {
             email: user.email || ''
           },
           theme: {
-            color: '#00f0ff'
+            color: '#121214'
           },
           modal: {
             ondismiss: function() {
               setIsUpdating(false);
-              setMessage('Checkout cancelled');
+              setStatusMessage(null);
             }
           }
         };
 
         const rzp = new window.Razorpay(options);
-        rzp.on('payment.failed', function (response) {
+        rzp.on('payment.failed', function (resp) {
           setIsUpdating(false);
-          setMessage('ERROR: ' + (response.error.description || 'Payment failed'));
+          setErrorMessage(resp.error?.description || 'Payment execution failed.');
         });
         rzp.open();
       } else {
-        setMessage(`ERROR: ${data.error || 'Failed to initialize subscription'}`);
+        setErrorMessage(data.error || 'Failed to create subscription session.');
         setIsUpdating(false);
       }
     } catch (err) {
-      console.error('Purchase error:', err);
-      setMessage('ERROR: Network failure during checkout');
-      setIsUpdating(false);
-    }
-  };
-
-  const handleAdminSwitch = async () => {
-    if (!isAdmin) return;
-    
-    setIsUpdating(true);
-    setMessage('');
-    
-    try {
-      const token = await getToken();
-      const apiUrl = getApiUrl();
-      
-      const response = await fetch(`${apiUrl}/api/user-plan`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ plan: currentTier.id })
-      });
-      
-      const data = await response.json();
-      if (data.success) {
-        setMessage(`SUCCESS: Node reconfigured to ${currentTier.name}`);
-        // Update profile state instantly
-        await refreshProfile();
-      } else {
-        setMessage(`ERROR: ${data.error || 'Failed to switch'}`);
-      }
-    } catch (err) {
-      console.error('Admin switch error:', err);
-      setMessage('ERROR: Network failure during reconfiguration');
-    } finally {
+      setErrorMessage(err.message || 'Payment initiation error.');
       setIsUpdating(false);
     }
   };
 
   return (
-    <div className="term-wrapper">
-      <div className="term-window">
-        {/* Title / Tab Bar */}
-        <div className="term-titlebar">
-          <div className="term-tab" onClick={() => navigate('/')}>
-            <span className="term-tab-icon" style={{color: '#3b78ff'}}>&gt;_</span>
-            <span className="term-tab-title">Home</span>
-          </div>
-          <div className="term-tab" onClick={() => navigate('/features')}>
-            <span className="term-tab-icon" style={{color: '#f9f1a5'}}>#</span>
-            <span className="term-tab-title">Features</span>
-          </div>
-          <div className="term-tab" onClick={() => navigate('/about')}>
-            <span className="term-tab-icon" style={{color: '#B266FF'}}>@</span>
-            <span className="term-tab-title">About</span>
-          </div>
-          <div className="term-tab active">
-            <span className="term-tab-icon" style={{color: '#e8c97a'}}>$</span>
-            <span className="term-tab-title">Billing Checkout</span>
-          </div>
-          <div className="term-tab" onClick={() => navigate('/docs')}>
-            <span className="term-tab-icon" style={{color: '#5bc0de'}}>?</span>
-            <span className="term-tab-title">Docs</span>
-          </div>
-          <div className="term-tab" onClick={() => navigate('/changelog')}>
-            <span className="term-tab-icon" style={{color: '#E5FF00'}}>↻</span>
-            <span className="term-tab-title">Changelog</span>
-          </div>
-          <div className="term-tab" onClick={() => navigate('/contacts')}>
-            <span className="term-tab-icon" style={{color: '#FF8C00'}}>~</span>
-            <span className="term-tab-title">Contacts</span>
-          </div>
-          <div className="term-tab" onClick={() => navigate('/referral')}>
-            <span className="term-tab-icon" style={{color: '#00FF66'}}>%</span>
-            <span className="term-tab-title">Referrals</span>
-          </div>
-          <div className="term-tab-add">+</div>
-          <div className="term-tab-chevron">v</div>
-          <div className="term-window-controls">
-            <div className="term-ctrl">_</div>
-            <div className="term-ctrl">□</div>
-            <div className="term-ctrl close" onClick={() => navigate('/')}>×</div>
-          </div>
+    <div className="st-page-root">
+      <SEOHead
+        title="Compute Pricing & Plan Tiers — UTIM AI"
+        description="Transparent developer compute pricing for UTIM CLI: Free ($0), Hobby ($7), Pro ($25), Max ($55), and Ultimate ($110). BYOK custom keys supported."
+        canonical="https://utim.dev/pricing"
+      />
+      
+      <ScrollytellingHeaderNav />
+
+      <div style={{ padding: '60px 24px 100px 24px', maxWidth: 1200, margin: '0 auto' }}>
+        
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: 40 }}>
+          <h1 style={{ fontSize: 'clamp(2.2rem, 4vw, 3.4rem)', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 12 }}>
+            Simple, Predictable Compute Pricing
+          </h1>
+          <p style={{ fontSize: '1.05rem', color: 'var(--text-muted)', maxWidth: 720, margin: '0 auto', lineHeight: 1.6 }}>
+            Upgrade, downgrade, or cancel anytime. All paid plans include rollover Quota Bank and priority compute.
+          </p>
         </div>
 
-        {/* Content Area */}
-        <div className="term-content term-markdown-view" style={{ padding: '32px' }}>
-          {/* Header Block */}
-          <div className="term-md-header" style={{ marginBottom: '24px' }}>
-            <div className="term-md-tag">[SECURE BILLING CHANNEL]</div>
-            <h1 className="term-md-title" style={{ fontSize: '1.6rem', margin: '8px 0' }}>
-              # Compute Node Subscription Reconfiguration
-            </h1>
-            <div className="term-md-subtitle" style={{ color: '#fff', fontSize: '0.9rem' }}>
-              Select target tier below to adjust and re-route your agent compute infrastructure.
-            </div>
+        {/* Status / Error Banner */}
+        {statusMessage && (
+          <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)', color: '#059669', padding: '12px 16px', borderRadius: 8, fontSize: 14, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8, maxWidth: 600, margin: '0 auto 24px auto' }}>
+            <CheckCircle2 size={18} />
+            <span>{statusMessage}</span>
           </div>
+        )}
 
-          <div className="term-md-divider">================================================================================</div>
-
-          {/* Promotional Notice */}
-          <div className="term-md-card" style={{ marginBottom: '24px', borderColor: '#E5FF00', background: 'rgba(229, 255, 0, 0.02)' }}>
-            <div style={{ color: '#E5FF00', fontWeight: 'bold', fontSize: '0.85rem', fontFamily: 'monospace', padding: '12px 16px', borderBottom: '1px solid rgba(229, 255, 0, 0.1)' }}>
-              [PROMOTIONAL SYSTEM NOTICE • TEMPORARY ACCESS GRANTED]
-            </div>
-            <div style={{ padding: '14px 16px', color: '#ccc', fontSize: '0.85rem', lineHeight: '1.5', fontFamily: 'monospace' }}>
-              All advanced tools (<strong>Image Generation</strong>, <strong>Blender Agent</strong>, <strong>Web Search Agent</strong>, <strong>Synthetic Eye</strong> for non-vision models, and <strong>Planning Agent</strong>) along with the global <strong>Experience Vector Database</strong> are currently <strong>FREE</strong> for all subscription tiers until June end (Extended through July end!).
-            </div>
+        {errorMessage && (
+          <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#DC2626', padding: '12px 16px', borderRadius: 8, fontSize: 14, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8, maxWidth: 600, margin: '0 auto 24px auto' }}>
+            <AlertCircle size={18} />
+            <span>{errorMessage}</span>
           </div>
+        )}
 
-          {/* Referral Discount Notice */}
-          {referralInfo && Object.keys(referralInfo.discounts || {}).length > 0 && (
-            <div className="term-md-card" style={{ marginBottom: '24px', borderColor: 'rgba(0,255,102,0.3)', background: 'rgba(0,255,102,0.04)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
-                <div>
-                  <div style={{ color: '#00FF66', fontWeight: 'bold', fontSize: '0.85rem', fontFamily: 'monospace', marginBottom: '4px' }}>
-                    [REFERRAL DISCOUNTS ACTIVE]
-                  </div>
-                  <div style={{ color: '#aaa', fontSize: '0.8rem' }}>
-                    You have earned referral discounts on {Object.keys(referralInfo.discounts).length} plan(s). Prices shown below reflect your discounts.
-                  </div>
-                </div>
-                <button
-                  className="term-btn-action"
-                  style={{ fontSize: '0.78rem', padding: '6px 12px', borderColor: 'rgba(0,255,102,0.3)', color: '#00FF66', whiteSpace: 'nowrap' }}
-                  onClick={() => navigate('/referral')}
-                >
-                  &gt; VIEW_REFERRALS()
-                </button>
-              </div>
-            </div>
-          )}
+        {/* Pricing Cards Grid */}
+        <div className="st-pricing-grid-all">
+          {pricingTiers.map((tier) => {
+            const Icon = tier.icon;
+            const price = getPriceDisplay(tier);
+            const activePlanId = userProfile?.plan || null;
+            const popularPlanId = activePlanId && activePlanId !== 'free' ? activePlanId : dynamicPopularPlanId;
+            const isPopular = tier.id === popularPlanId;
+            const isActivePlan = activePlanId && tier.id === activePlanId;
 
-          {!referralInfo && user && (
-            <div style={{ textAlign: 'right', marginBottom: '12px' }}>
-              <button
-                className="term-btn-action"
-                style={{ fontSize: '0.78rem', padding: '6px 12px', borderColor: 'rgba(0,255,102,0.2)', color: '#00FF66' }}
-                onClick={() => navigate('/referral')}
-              >
-                % Earn Free Access via Referrals
-              </button>
-            </div>
-          )}
-
-          {/* Billing Cycle Toggle */}
-
-
-          {/* Tier Grid Selector */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px', marginBottom: '24px' }} className="tw-pricing-select-grid">
-            {pricingTiers.map((tier, idx) => (
+            return (
               <div 
                 key={tier.id}
-                onClick={() => { setTierIndex(idx); setMessage(''); }}
-                style={{
-                  border: tierIndex === idx ? `1px solid ${tier.color}` : '1px solid rgba(255,255,255,0.06)',
-                  background: tierIndex === idx ? 'rgba(255,255,255,0.02)' : 'transparent',
-                  padding: '16px',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  textAlign: 'center'
-                }}
+                className={`st-pricing-card ${isPopular || isActivePlan ? 'st-card-popular' : ''}`}
+                style={{ display: 'flex', flexDirection: 'column' }}
               >
-                <div style={{ color: tierIndex === idx ? '#fff' : '#ccc', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                  {tier.name}
-                </div>
-                <div style={{ color: tierIndex === idx ? tier.color : '#888', fontSize: '0.9rem', fontWeight: 'bold', marginTop: '6px', fontFamily: 'monospace', wordBreak: 'break-all' }}>
-                  {renderPrice(tier)}
-                </div>
-              </div>
-            ))}
-          </div>
+                {isActivePlan ? (
+                  <div className="st-popular-badge" style={{ background: '#059669' }}>ACTIVE PLAN</div>
+                ) : isPopular ? (
+                  <div className="st-popular-badge">MOST POPULAR</div>
+                ) : null}
 
-          {/* Detailed Readout / Confirm Card */}
-          {currentTier.id === 'payg' ? (
-            <div style={{ marginBottom: '28px' }}>
-              <CreditTopup />
-            </div>
-          ) : (
-            <div className="term-md-card" style={{ marginBottom: '28px' }}>
-              <div className="term-md-card-border-top">┌── RECONFIGURATION TARGET: {currentTier.name.toUpperCase()} ─────────────────────────────</div>
-              <div className="term-md-card-content" style={{ padding: '16px 20px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }} className="tw-pricing-select-grid">
-                  <div>
-                    <div style={{ color: '#fff', fontSize: '0.75rem', fontWeight: 'bold' }}>COMPUTE ALLOCATION</div>
-                    <div style={{ color: '#fff', fontFamily: 'monospace', fontSize: '0.95rem' }}>{currentTier.cores}</div>
-                  </div>
-                  <div>
-                    <div style={{ color: '#fff', fontSize: '0.75rem', fontWeight: 'bold' }}>THROUGHPUT RATIO</div>
-                    <div style={{ color: currentTier.color, fontFamily: 'monospace', fontSize: '0.95rem', fontWeight: 'bold' }}>{currentTier.limits}</div>
-                  </div>
+                <div className="st-tier-icon-box">
+                  <Icon size={20} />
                 </div>
-                
-                <div style={{ color: '#fff', fontSize: '0.75rem', fontWeight: 'bold', marginBottom: '8px' }}>INCLUDED DIRECTIVES</div>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {currentTier.features.map((feat, i) => {
-                    const isCredits = feat.toLowerCase().includes('credits');
+
+                <h3 className="st-tier-name">{tier.name}</h3>
+                <p className="st-tier-desc">{tier.target}</p>
+
+                <div className="st-tier-price" style={{ margin: '10px 0 8px 0' }}>
+                  {price.original && (
+                    <span style={{ fontSize: 13, textDecoration: 'line-through', color: 'var(--text-muted)', marginRight: 6 }}>
+                      {price.original}
+                    </span>
+                  )}
+                  <span className="st-price-val">{price.main}</span>
+                  <span className="st-price-period">{price.sub}</span>
+                </div>
+
+                {price.discountPct > 0 && (
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: '#059669', background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: 4, display: 'inline-block', marginBottom: 10 }}>
+                    {price.discountPct}% Referral Discount Applied
+                  </div>
+                )}
+
+                <div className="st-credits-tag">{tier.credits}</div>
+
+                {(() => {
+                  const serverPlan = plansList.find(p => p.name.toLowerCase() === tier.id.toLowerCase());
+                  const activeCount = serverPlan ? serverPlan.active_users_count : 0;
+                  if (tier.id !== 'free' && activeCount > 0) {
                     return (
-                      <li 
-                        key={i} 
-                        style={{ 
-                          fontSize: '0.85rem', 
-                          color: isCredits ? (currentTier.color || '#00f0ff') : '#fff', 
-                          fontWeight: isCredits ? 'bold' : 'normal',
-                          display: 'flex', 
-                          gap: '8px' 
-                        }}
-                      >
-                        <span style={{ color: currentTier.color }}>[OK]</span>
-                        <span>{feat}</span>
-                      </li>
+                      <div className="st-active-users-count" style={{ fontSize: '11.5px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '5px', marginTop: '6px', marginBottom: '4px', fontWeight: 500 }}>
+                        <span className="st-status-dot-blink" style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
+                        <span>{activeCount.toLocaleString()} active developers</span>
+                      </div>
                     );
-                  })}
+                  }
+                  return null;
+                })()}
+
+                <ul className="st-tier-features" style={{ flex: 1 }}>
+                  {tier.features.map((feat, idx) => (
+                    <li key={idx}>
+                      <Check size={14} className="st-check" />
+                      <span>{feat}</span>
+                    </li>
+                  ))}
                 </ul>
 
-                <div className="term-md-divider" style={{ margin: '14px 0' }}>---------------------------------------------------------</div>
-
-                <div style={{ display: 'flex', justifycontent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ color: '#fff', fontSize: '0.75rem', fontWeight: 'bold' }}>MONTHLY LICENSE FEE</div>
-                    <div style={{ color: '#00F0FF', fontSize: '1.2rem', fontWeight: 'bold', fontFamily: 'monospace' }}>
-                      {renderPrice(currentTier)}
-                    </div>
-                    {billingPeriod === 'yearly' && currentTier.id !== 'free' && (
-                      <div style={{ color: '#00FF66', fontSize: '0.75rem', marginTop: '4px', fontFamily: 'monospace' }}>
-                        {getSavingsText(currentTier)}
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    {isAdmin ? (
-                      <button 
-                        onClick={handleAdminSwitch}
-                        disabled={isUpdating}
-                        className="term-btn-action"
-                        style={{ borderColor: 'rgba(0, 240, 255, 0.4)', color: '#00F0FF' }}
-                      >
-                        {isUpdating ? 'SYNCHRONIZING...' : '> ADMIN_RECONFIGURE()'}
-                      </button>
-                    ) : (
-                      <button 
-                        onClick={handlePurchase}
-                        disabled={isUpdating}
-                        className="term-btn-action"
-                        style={{ borderColor: 'rgba(0, 240, 255, 0.4)', color: '#00F0FF' }}
-                      >
-                        {isUpdating ? 'SYNCHRONIZING...' : '> INITIALIZE_RECONFIG()'}
-                      </button>
-                    )}
-                  </div>
-                </div>
+                <button
+                  onClick={() => handleSubscribe(tier)}
+                  disabled={isUpdating}
+                  className={`st-tier-btn ${isPopular || isActivePlan ? 'st-btn-primary' : 'st-btn-secondary'}`}
+                  style={{ width: '100%', cursor: 'pointer', marginTop: 14 }}
+                >
+                  {tier.priceMonthlyUsd === 0 ? 'Select Free Tier' : `Subscribe to ${tier.name}`}
+                </button>
               </div>
-              <div className="term-md-card-border-bottom">└──────────────────────────────────────────────────────────────────────────────</div>
-            </div>
-          )}
-
-          {/* Feedback Messages */}
-          {message && (
-            <div style={{ 
-              background: message.startsWith('ERROR') ? 'rgba(231, 72, 86, 0.1)' : 'rgba(39, 201, 63, 0.1)',
-              border: message.startsWith('ERROR') ? '1px solid rgba(231, 72, 86, 0.3)' : '1px solid rgba(39, 201, 63, 0.3)',
-              color: message.startsWith('ERROR') ? '#e74856' : '#27c93f',
-              padding: '12px',
-              borderRadius: '6px',
-              fontSize: '0.88rem',
-              marginBottom: '16px',
-              fontFamily: 'monospace'
-            }}>
-              {message}
-            </div>
-          )}
-
-          <p style={{ color: '#fff', fontSize: '0.75rem', textAlign: 'center', marginTop: '16px' }}>
-            No credit card required for Free Node.
-          </p>
-          <div style={{ 
-            color: '#fff', 
-            fontSize: '0.72rem', 
-            textAlign: 'center', 
-            marginTop: '16px', 
-            borderTop: '1px solid rgba(255,255,255,0.04)', 
-            paddingTop: '8px',
-            fontFamily: 'monospace',
-            lineHeight: '1.4'
-          }}>
-            [SYSTEM NOTE] Rollover quota & degradation mechanism: When a user buys 2 Pro plans and saves up quota, then degrades to a Hobby plan, they retain $7 in the active Hobby quota bank; the remaining $23 is converted to bonus credits at a 50% conversion rate. Topped-up credits via pay-as-you-go are added directly to your bonus quota.
-          </div>
-
+            );
+          })}
         </div>
+
+        {/* Credit Topup Refill Section */}
+        <div style={{ maxWidth: 800, margin: '0 auto 48px auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 20 }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>
+              Need One-Time Compute Credits?
+            </h2>
+            <p style={{ fontSize: '0.92rem', color: 'var(--text-muted)' }}>
+              Top-up flexible compute credits on-demand without changing your recurring subscription.
+            </p>
+          </div>
+          <CreditTopup />
+        </div>
+
+        {/* Plan Notes */}
+        <div className="st-pricing-notes-box">
+          <h4 className="st-notes-title">Plan Upgrades & Payment Information</h4>
+          <ul className="st-notes-list">
+            <li>Users can subscribe or upgrade their plan directly from the web client UI using our integrated payment gateway.</li>
+            <li>Credit consumption is calculated dynamically based on input and output tokens consumed. Free models are priced at <strong>$0.02 / 1M in and $0.03 / 1M out</strong> for Free plan users, while all Paid plan users receive a <strong>10x priority discount at $0.002 / 1M in and $0.003 / 1M out</strong>.</li>
+            <li>All paid plans allow accessing the full registry of models, though recommended selections exist per plan tier to optimize credit limits.</li>
+            <li>Free and paid users can also use the <strong>Bring Your Own Key (BYOK)</strong> option to connect their own custom provider keys and URLs, bypassing UTIM quota limits entirely.</li>
+            <li><strong>Credit Top-Up Payments & Conversion Rates</strong>: One-time credit top-ups (ranging from $2.00 to $4,500.00) are converted dynamically to Indian Rupees (INR) using real-time market exchange rates plus a platform markup fee (varying from 2% to 5% depending on the amount). Top-up credits are added instantly to your account as bonus quota at <code>$1.00 USD = 1,000 credits</code>.</li>
+          </ul>
+        </div>
+
       </div>
+
+      <ScrollytellingFooter />
     </div>
   );
-};
-
-export default PricingPage;
+}

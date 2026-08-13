@@ -17,6 +17,7 @@ from typing import List, Dict, Any
 from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy import text
 from pydantic import BaseModel
 from openai import AsyncOpenAI
@@ -28,10 +29,12 @@ from .cli_auth import cli_signature_middleware
 from .attribution import attach_openrouter_headers
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from .routes import auth_router, credit_router, session_router, completion_router, quota_router, share_router, feedback_router, referral_router, quota_share_router, marketplace_router
+from .routes import auth_router, credit_router, session_router, completion_router, quota_router, share_router, feedback_router, referral_router, quota_share_router, marketplace_router, rewards_router
+
 from .routes.security_routes import router as security_router
 from .models import list_models
 from .auth import get_admin_user
+
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 
@@ -58,6 +61,19 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+@app.on_event("startup")
+def start_model_registry_agent():
+    from .model_agent import model_agent
+    model_agent.start()
+    
+    # Local LLM server disabled — all background tasks route to fast remote models.
+    pass
+
+@app.on_event("shutdown")
+def stop_model_registry_agent():
+    from .model_agent import model_agent
+    model_agent.stop()
+
 # CORS — explicit allowlist ONLY. No regex wildcards on *.utim.dev because
 # a wildcard DNS record compromise (or a misissued wildcard cert) would let
 # any attacker subdomain (e.g. evil.utim.dev) make authenticated cross-origin
@@ -73,8 +89,10 @@ else:
         "http://localhost:3000",
         "http://localhost:5173",
         "http://localhost:8000",
+        "http://localhost:8080",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
+        "http://127.0.0.1:8080",
     ]
 
 # Deduplicate while preserving order
@@ -93,29 +111,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from starlette.middleware.base import BaseHTTPMiddleware
-from fastapi.responses import JSONResponse
-
-class LimitUploadSize(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        if request.headers.get("content-length"):
-            if int(request.headers["content-length"]) > 4_000_000:  # 4MB limit
-                return JSONResponse({"detail": "Request too large"}, status_code=413)
-        return await call_next(request)
-
-app.add_middleware(LimitUploadSize)
-
-# Per-route content-length override. Routes that need a larger cap (e.g. the
-# marketplace publish flow which uploads a whole extension bundle as a single
-# JSON body) can set X-UTIM-Max-Body: <bytes> on the request, and this helper
-# looks it up via the env var UTIM_MAX_CONTENT_LENGTH (default 4MB).
 import os as _os
-_DEFAULT_MAX = int(_os.environ.get("UTIM_MAX_CONTENT_LENGTH", str(4_000_000)))
+
+_DEFAULT_MAX = int(_os.environ.get("UTIM_MAX_CONTENT_LENGTH", str(4_000_000)))       # 4 MB
+_LARGE_MAX   = int(_os.environ.get("UTIM_MAX_CONTENT_LENGTH_LARGE", str(5_368_709_120)))  # 5 GB
+
+# Routes that need a higher body cap than the default 4 MB
 _LARGE_UPLOAD_PREFIXES = (
     "/marketplace/publish",
-    "/marketplace/security-check",   # bundles extension source for scanning
+    "/marketplace/security-check",
+    "/shares/upload",          # workspace share packages — up to 5 GB (Ultimate plan)
 )
-_LARGE_MAX = int(_os.environ.get("UTIM_MAX_CONTENT_LENGTH_LARGE", str(16_000_000)))
 
 
 def _effective_max_for_path(path: str) -> int:
@@ -124,35 +130,36 @@ def _effective_max_for_path(path: str) -> int:
     return _DEFAULT_MAX
 
 
-# Note: LimitUploadSize is implemented as a fixed 4MB cap above. To honour
-# per-route overrides without breaking it, we monkey-patch its check here to
-# consult `_effective_max_for_path`. The patch is in-place and idempotent.
-_orig_dispatch = LimitUploadSize.dispatch
+class LimitUploadSize(BaseHTTPMiddleware):
+    """Reject requests whose Content-Length exceeds the per-route cap.
+
+    Uses a single check against `_effective_max_for_path` so that routes
+    listed in `_LARGE_UPLOAD_PREFIXES` (e.g. /shares/upload) are allowed
+    up to 5 GB without being double-checked against the 4 MB default.
+    """
+
+    async def dispatch(self, request, call_next):
+        cl = request.headers.get("content-length")
+        if cl:
+            try:
+                cap = _effective_max_for_path(request.url.path)
+                if int(cl) > cap:
+                    return JSONResponse(
+                        {"detail": f"Request body too large (limit {cap // (1024 * 1024)} MB for this route)"},
+                        status_code=413,
+                    )
+            except ValueError:
+                pass
+        return await call_next(request)
 
 
-async def _path_aware_dispatch(self, request, call_next):
-    cap = _effective_max_for_path(request.url.path)
-    if request.headers.get("content-length"):
-        try:
-            if int(request.headers["content-length"]) > cap:
-                return JSONResponse(
-                    {"detail": f"Request too large for {request.url.path} (limit {cap} bytes)"},
-                    status_code=413,
-                )
-        except ValueError:
-            pass
-    return await _orig_dispatch(self, request, call_next)
-
-
-LimitUploadSize.dispatch = _path_aware_dispatch  # type: ignore[assignment]
+app.add_middleware(LimitUploadSize)
 
 # CLI signature verification — rejects requests that don't carry a valid
 # X-UTIM-CLI-Signature for protected routes when UTIM_REQUIRE_CLI_SIGNATURE=1.
 app.add_middleware(BaseHTTPMiddleware, dispatch=cli_signature_middleware)
 
 app.add_middleware(RequestLoggingMiddleware)
-
-# ── Routers ───────────────────────────────────────────────────────────────────
 
 app.include_router(auth_router)
 app.include_router(credit_router)
@@ -165,6 +172,10 @@ app.include_router(referral_router)
 app.include_router(quota_share_router)
 app.include_router(marketplace_router, prefix="/marketplace")
 app.include_router(security_router)
+app.include_router(rewards_router)
+
+
+
 
 # ── Support Chatbot Endpoint ──────────────────────────────────────────────────
 

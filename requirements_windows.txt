@@ -1,0 +1,15 @@
+# Windows Requirements (PowerShell / CMD / Windows Terminal)
+# Core CLI dependencies + Windows console ANSI/VT color helpers.
+# Install: pip install -r requirements_windows.txt
+requests==2.31.0
+aiohttp>=3.9.5
+python-dotenv==1.0.1
+urllib3==1.26.18
+charset-normalizer==3.3.2
+chardet==4.0.0
+typer>=0.9.0
+rich>=13.0.0
+prompt_toolkit>=3.0.0
+nest-asyncio>=1.5.0
+sqlalchemy>=2.0.0
+colorama>=0.4.6

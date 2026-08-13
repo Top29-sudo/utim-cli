@@ -1,21 +1,26 @@
-MIT License
+UTIM PROPRIETARY SOFTWARE END USER LICENSE AGREEMENT (EULA)
 
-Copyright (c) 2026 UTIM Dev Team
+Copyright (c) 2026 Emend AI. All Rights Reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+IMPORTANT: READ THIS LICENSE AGREEMENT CAREFULLY BEFORE DOWNLOADING, INSTALLING, OR USING THE UTIM CLI SOFTWARE.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. PROPRIETARY SOFTWARE
+UTIM CLI ("Software") is proprietary commercial software developed and owned exclusively by Emend AI ("Licensor"). The Software is licensed, not sold, to you ("Licensee") under the terms and conditions of this Agreement.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+2. LICENSE GRANT
+Subject to compliance with this Agreement and payment of applicable subscription or usage fees:
+- Free Tier License: Licensor grants Licensee a limited, non-exclusive, non-transferable, revocable license to install and use the Software for personal, open-source learning, and non-commercial evaluation purposes.
+- Commercial Tier License: Paid subscribers (Hobby, Pro, Max, Ultimate Tiers) or users with active Bring Your Own Key (BYOK) configurations are granted a non-exclusive, non-transferable license to use the Software for commercial software engineering, corporate repositories, and professional client work.
+
+3. RESTRICTIONS
+Licensee shall NOT:
+- Reverse engineer, decompile, disassemble, modify, or attempt to discover the source code or underlying client orchestrator mechanisms of compiled Software binaries.
+- Circumvent rate limits, credit accounting controls, or 5-hour quota refill mechanisms.
+- Sublicense, resell, rent, lease, or distribute the Software to third parties without prior written authorization.
+- Create duplicate or automated accounts to harvest free promotional credit allocations.
+
+4. INTELLECTUAL PROPERTY
+All title, ownership, brand trademarks, domain adaptation engines, AST parsing logic, and intellectual property rights in and to the Software remain the exclusive property of Emend AI. Licensee retains 100% full ownership of all user prompts submitted and code files generated in their local workspaces.
+
+5. NO WARRANTY & LIMITATION OF LIABILITY
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. IN NO EVENT SHALL EMEND AI OR ITS SUPPLIERS BE LIABLE FOR ANY CLAIM, DIRECT, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL DAMAGES (INCLUDING DATA LOSS, REPOSITORY CORRUPTION, OR API BILLING COSTS) ARISING OUT OF THE USE OF OR INABILITY TO USE THE SOFTWARE.

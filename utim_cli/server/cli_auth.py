@@ -331,7 +331,11 @@ async def cli_signature_middleware(request, call_next):
     assert isinstance(request, _StarletteRequest)
 
     path = request.url.path
-    if is_public_path(path):
+    if is_public_path(path) or request.method == "OPTIONS":
+        return await call_next(request)
+
+    # Bypass CLI signature requirement for Admin Agent endpoints and Master Key authenticated calls
+    if request.headers.get("x-utim-master-key") or request.headers.get("X-UTIM-Master-Key") or path.startswith("/api/admin/"):
         return await call_next(request)
 
     sig = request.headers.get("x-utim-cli-signature")

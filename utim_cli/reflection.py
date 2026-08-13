@@ -12,10 +12,12 @@ from utim_cli.constants import DEFAULT_MODEL
 # These are free-tier models optimized for structured JSON output tasks.
 # Primary is tried first; fallbacks are used on rate-limit or error.
 REFLECTION_MODELS = [
-    "poolside/laguna-xs-2.1:free",
-    "cohere/north-mini-code:free",
     "openrouter/free",
+    "qwen/qwen2.5-1.5b-instruct",
+    "cohere/north-mini-code:free",
+    "inclusionai/ling-3.0-flash:free",
 ]
+
 REFLECTION_PRIMARY_MODEL = REFLECTION_MODELS[0]
 REFLECTION_MAX_TOKENS = 5000
 
@@ -183,7 +185,9 @@ class ExperienceManager:
         for obj in objects:
             if obj in self.pattern_index:
                 for pattern_id in self.pattern_index[obj]:
-                    node = self.experience_nodes[pattern_id]
+                    node = self.experience_nodes.get(pattern_id)
+                    if node is None:
+                        continue
 
                     if node.strength >= min_strength:
                         # Check if this specific pattern matches our input
@@ -765,6 +769,182 @@ INTERACTION_BUFFER_FILE = ".utim_tmp/interaction_buffer.json"
 REQUEST_COUNTER_FILE = ".utim_tmp/request_counter.json"
 MIN_EXPERIENCES_FOR_SKILL = 3
 
+# ---------------------------------------------------------------------------
+# Immediate Correction Detection & Storage
+# ---------------------------------------------------------------------------
+
+# Correction signal keywords — zero-cost local heuristic
+_CORRECTION_PHRASES = [
+    "no,", "nope", "wrong", "incorrect", "that's not", "that is not",
+    "you're wrong", "you are wrong", "actually", "the answer is",
+    "the correct answer", "it should be", "should have", "not right",
+    "not correct", "mistaken", "you missed", "you got it wrong",
+    "the right answer", "that's wrong", "thats wrong", "no the",
+    "no that", "you should", "it's actually", "its actually",
+    "let me correct", "to correct", "the solution is", "think again",
+    # Logical rebuttal phrases
+    "but then", "but how", "but wait", "but if", "but what about",
+    "makes no sense", "that doesn't make sense", "that makes no sense",
+    "think about it", "you forgot", "you didn't consider", "you ignored",
+    "what about", "how would", "how will", "who will", "who would",
+    "then how", "then who", "then what", "so then", "but then who",
+    "if i", "if we", "if that's the case", "in that case",
+    "you're missing", "you're forgetting", "you missed the point",
+    "that's not how", "thats not how", "doesn't work that way",
+]
+
+
+def _detect_correction_signal(user_msg: str, prev_assistant: str) -> bool:
+    """
+    Zero-cost local heuristic to detect if the user is correcting the
+    previous assistant answer. No LLM call — purely keyword/pattern based.
+    Returns True if a correction signal is detected.
+    """
+    if not user_msg or not prev_assistant:
+        return False
+    # Must have a previous assistant response to correct
+    if len(prev_assistant.strip()) < 20:
+        return False
+    msg_lower = user_msg.lower().strip()
+    # Check correction phrase presence
+    for phrase in _CORRECTION_PHRASES:
+        if phrase in msg_lower:
+            return True
+    # Heuristic: short sharp user messages starting with "No" or "Wrong"
+    if msg_lower.startswith(("no ", "no!", "no,", "wrong", "incorrect")):
+        return True
+    # Rhetorical counter-question heuristic:
+    # Short questions that imply the AI missed something obvious.
+    # e.g. "then who will bring the car?" / "if I walk how does the car get there?"
+    _REBUTTAL_STARTERS = (
+        "then who", "then how", "then what", "but then", "but how",
+        "but who", "but what", "so then", "so how", "so who",
+        "if i ", "if we ", "if that", "and then", "and how",
+    )
+    if any(msg_lower.startswith(s) for s in _REBUTTAL_STARTERS):
+        return True
+    # Question mark in short message (≤15 words) that refers to the previous answer
+    word_count = len(msg_lower.split())
+    if "?" in msg_lower and word_count <= 15:
+        _REFERENTIAL_WORDS = {"car", "it", "that", "this", "they", "who", "how",
+                               "then", "there", "here", "get", "bring", "take"}
+        msg_words = set(msg_lower.split())
+        if msg_words & _REFERENTIAL_WORDS:
+            return True
+    return False
+
+
+def _store_correction_immediately(user_msg: str, prev_assistant: str, llm_key: str):
+    """
+    Called by the reflection engine as soon as a correction signal is detected.
+    Uses the reflection LLM to extract the specific lesson from the
+    (wrong_answer → user_correction) pair and immediately stores it into:
+      - ExperienceManager (structured experience node, status=verified)
+      - Vector memory (store_reflection)
+      - experiences.json (store_experience tool pathway)
+    This bypasses the 5-turn batch gate entirely so corrections are never lost.
+    """
+    try:
+        prompt = f"""You are a cognitive correction extractor for an AI agent experience engine.
+
+The AI gave the following WRONG or INCOMPLETE answer:
+\"\"\"{prev_assistant[:600]}\"\"\"
+
+The USER then provided a correction:
+\"\"\"{user_msg[:400]}\"\"\"
+
+Your job:
+1. Identify EXACTLY what the AI got wrong and what the correct fact/logic/answer is.
+2. Extract a highly specific, transferable rule that prevents this mistake in the future.
+3. Formulate a pattern that captures the corrected knowledge so it can be retrieved next time.
+
+CRITICAL RULES:
+- Only return has_correction: true if there is a genuine factual or logical correction.
+- Be very specific — capture the actual corrected knowledge, not vague meta-advice.
+- For logic puzzles or riddles: capture the exact correct reasoning, not just "think more carefully".
+- rule must be 1-3 actionable sentences explaining the correct answer and WHY.
+
+Return ONLY a valid JSON object:
+{{
+  "has_correction": true,
+  "pattern_id": "corr_<unique_5char_lowercase_id>",
+  "description": "Concise one-line summary of what was corrected",
+  "objects": ["key", "concept", "words"],
+  "relationships": {{"corrects": "wrong_ai_answer"}},
+  "rule": "The complete correct explanation that the AI must apply next time. Include the actual correct answer.",
+  "category": "knowledge_correction"
+}}
+"""
+        result = _call_reflection_llm(prompt, llm_key)
+        if not result or not result.get("has_correction"):
+            return
+
+        pattern_id  = result.get("pattern_id") or f"corr_{uuid.uuid4().hex[:5]}"
+        description = result.get("description", "User-corrected AI answer")
+        objects     = result.get("objects") or []
+        relationships = result.get("relationships") or {"corrects": "wrong_ai_answer"}
+        rule        = result.get("rule", "")
+        category    = result.get("category", "knowledge_correction")
+
+        # 1. Store into ExperienceManager (verified immediately — user explicitly corrected)
+        try:
+            experience_manager.add_experience(
+                pattern_id=pattern_id,
+                description=description,
+                pattern_type="relationship",
+                objects=objects,
+                relationships=relationships,
+                strength=1.0,
+                metadata={"rule": rule, "source": "user_correction", "category": category},
+                status="verified",
+                confidence=1.0,
+                clarifying_question=None,
+            )
+            experience_manager.save_experiences()
+        except Exception:
+            pass
+
+        # 2. Store into vector memory
+        try:
+            from utim_cli.vector_memory import store_reflection
+            content_text = f"Correction: {description}"
+            if rule:
+                content_text += f" | Rule: {rule}"
+            store_reflection(
+                content=content_text,
+                category="failure_correction",
+                task_prompt=description,
+            )
+        except Exception:
+            pass
+
+        # 3. Also persist to experiences.json directly
+        try:
+            from utim_cli.tools import store_experience
+            content_for_json = f"{description}. {rule}".strip()
+            store_experience(category="knowledge_correction", content=content_for_json, priority=10)
+        except Exception:
+            pass
+
+        # 4. Mark experience cache as dirty so next context rebuild picks it up
+        try:
+            os.makedirs(".utim_tmp", exist_ok=True)
+            with open(".utim_tmp/experience_cache_dirty.txt", "w", encoding="utf-8") as _f:
+                _f.write("dirty")
+        except Exception:
+            pass
+
+        # 5. Mirror into Brain memory (verified correction = highest trust)
+        try:
+            from utim_cli.brain import store_memory_from_experience
+            combined = f"{description}. {rule}".strip()
+            store_memory_from_experience(combined, "knowledge_correction")
+        except Exception:
+            pass
+
+    except Exception:
+        pass
+
 
 def get_request_count() -> int:
     """Get total request count across turns."""
@@ -835,100 +1015,57 @@ def get_buffered_interactions(limit: int = 5) -> List[Dict]:
     return []
 
 
-def _call_reflection_llm(prompt: str, llm_key: str) -> Dict:
-    """Helper to dispatch structured JSON reflection prompts to LLM endpoints."""
-    if not llm_key or llm_key == "mock_key":
+def _call_reflection_llm(prompt: str, llm_key: str, system: str = "", max_tokens: int = 800) -> Dict:
+    """
+    Call a lightweight reflection model on OpenRouter to extract structured JSON.
+    Tries each model in REFLECTION_MODELS in order until one succeeds.
+    Returns the parsed JSON dict, or {} on failure.
+    """
+    import re as _re
+
+    if not llm_key:
         return {}
 
-    try:
-        from utim_cli.config import config
-        from utim_cli.auth import SERVER_URL
-        api_key = config.get("api_key")
+    _system = system or (
+        "You are a precise AI reflection engine. "
+        "Return ONLY valid JSON. No prose, no markdown fences, no extra text."
+    )
 
-        if api_key:
-            endpoint_url = f"{SERVER_URL}/completions"
-            headers = {
-                "X-API-Key": api_key,
-                "Content-Type": "application/json"
-            }
-            request_payload = {
-                "messages": [
-                    {"role": "system", "content": "You are a cognitive reflection engine. Return ONLY a valid JSON object."},
-                    {"role": "user", "content": prompt}
-                ],
-                "model_id": REFLECTION_PRIMARY_MODEL,
-                "tools": None,
-                "session_id": None,
-                "is_reflection": True
-            }
-
-            resp = requests.post(endpoint_url, json=request_payload, headers=headers, stream=True, timeout=30)
-            if resp.status_code == 200:
-                final_content = ""
-                for line in resp.iter_lines():
-                    if not line:
-                        continue
-                    try:
-                        event = json.loads(line.decode("utf-8"))
-                        if event.get("type") == "content_delta":
-                            final_content += event.get("text") or ""
-                        elif event.get("type") == "done" and not final_content:
-                            final_content = event.get("content") or ""
-                    except Exception:
-                        pass
-
-                if final_content:
-                    import re
-                    content = re.sub(r"<think(?:ing)?>.*?</think(?:ing)?>", "", final_content, flags=re.DOTALL).strip()
-                    if content.startswith("```"):
-                        lines = content.splitlines()
-                        if lines[0].startswith("```"):
-                            lines = lines[1:]
-                        if lines[-1].startswith("```"):
-                            lines = lines[:-1]
-                        content = "\n".join(lines).strip()
-                        if content.startswith("json"):
-                            content = content[4:].strip()
-                    return json.loads(content)
-
-        apiUrl = os.environ.get("ROUTER_API_URL", "https://openrouter.ai/api/v1/chat/completions")
-        for _ref_model in REFLECTION_MODELS:
-            try:
-                resp = requests.post(
-                    apiUrl,
-                    json={
-                        "model": _ref_model,
-                        "messages": [
-                            {"role": "system", "content": "You are a cognitive reflection engine. Return ONLY a valid JSON object."},
-                            {"role": "user", "content": prompt}
-                        ],
-                        "max_tokens": REFLECTION_MAX_TOKENS,
-                    },
-                    headers={"Authorization": f"Bearer {llm_key}"},
-                    timeout=30
-                )
-                if resp.status_code == 429:
-                    continue
-                if resp.status_code == 200:
-                    content = resp.json()["choices"][0]["message"]["content"]
-                    import re
-                    content = re.sub(r"<think(?:ing)?>.*?</think(?:ing)?>", "", content, flags=re.DOTALL).strip()
-                    if content.startswith("```"):
-                        lines = content.splitlines()
-                        if lines[0].startswith("```"):
-                            lines = lines[1:]
-                        if lines[-1].startswith("```"):
-                            lines = lines[:-1]
-                        content = "\n".join(lines).strip()
-                        if content.startswith("json"):
-                            content = content[4:].strip()
-                    return json.loads(content)
-            except Exception:
+    for model in REFLECTION_MODELS:
+        try:
+            resp = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {llm_key}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://utim.dev",
+                    "X-Title": "UTIM Reflection Engine",
+                },
+                json={
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": _system},
+                        {"role": "user", "content": prompt},
+                    ],
+                    "max_tokens": max_tokens,
+                    "temperature": 0.1,
+                },
+                timeout=30,
+            )
+            if resp.status_code != 200:
                 continue
-    except Exception:
-        pass
+            raw = resp.json().get("choices", [{}])[0].get("message", {}).get("content", "")
+            # Strip think tags from reasoning models
+            raw = _re.sub(r"<think(?:ing)?>.*?</think(?:ing)?>", "", raw, flags=_re.DOTALL).strip()
+            # Extract JSON object or array
+            match = _re.search(r"\{.*\}", raw, _re.DOTALL)
+            if match:
+                return json.loads(match.group())
+        except Exception:
+            continue
 
     return {}
+
 
 
 def analyze_batch_interactions(interactions: List[Dict], llm_key: str) -> Dict:
@@ -1016,6 +1153,25 @@ Return ONLY a valid JSON object in this format:
   "corrections": ["Root cause correction from user feedback"]
 }}
 """
+    # Also explicitly detect and escalate direct user corrections within the batch
+    correction_addendum = ""
+    if len(interactions) >= 2:
+        last_user = interactions[-1].get("user_message", "")
+        prev_asst = interactions[-2].get("assistant_content", "")
+        if _detect_correction_signal(last_user, prev_asst):
+            correction_addendum = (
+                "\n\n5. DIRECT USER CORRECTION PRIORITY:\n"
+                "   The LAST user message appears to be a direct correction of the previous AI response.\n"
+                "   This MUST be treated as has_usable_pattern: true.\n"
+                "   Extract the specific corrected fact/logic into the 'corrections' array AND as a structured experience.\n"
+                "   The rule must contain the ACTUAL CORRECT ANSWER, not generic advice.\n"
+            )
+    if correction_addendum:
+        prompt = prompt.rstrip()
+        insert_at = prompt.rfind("Return ONLY")
+        if insert_at != -1:
+            prompt = prompt[:insert_at] + correction_addendum + "\n" + prompt[insert_at:]
+
     return _call_reflection_llm(prompt, llm_key)
 
 
@@ -1299,7 +1455,8 @@ def apply_skill_modifications(skill_modifications: Dict[str, Any], **kwargs):
             continue
 
         paths_to_write = [
-            utim_base / folder_name / skill_name / "SKILL.md",
+            utim_skills_dir / skill_name / "SKILL.md",
+            Path(".agents/skills") / skill_name / "SKILL.md",
         ]
 
         for skill_path in paths_to_write:
@@ -1591,6 +1748,18 @@ def save_learnings(learnings: Dict, project_dir: str = ".", user_message: str = 
     except Exception:
         pass
 
+    # Mirror all stored corrections/rules into the Brain memory system
+    try:
+        from utim_cli.brain import store_memory_from_experience
+        for corr in learnings.get("corrections", []):
+            store_memory_from_experience(str(corr), "failure_correction")
+        for rule in learnings.get("rules", []):
+            store_memory_from_experience(str(rule), "architectural_rule")
+        for pref in learnings.get("preferences", []):
+            store_memory_from_experience(str(pref), "user_preference")
+    except Exception:
+        pass
+
 
 def run_reflection_phase(user_message: str, assistant_content: str,
                          tool_results: List[Dict], elapsed_seconds: int = 0, iterations: int = 0,
@@ -1599,11 +1768,50 @@ def run_reflection_phase(user_message: str, assistant_content: str,
     Main entry point for the reflection phase.
     Buffers interaction history and executes batch reflection every 5 requests
     (or when force_reflection is True).
+
+    Correction Fast-Path: If the user message is detected as correcting the
+    previous assistant answer, _store_correction_immediately() is called right
+    away using the reflection LLM, independently of the 5-turn batch gate.
+    This ensures corrections (e.g. riddle answers, wrong facts) are never
+    silently dropped between batch windows.
     """
     count = increment_request_count()
     buffer_interaction(user_message, assistant_content, tool_results, hints)
 
-    # Only run LLM reflection every 5 requests or when forced
+    # ── Correction Fast-Path ────────────────────────────────────────────────
+    # Always check for corrections using the LLM — the LLM already returns
+    # has_correction: true/false so false positives cost one cheap background
+    # call but zero false negatives. Keyword gating caused too many misses.
+    try:
+        recent = get_buffered_interactions(limit=2)
+        prev_assistant_turn = ""
+        if len(recent) >= 2:
+            prev_assistant_turn = recent[-2].get("assistant_content", "")
+        elif len(recent) == 1 and not assistant_content:
+            prev_assistant_turn = recent[-1].get("assistant_content", "")
+
+        # Fire if there is a non-trivial previous assistant response to evaluate
+        if prev_assistant_turn and len(prev_assistant_turn.strip()) >= 20 and user_message.strip():
+            config_key = None
+            try:
+                from utim_cli.config import config as _cfg
+                config_key = _cfg.get("api_key")
+            except Exception:
+                pass
+            llm_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("UTIM_API_KEY") or config_key or ""
+            if llm_key:
+                import threading
+                threading.Thread(
+                    target=_store_correction_immediately,
+                    args=(user_message, prev_assistant_turn, llm_key),
+                    daemon=True,
+                    name="utim-correction-fast-path",
+                ).start()
+    except Exception:
+        pass
+    # ── End Correction Fast-Path ────────────────────────────────────────────
+
+    # Only run LLM batch reflection every 5 requests or when forced
     if not force_reflection and (count % 5 != 0):
         return {
             "status": "buffered",
@@ -1691,77 +1899,22 @@ Return ONLY a JSON object in this format:
         if not llm_key:
             return
 
-        payload = {
-            "messages": [
-                {"role": "system", "content": "You are a reflection engine. Extract candidate experiences from failed runs. Return ONLY a valid JSON object."},
-                {"role": "user", "content": prompt}
-            ],
-            "model_id": REFLECTION_PRIMARY_MODEL,
-            "tools": None,
-            "session_id": None,
-            "is_reflection": True
-        }
-
-        if api_key:
-            endpoint_url = f"{SERVER_URL}/completions"
-            headers = {"X-API-Key": api_key, "Content-Type": "application/json"}
-            resp = requests.post(endpoint_url, json=payload, headers=headers, timeout=30)
-        else:
-            apiUrl = os.environ.get("ROUTER_API_URL", "https://openrouter.ai/api/v1/chat/completions")
-            headers = {"Authorization": f"Bearer {llm_key}", "Content-Type": "application/json"}
-            for _ref_model in REFLECTION_MODELS:
-                try:
-                    resp = requests.post(apiUrl, json={"model": _ref_model, "messages": payload["messages"], "max_tokens": REFLECTION_MAX_TOKENS}, headers=headers, timeout=30)
-                    if resp.status_code != 429:
-                        break
-                except Exception:
-                    continue
-
-        if resp.status_code == 200:
-            if api_key:
-                final_content = ""
-                for line in resp.iter_lines():
-                    if not line:
-                        continue
-                    try:
-                        event = json.loads(line.decode("utf-8"))
-                        if event.get("type") == "content_delta":
-                            final_content += event.get("text") or ""
-                        elif event.get("type") == "done" and not final_content:
-                            final_content = event.get("content") or ""
-                    except Exception:
-                        pass
-                content = final_content
-            else:
-                content = resp.json()["choices"][0]["message"]["content"]
-
-            if content:
-                import re
-                content = re.sub(r"<think(?:ing)?>.*?</think(?:ing)?>", "", content, flags=re.DOTALL).strip()
-                if content.startswith("```"):
-                    lines = content.splitlines()
-                    if lines[0].startswith("```"):
-                        lines = lines[1:]
-                    if lines[-1].startswith("```"):
-                        lines = lines[:-1]
-                    content = "\n".join(lines).strip()
-                    if content.startswith("json"):
-                        content = content[4:].strip()
-
-                result = json.loads(content)
-                if result.get("has_candidate") and result.get("pattern_id"):
-                    experience_manager.add_experience(
-                        pattern_id=result["pattern_id"],
-                        description=result["description"],
-                        pattern_type="relationship",
-                        objects=result.get("objects") or [],
-                        relationships=result.get("relationships") or {},
-                        strength=0.2,
-                        metadata={"comment": comment, "source": "poor_feedback"},
-                        status="unverified",
-                        confidence=0.2,
-                        clarifying_question=result.get("clarifying_question")
-                    )
+        # Zero-LLM fallback: extract candidates locally using failure tracebacks and comment text
+        if comment and len(comment.strip()) > 3:
+            import uuid
+            pid = "pattern_" + uuid.uuid4().hex[:8]
+            experience_manager.add_experience(
+                pattern_id=pid,
+                description=f"Negative feedback lesson: {comment}",
+                pattern_type="relationship",
+                objects=["user_feedback"],
+                relationships={"negative_response": True},
+                strength=0.2,
+                metadata={"comment": comment, "source": "poor_feedback"},
+                status="unverified",
+                confidence=0.2,
+                clarifying_question=f"Should we avoid: '{comment}' in future tasks?"
+            )
     except Exception:
         pass
 
@@ -1776,97 +1929,22 @@ def analyze_poor_feedback_async(chat_history: List[Dict], comment: Optional[str]
     ).start()
 
 def evaluate_clarifying_answer(pattern_id: str, question: str, user_response: str):
-    """Use LLM to determine if the user confirmed/denied the unverified experience, and update confidence"""
+    """Determine via local heuristic keyword matching if the user confirmed/denied the unverified experience."""
     try:
-        from utim_cli.config import config
-        from utim_cli.auth import SERVER_URL
-        api_key = config.get("api_key")
-        llm_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("UTIM_API_KEY") or api_key
+        resp_lower = user_response.lower().strip()
+        positives = {"yes", "yep", "yeah", "sure", "ok", "correct", "confirm", "confirmed", "true"}
+        negatives = {"no", "nope", "nah", "incorrect", "false", "wrong", "deny", "denied"}
+        
+        words = set(resp_lower.split())
+        confirmed = "UNSURE"
+        if words.intersection(positives):
+            confirmed = "YES"
+        elif words.intersection(negatives):
+            confirmed = "NO"
 
-        if not llm_key:
-            return
-
-        prompt = f"""Analyze the user's response to this clarifying question:
-Question: "{question}"
-User Response: "{user_response}"
-
-Did the user confirm the assumption/rule asked in the question (YES/NO/UNSURE)?
-Return ONLY a JSON object in this format:
-{{
-  "confirmed": "YES" // or "NO" or "UNSURE"
-}}
-"""
-
-        payload = {
-            "messages": [
-                {"role": "system", "content": "You are a verification engine. Determine if the user confirmed the question. Return ONLY JSON."},
-                {"role": "user", "content": prompt}
-            ],
-            "model_id": REFLECTION_PRIMARY_MODEL,
-            "tools": None,
-            "session_id": None,
-            "is_reflection": True
-        }
-
-        if api_key:
-            endpoint_url = f"{SERVER_URL}/completions"
-            headers = {"X-API-Key": api_key, "Content-Type": "application/json"}
-            resp = requests.post(endpoint_url, json=payload, headers=headers, timeout=20)
-        else:
-            apiUrl = os.environ.get("ROUTER_API_URL", "https://openrouter.ai/api/v1/chat/completions")
-            headers = {"Authorization": f"Bearer {llm_key}", "Content-Type": "application/json"}
-            for _ref_model in REFLECTION_MODELS:
-                try:
-                    resp = requests.post(apiUrl, json={"model": _ref_model, "messages": payload["messages"], "max_tokens": REFLECTION_MAX_TOKENS}, headers=headers, timeout=20)
-                    if resp.status_code != 429:
-                        break
-                except Exception:
-                    continue
-
-        if resp.status_code == 200:
-            if api_key:
-                final_content = ""
-                for line in resp.iter_lines():
-                    if not line:
-                        continue
-                    try:
-                        event = json.loads(line.decode("utf-8"))
-                        if event.get("type") == "content_delta":
-                            final_content += event.get("text") or ""
-                        elif event.get("type") == "done" and not final_content:
-                            final_content = event.get("content") or ""
-                    except Exception:
-                        pass
-                content = final_content
-            else:
-                content = resp.json()["choices"][0]["message"]["content"]
-
-            if content:
-                import re
-                content = re.sub(r"<think(?:ing)?>.*?</think(?:ing)?>", "", content, flags=re.DOTALL).strip()
-                if content.startswith("```"):
-                    lines = content.splitlines()
-                    if lines[0].startswith("```"):
-                        lines = lines[1:]
-                    if lines[-1].startswith("```"):
-                        lines = lines[:-1]
-                    content = "\n".join(lines).strip()
-                    if content.startswith("json"):
-                        content = content[4:].strip()
-
-                ans = json.loads(content).get("confirmed", "UNSURE")
-                node = experience_manager.experience_nodes.get(pattern_id)
-                if node:
-                    if ans == "YES":
-                        node.confidence = min(1.0, node.confidence + 0.3)
-                        node.strength = min(1.0, node.strength + 0.3)
-                        if node.confidence >= 0.8:
-                            node.status = "verified"
-                    elif ans == "NO":
-                        node.confidence = max(0.0, node.confidence - 0.3)
-                        node.strength = max(0.0, node.strength - 0.3)
-                        if node.confidence <= 0.2:
-                            experience_manager.experience_nodes.pop(pattern_id, None)
-                    experience_manager.save_experiences()
+        if confirmed == "YES":
+            experience_manager.verify_experience(pattern_id, user_confirmed=True)
+        elif confirmed == "NO":
+            experience_manager.verify_experience(pattern_id, user_confirmed=False)
     except Exception:
         pass

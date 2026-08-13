@@ -1,0 +1,175 @@
+# UTIM AI CLI — Complete Crawlable Web Data
+URL: https://utim.dev
+Version: 2.2.1
+Updated: 2026-08-13
+Description: Complete full-text crawlable data for all pages on the UTIM AI CLI platform website.
+
+---
+
+# Page: Homepage (https://utim.dev/)
+
+Title: UTIM AI — Autonomous Terminal AI Agent & Creators Ecosystem
+Canonical: https://utim.dev/
+
+## Overview
+UTIM AI (v2.2.1) is a next-generation, autonomous, terminal-native AI coding assistant and miniagent marketplace. Designed for developers who live in the terminal, UTIM combines multi-LLM orchestration across 66 active models, persistent ChromaDB vector memory RAG, Model Context Protocol (MCP) tool integration, safety sandboxing, and a global creators marketplace.
+
+## Key Highlights
+- **Free Tier Available**: Full-featured CLI agent with zero required subscription fees ($0.02/$0.03 per 1M tokens for free models like `cohere/north-mini-code:free`).
+- **66 Active Models**: Supports Claude 3.7 / Sonnet 4.6, OpenAI GPT-5.6 / GPT-5.3 Codex, Gemini 3.5 / 3.6, DeepSeek V4 / R1, Qwen 3.8 / 3.7 Coder, KwaiPilot, Poolside Laguna, and local Ollama / LM Studio models.
+- **Creators Marketplace**: Discover, publish, buy, sell, and monetize custom miniagents and CLI extensions with up to 95% revenue share to creators.
+- **Model Context Protocol (MCP)**: Native stdio and SSE MCP server integration for live databases, browser automation, filesystems, and custom APIs.
+- **Vector Memory RAG**: Built-in ChromaDB vector memory that retains project architectural conventions and code experience across terminal sessions.
+- **Safety Sandboxing**: Dry-run previews (`/dry-run`), `/undo`, `/rewind`, and automated git safety checks.
+- **Android Termux Support**: Officially tested and supported on Android Termux environments.
+
+## Quick Installation
+- **npm**: `npm install -g @emend-ai/utim`
+- **pip**: `pip install utim`
+
+---
+
+# Page: Pricing & Recalculation Engine (https://utim.dev/pricing)
+
+Title: UTIM AI Pricing — Free, Pro, Ultimate & Creator Plans
+Canonical: https://utim.dev/pricing
+
+## Subscription Tiers
+
+### 1. Free Plan ($0 / month)
+- Price: $0.00 forever
+- Quota: 1,000 free requests / day for fast coding, refactoring & debugging
+- Features: Full CLI Agent, standard tool calling, MCP stdio support, local Ollama integration, access to free Marketplace miniagents.
+
+### 2. Pro Plan ($15 / month)
+- Price: $15.00 / month (or $144 / year — 20% discount)
+- Quota: 2,500 monthly credits + full access to premium models
+- Features: Claude 3.7 / Sonnet 4.6, GPT-5.6, DeepSeek R1, Vector Memory RAG, unlimited MCP servers, priority subagent orchestration.
+
+### 3. Ultimate Plan ($49 / month)
+- Price: $49.00 / month
+- Quota: 10,000 monthly credits + unthrottled priority execution
+- Features: All Pro features + 5 GB workspace sharing, custom model overrides, 24/7 dedicated support, team workspace sharing.
+
+### 4. Creator Plan (Free for Verified Creators)
+- Price: Free for published creators
+- Benefits: Up to 95% revenue share on direct tool sales, verified badge in Marketplace, priority listing, creator analytics dashboard.
+
+## Credit & Quota Recalculation Engine
+- **5-Hour Slot Refills**: Allowance refills every 5 hours automatically.
+- **Rollover Quota Bank**: Unused tier allowance rolls over up to 300% maximum capacity.
+- **Deduction Priority Cascade**: 1) Active 24H Rewards -> 2) 5-Hour Refill Slot -> 3) Rollover Bank -> 4) Top-up Credits -> 5) BYOK.
+- **BYOK Overrides**: BYOK keys bypass all quota deduction engines completely.
+
+---
+
+# Page: vs Cursor CLI (https://utim.dev/vs-cursor)
+
+Title: UTIM AI vs Cursor — CLI Agent Comparison
+Canonical: https://utim.dev/vs-cursor
+
+## Comparison Matrix
+- **Free plan**: UTIM: ✅ Available | Cursor: ✅ Hobby — limited Agent usage
+- **Terminal-first agent**: UTIM: ✅ Native CLI | Cursor: ✅ Cursor CLI
+- **npm / pip distribution**: UTIM: ✅ npm / pip* | Cursor: ❌ Separate Cursor installer
+- **MCP**: UTIM: ✅ Supported | Cursor: ✅ Supported
+- **Specialized subagents**: UTIM: ✅ Miniagents* | Cursor: ✅ Subagents
+- **Creator monetization marketplace**: UTIM: ✅ Creators can sell & earn 80%* | Cursor: ⚠️ Plugin Marketplace; different monetization model
+- **Persistent experience-memory RAG**: UTIM: ✅ ChromaDB cross-session memory* | Cursor: ⚠️ Semantic codebase indexing; not equivalent
+- **Agent dry-run mode**: UTIM: ✅ Preview without committing* | Cursor: ⚠️ Has sandboxing/checkpoints, but different purpose
+- **Rollback**: UTIM: ✅ `/undo` + `/rewind`* | Cursor: ✅ Local Checkpoints
+- **Android / Termux**: UTIM: ✅ Official support* | Cursor: ⚠️ No official Termux support documented
+
+---
+
+# Page: vs Claude Code (https://utim.dev/vs-claude-code)
+
+Title: UTIM AI vs Claude Code — Feature & Capability Comparison
+Canonical: https://utim.dev/vs-claude-code
+
+## Comparison Matrix
+- **Free agent tier**: UTIM: ✅ Available* | Claude Code: ⚠️ Claude has Free; Claude Code access/auth varies by plan
+- **Terminal-native**: UTIM: ✅ | Claude Code: ✅
+- **MCP support**: UTIM: ✅ | Claude Code: ✅
+- **Specialized subagents**: UTIM: ✅ Miniagents* | Claude Code: ✅ Subagents
+- **Paid creator marketplace**: UTIM: ✅ Sell tools/Skills/miniagents + 95% share* | Claude Code: ⚠️ Plugin Marketplace; different creator model
+- **Vector experience-memory RAG**: UTIM: ✅ ChromaDB semantic retrieval* | Claude Code: ⚠️ Auto memory / persistent files, different architecture
+- **Automatic context compression**: UTIM: ✅ Model-aware* | Claude Code: ✅ Auto-compaction
+- **No-write dry-run mode**: UTIM: ✅* | Claude Code: ⚠️ Sandbox/checkpoints instead
+- **Agent rollback / rewind**: UTIM: ✅ `/undo` + `/rewind`* | Claude Code: ✅ `/rewind` + checkpoints
+- **Workspace Skills**: UTIM: ✅ | Claude Code: ✅
+- **Android Termux CLI**: UTIM: ✅ Officially supported/tested* | Claude Code: ⚠️ No official Termux support documented
+- **Multi-provider/model routing**: UTIM: ✅ OpenAI, Claude, Gemini, Ollama, etc.* | Claude Code: ⚠️ Claude-family models officially
+
+---
+
+# Page: vs Google Antigravity (https://utim.dev/vs-antigravity)
+
+Title: UTIM AI vs Google Antigravity — Feature Comparison
+Canonical: https://utim.dev/vs-antigravity
+
+## Comparison Matrix
+- **Free plan available**: UTIM: ✅ Yes – full agent | Antigravity: ✅ Yes – free tier available
+- **Runs in any terminal**: UTIM: ✅ npm / pip install | Antigravity: ✅ Antigravity CLI
+- **Model Context Protocol (MCP)**: UTIM: ✅ Native full support | Antigravity: ✅ Native support
+- **Executable miniagents / subagents**: UTIM: ✅ Script-based miniagents | Antigravity: ✅ Custom & asynchronous subagents
+- **Creators Ecosystem Marketplace**: UTIM: ✅ Buy, sell & earn 95% | Antigravity: ⚠️ Plugins / MCP ecosystem, no equivalent paid creator marketplace verified
+- **Vector experience memory RAG**: UTIM: ✅ ChromaDB persistent semantic memory | Antigravity: ⚠️ No equivalent persistent vector-experience RAG publicly verified
+- **Dynamic context compression**: UTIM: ✅ Auto-scales to selected model | Antigravity: ✅ Automatic context compaction
+- **No-write dry-run mode**: UTIM: ✅ Safe preview before applying changes | Antigravity: ⚠️ Secure sandbox available, but not the same as dry-run preview
+- **`/undo` & `/rewind` rollback**: UTIM: ✅ Full agent rollback | Antigravity: ⚠️ Version / recovery workflows available, but no equivalent UTIM-style rollback verified
+- **Workspace skills system**: UTIM: ✅ Per-project Skills & AI rules | Antigravity: ✅ Workspace and global Skills
+- **Android Termux support**: UTIM: ✅ Confirmed support | Antigravity: ⚠️ No official Termux support documented
+- **Multi-provider model support**: UTIM: ✅ OpenAI, Claude, Gemini, Ollama & others | Antigravity: ⚠️ Curated models from multiple families
+- **Open model/provider flexibility**: UTIM: ✅ User can choose across supported providers | Antigravity: ⚠️ Limited to models exposed through Antigravity
+- **Marketplace monetization for creators**: UTIM: ✅ Creators can earn 80% from sales | Antigravity: ❌ No equivalent public creator revenue-sharing system verified
+
+---
+
+# Page: vs Aider (https://utim.dev/vs-aider)
+
+Title: UTIM AI vs Aider — Pair Programming Comparison
+Canonical: https://utim.dev/vs-aider
+
+## Comparison Matrix
+- **Free plan available**: UTIM: ✅ Yes – full agent | Aider: ⚠️ Aider is free/open-source; model/API access may require BYOK
+- **Runs in any terminal**: UTIM: ✅ npm / pip install | Aider: ✅ Yes – terminal-native
+- **Model Context Protocol (MCP)**: UTIM: ✅ Native full support | Aider: ❌ No native MCP support
+- **Executable miniagents**: UTIM: ✅ Script-based subagents | Aider: ❌ No native subagent/miniagent system
+- **Creators Ecosystem Marketplace**: UTIM: ✅ Buy, sell & earn 95% | Aider: ❌ No integrated marketplace
+- **Vector experience memory RAG**: UTIM: ✅ ChromaDB persistent semantic memory | Aider: ❌ No persistent vector-memory RAG
+- **Dry-run mode**: UTIM: ✅ Safe preview mode | Aider: ✅ `--dry-run` without modifying files
+- **`/undo` & `/rewind` rollback**: UTIM: ✅ Full agent rollback | Aider: ⚠️ `/undo` available, Git-based
+- **Android Termux support**: UTIM: ✅ Confirmed support | Aider: ⚠️ No official Termux support documented
+- **Multi-model support**: UTIM: ✅ OpenAI, Claude, Gemini, Ollama & others | Aider: ✅ Broad cloud + local LLM support
+
+---
+
+# Page: Features & Documentation (https://utim.dev/features)
+
+Title: UTIM AI Features — Vector RAG, MCP, Miniagents & Safety
+Canonical: https://utim.dev/features
+
+## Core Architectural Components
+
+### 1. Vector Memory RAG (ChromaDB)
+- Automatically indexes project codebase structure, past bug fixes, architectural conventions, and code style.
+- Queries semantic memory before performing edits to ensure strict architectural compliance.
+
+### 2. Model Context Protocol (MCP)
+- Native client implementation for Model Context Protocol servers.
+- Connects your terminal agent to PostgreSQL, SQLite, Playwright browser automation, GitHub APIs, and custom enterprise databases.
+
+### 3. Subagent & Miniagent Orchestration
+- Spawns isolated subagents for research, refactoring, documentation, and testing.
+- Supports custom miniagent scripts published by the global developer community.
+
+---
+
+# Page: Creators Marketplace (https://utim.dev/marketplace)
+
+Title: UTIM Creators Marketplace — Monetize Miniagents & CLI Tools
+Canonical: https://utim.dev/marketplace
+
+## Overview
+The UTIM Marketplace is the global app store for terminal AI tools. Developers can build custom miniagents, publish them to the global directory, and monetize them directly. Creators receive **up to 95% revenue share** on all miniagent sales and subscription unlocks.

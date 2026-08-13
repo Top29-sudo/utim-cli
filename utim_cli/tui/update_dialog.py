@@ -27,7 +27,7 @@ def _dialog_auto_update():
         ]
 
         def _render(idx, row, selected):
-            bg = 'bg:#1e1e2e' if selected else ''
+            bg = 'bg:#313244' if selected else ''
             if row["key"] == "back":
                 fg = 'bold #f38ba8' if selected else '#f38ba8'
             elif row["key"] == "toggle":
@@ -44,7 +44,7 @@ def _dialog_auto_update():
             rows, _render,
             title="Auto-Update Settings",
             legend="ENTER to select, ESC to go back",
-            search_prompt=" 🔍 Search Settings: ",
+            search_prompt=" Search Settings: ",
             search_title="Filter Settings",
             list_title="Settings Options"
         )

@@ -1,8 +1,6 @@
 import os
-import smtplib
 import logging
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import requests
 
 logger = logging.getLogger("utim.email")
 
@@ -338,103 +336,53 @@ def _base_template(body_html: str) -> str:
 
 
 def send_email(to_email: str, subject: str, html_content: str) -> bool:
-    """Send an email using configured SMTP settings with Brevo HTTP fallback."""
-    smtp_host = os.environ.get("SMTP_HOST", "smtp-relay.brevo.com")
-    try:
-        smtp_port = int(os.environ.get("SMTP_PORT", "587"))
-    except ValueError:
-        smtp_port = 587
-
-    smtp_user = (
-        os.environ.get("SMTP_USER") or
-        os.environ.get("BREVO_USER") or
-        os.environ.get("BREVO_LOGIN") or
-        os.environ.get("SMTP_LOGIN") or
-        ""
-    )
-    smtp_password = (
-        os.environ.get("SMTP_PASSWORD") or
-        os.environ.get("SMTP_KEY") or
-        os.environ.get("BREVO_SMTP_KEY") or
+    """Send an email using the Brevo HTTP API."""
+    brevo_api_key = (
         os.environ.get("BREVO_API_KEY") or
+        os.environ.get("BREVO_API_KEY_V3") or
+        os.environ.get("BREVO_KEY") or
+        os.environ.get("BREVO_SECRET") or
+        os.environ.get("BREVO_API") or
         ""
     )
-    smtp_from_email = os.environ.get("SMTP_FROM_EMAIL", "support@utim.dev")
-    smtp_from_name = os.environ.get("SMTP_FROM_NAME", "UTIM CLI")
+    from_email = os.environ.get("SMTP_FROM_EMAIL", "support@utim.dev")
+    from_name = os.environ.get("SMTP_FROM_NAME", "UTIM CLI")
 
-    if not smtp_user or not smtp_password:
+    if not brevo_api_key:
         logger.warning(
-            f"SMTP credentials not configured (SMTP_USER={bool(smtp_user)}, SMTP_PASSWORD={bool(smtp_password)}). "
-            "Skipping email delivery."
+            "Brevo API key not configured (set BREVO_API_KEY). Skipping email delivery."
         )
         return False
 
+    url = "https://api.brevo.com/v3/smtp/email"
+    headers = {
+        "accept": "application/json",
+        "api-key": brevo_api_key,
+        "content-type": "application/json",
+    }
+    payload = {
+        "sender": {"name": from_name, "email": from_email},
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "htmlContent": html_content,
+    }
+
     try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = f"{smtp_from_name} <{smtp_from_email}>"
-        msg["To"] = to_email
-        msg.attach(MIMEText(html_content, "html"))
-
-        if smtp_port == 465:
-            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15) as server:
-                server.login(smtp_user, smtp_password)
-                server.sendmail(smtp_from_email, to_email, msg.as_string())
+        res = requests.post(url, json=payload, headers=headers, timeout=10)
+        if res.status_code in (200, 201, 202):
+            logger.info(f"Email sent successfully via Brevo HTTP API to {to_email}: {subject}")
+            return True
         else:
-            with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
-                server.starttls()
-                server.login(smtp_user, smtp_password)
-                server.sendmail(smtp_from_email, to_email, msg.as_string())
-
-        logger.info(f"Email sent successfully to {to_email}: {subject}")
-        return True
-    except Exception as e:
-        logger.warning(f"SMTP email delivery to {to_email} failed ({e}). Trying fallback to Brevo HTTP API...")
-        try:
-            import requests
-            brevo_api_key = (
-                os.environ.get("BREVO_API_KEY") or
-                os.environ.get("BREVO_API_KEY_V3") or
-                os.environ.get("BREVO_KEY") or
-                os.environ.get("BREVO_SECRET") or
-                os.environ.get("BREVO_API") or
-                os.environ.get("API_KEY") or
-                smtp_password
-            )
-            url = "https://api.brevo.com/v3/smtp/email"
-            headers = {
-                "accept": "application/json",
-                "api-key": brevo_api_key,
-                "content-type": "application/json"
-            }
-            payload = {
-                "sender": {
-                    "name": smtp_from_name,
-                    "email": smtp_from_email
-                },
-                "to": [
-                    {
-                        "email": to_email
-                    }
-                ],
-                "subject": subject,
-                "htmlContent": html_content
-            }
-            res = requests.post(url, json=payload, headers=headers, timeout=10)
-            if res.status_code in (200, 201, 202):
-                logger.info(f"Email sent successfully via Brevo HTTP API fallback to {to_email}: {subject}")
-                return True
-            else:
-                logger.error(f"Brevo HTTP API fallback failed with status {res.status_code}: {res.text}")
-                return False
-        except Exception as exc:
-            logger.error(f"Failed to send email to {to_email} via both SMTP and HTTP API: {exc}")
+            logger.error(f"Brevo HTTP API failed with status {res.status_code}: {res.text}")
             return False
+    except Exception as exc:
+        logger.error(f"Failed to send email to {to_email} via Brevo HTTP API: {exc}")
+        return False
 
 
 def send_welcome_email(to_email: str, display_name: str) -> bool:
     """Send a welcoming onboarding email."""
-    subject = "Welcome to UTIM CLI — Your Terminal Intelligence Engine 🚀"
+    subject = "Welcome to UTIM CLI — Your Terminal Intelligence Engine "
     body = f"""
       <div class="badge badge-indigo">● SYSTEM_ONBOARDING</div>
       <h1 class="email-title">Welcome aboard, {display_name}</h1>
@@ -469,7 +417,7 @@ def send_welcome_email(to_email: str, display_name: str) -> bool:
 
 def send_otp_email(to_email: str, otp_code: str) -> bool:
     """Send a 6-digit OTP verification code email."""
-    subject = f"🔐 Your UTIM Verification Code: {otp_code}"
+    subject = f"Your UTIM Verification Code: {otp_code}"
     body = f"""
       <div class="badge badge-indigo">● SECURITY_AUTHENTICATION</div>
       <h1 class="email-title">Verify your identity</h1>
@@ -488,7 +436,7 @@ def send_otp_email(to_email: str, otp_code: str) -> bool:
 def send_quota_left_email(to_email: str, display_name: str, remaining_percent: float, is_exhausted: bool) -> bool:
     """Send an alert if quota is low or fully exhausted."""
     if is_exhausted:
-        subject = "⚠️ Action Required: Your UTIM Quota is Exhausted"
+        subject = "Action Required: Your UTIM Quota is Exhausted"
         badge = '<div class="badge badge-rose">● QUOTA_EXHAUSTED</div>'
         title = "Your monthly quota is exhausted"
         desc = (
@@ -499,7 +447,7 @@ def send_quota_left_email(to_email: str, display_name: str, remaining_percent: f
         btn_class = "btn-danger"
         btn_label = "Upgrade Plan &rarr;"
     else:
-        subject = "⚡ Notice: Your UTIM quota is running low"
+        subject = "Notice: Your UTIM quota is running low"
         badge = '<div class="badge badge-amber">● LOW_QUOTA_WARNING</div>'
         title = "Quota threshold alert"
         desc = (
@@ -536,7 +484,7 @@ def send_quota_left_email(to_email: str, display_name: str, remaining_percent: f
 
 def send_bonus_credits_email(to_email: str, display_name: str, bonus_credits: float) -> bool:
     """Send an email informing the user they received bonus credits from degradation."""
-    subject = "🎁 Bonus Credits Added to Your UTIM Account"
+    subject = "Bonus Credits Added to Your UTIM Account"
     bonus_usd = bonus_credits / 1000.0
     body = f"""
       <div class="badge badge-emerald">● BONUS_CREDITS_GRANTED</div>

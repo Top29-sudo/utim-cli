@@ -124,6 +124,7 @@ def firebase_login(request: Request, req: FirebaseLoginRequest, db: Session = De
 
     The `api_key` is then used as `X-API-Key` on all subsequent requests.
     """
+    from sqlalchemy import func
     from ..firebase import verify_firebase_token
 
     try:
@@ -135,11 +136,13 @@ def firebase_login(request: Request, req: FirebaseLoginRequest, db: Session = De
     if not payload.email:
         raise HTTPException(status_code=400, detail="Firebase token does not contain an email address.")
 
+    email = payload.email.strip().lower()
+
     # Check if this is a new user before provisioning
-    existing = db.query(User).filter(User.email == payload.email).first()
+    existing = db.query(User).filter(func.lower(User.email) == email).first()
     is_new = existing is None
 
-    user = create_user(db, email=payload.email, display_name=payload.name)
+    user = create_user(db, email=email, display_name=payload.name)
     user.firebase_uid = payload.uid
     db.commit()
 
@@ -345,7 +348,7 @@ def device_authorize(request: Request, req: DeviceAuthorizeRequest, db: Session 
         raise HTTPException(status_code=410, detail="Activation code has expired. Please restart the login flow in your terminal.")
 
     # Provision or fetch the user
-    user = create_user(db, email=payload.email, display_name=payload.name)
+    user = create_user(db, email=email, display_name=payload.name)
     user.firebase_uid = payload.uid
 
     # Authorize the code
@@ -761,6 +764,14 @@ def topup(
         description=req.description,
     )
     db.add(tx)
+
+    # Grant free spin for every $5 (5000 credits) manual top-up
+    spins_to_add = int((req.amount / 1000.0) // 5.0)
+    if spins_to_add > 0:
+        from .rewards_routes import _get_or_create_spin_cycle
+        cycle = _get_or_create_spin_cycle(db, user.id)
+        cycle.spins_granted += spins_to_add
+
     db.commit()
 
     logger.info(

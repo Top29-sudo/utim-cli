@@ -38,6 +38,19 @@ YELLOW = "#f9e2af"
 SERVER_URL = os.environ.get("UTIM_SERVER_URL", "https://api.utim.dev")
 WEB_URL = os.environ.get("UTIM_WEB_URL", "https://utim.dev")
 
+def get_api_url() -> str:
+    """Get base server URL from environment or fallback default."""
+    return os.environ.get("UTIM_SERVER_URL", SERVER_URL)
+
+def get_auth_headers() -> dict[str, str]:
+    """Get request headers containing current user API key."""
+    api_key = config.get("api_key") or ""
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["X-API-Key"] = api_key
+        headers["Authorization"] = f"Bearer {api_key}"
+    return headers
+
 # Firebase project config (public — safe to embed in CLI)
 FIREBASE_PROJECT_ID  = "u-t-i-m-39c26"
 FIREBASE_API_KEY     = "AIzaSyAV-L3jY6dS3wXMMNGnYnPTX3IuqBFqK4E"
@@ -201,7 +214,7 @@ def login(restart: bool = True) -> None:
             pass
 
     # Print compact Termux/Android friendly instructions
-    raw_print(f"\n  {BOLD}🔑 Device Sign-In Required:{RESET}")
+    raw_print(f"\n  {BOLD}Device Sign-In Required:{RESET}")
     raw_print(f"  1. Open link: {BLUE}{verify_url}{RESET}")
     if clipboard_notice:
         raw_print(f"     {clipboard_notice.strip()}")
@@ -276,7 +289,7 @@ def login(restart: bool = True) -> None:
                         restart_process()
                     return
                 else:
-                    raw_print(f"  {YELLOW}⚠  Authorization pending. Please complete it at: {BLUE}{verify_url}{RESET}")
+                    raw_print(f"  {YELLOW}Authorization pending. Please complete it at: {BLUE}{verify_url}{RESET}")
             else:
                 raw_print(f"\n  \033[1;31m✗ Verification failed (HTTP {pr.status_code}). Please try again.\033[0m\n")
         except Exception as e:

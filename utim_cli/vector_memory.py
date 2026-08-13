@@ -41,12 +41,18 @@ except ImportError:
     CHROMA_AVAILABLE = False
 
 import os as _os
+
+def is_lite_mode() -> bool:
+    """Dynamic check for lite mode status."""
+    return _os.environ.get("UTIM_LITE_MODE", "0").lower() in ("1", "true", "yes")
+
 # LITE MODE: when enabled, NEVER load ChromaDB / sentence-transformers /
 # the MiniLM model (which is ~90MB and eats RAM on load). Vector memory
 # degrades to the deterministic mock so the CLI stays light on low-spec PCs.
-LITE_MODE = _os.environ.get("UTIM_LITE_MODE", "0") in ("1", "true", "TRUE", "yes")
+LITE_MODE = is_lite_mode()
 if LITE_MODE:
     CHROMA_AVAILABLE = False
+
 
 from utim_cli.config import get_utim_dir
 
@@ -542,8 +548,11 @@ def warmup_embedding_model() -> bool:
     Call this at startup in a background thread so the first real encode is instant.
     Returns True if model was successfully loaded, False otherwise.
     """
+    if is_lite_mode():
+        return False
     try:
         vm = get_reflections_memory()
+
         if vm and vm.embedding_func:
             # Encode a dummy string — this forces the ONNX/SentenceTransformer
             # model weights to be downloaded (if not cached) and loaded into RAM.

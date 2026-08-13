@@ -102,13 +102,13 @@ _PRICE_OPTIONS = [
 ]
 
 _PRICE_LABELS = {
-    "free":        "🎁  Free ($0.00)",
-    "paid_001":    "💎  $0.01 USD one-time  (minimum paid)",
-    "paid_1":      "💎  $1.00 USD one-time",
-    "paid_5":      "💎  $5.00 USD one-time",
-    "paid_10":     "💎  $10.00 USD one-time",
-    "sub_monthly": "🔄  $5.00 / month subscription",
-    "sub_yearly":  "📅  $49.00 / year subscription",
+    "free":        " Free ($0.00)",
+    "paid_001":    " $0.01 USD one-time  (minimum paid)",
+    "paid_1":      " $1.00 USD one-time",
+    "paid_5":      " $5.00 USD one-time",
+    "paid_10":     " $10.00 USD one-time",
+    "sub_monthly": " $5.00 / month subscription",
+    "sub_yearly":  " $49.00 / year subscription",
 }
 
 
@@ -273,7 +273,7 @@ def _run_security_check(
     user_action = [""]
 
     rows: list[dict] = []
-    title_label = "🛡  UTIM SECURITY SCANNER" if mode == "check" else "🔧  UTIM SECURITY AUTO-FIXER"
+    title_label = " UTIM SECURITY SCANNER" if mode == "check" else " UTIM SECURITY AUTO-FIXER"
 
     rows.append({"type": "info", "bold": True, "color": _WHITE, "text": f"{title_label} — {ext_name}"})
     rows.append({"type": "info", "color": _MUTED, "text": "Analyzing extension files in real-time..." if mode == "check" else "Auto-fixing security vulnerabilities..."})
@@ -309,19 +309,19 @@ def _run_security_check(
                 ev = evt.get("event", "")
 
                 if ev == "started":
-                    rows.append({"type": "info", "color": _CYAN, "text": f"🔬 {evt.get('message', '')}"})
+                    rows.append({"type": "info", "color": _CYAN, "text": f"{evt.get('message', '')}"})
                 elif ev == "thinking":
-                    rows.append({"type": "info", "color": _MUTED, "text": f"💭 {evt.get('message', '')}"})
+                    rows.append({"type": "info", "color": _MUTED, "text": f"{evt.get('message', '')}"})
                 elif ev == "check":
                     fname = evt.get("file", "")
                     pattern = evt.get("pattern", "")
-                    rows.append({"type": "info", "color": _BLUE, "text": f"🔍 [{fname}] {pattern}"})
+                    rows.append({"type": "info", "color": _BLUE, "text": f"[{fname}] {pattern}"})
                 elif ev == "finding":
                     fname = evt.get("file", "")
                     verdict = evt.get("verdict", "CLEAN")
                     detail = evt.get("detail", "")
                     color = _GREEN if verdict == "CLEAN" else (_YELLOW if verdict == "WARNING" else _RED)
-                    icon = "✓" if verdict == "CLEAN" else ("⚠" if verdict == "WARNING" else "✗")
+                    icon = "✓" if verdict == "CLEAN" else ("" if verdict == "WARNING" else "✗")
                     rows.append({"type": "info", "bold": True, "color": color, "text": f"  {icon} [{fname}] {verdict} — {detail}"})
                 elif ev == "file_edited":
                     rel_file = evt.get("file", "")
@@ -336,7 +336,7 @@ def _run_security_check(
                                     fp.write_text(content.replace(target, replacement, 1), encoding="utf-8")
                         except Exception:
                             pass
-                    rows.append({"type": "info", "bold": True, "color": _GREEN, "text": f"  🔧 [AUTO-FIXED] {rel_file} — {evt.get('detail', '')}"})
+                    rows.append({"type": "info", "bold": True, "color": _GREEN, "text": f"  [AUTO-FIXED] {rel_file} — {evt.get('detail', '')}"})
                 elif ev == "summary":
                     result["overall"] = evt.get("overall", "UNKNOWN")
                     result["issues"] = evt.get("issues", [])
@@ -356,14 +356,14 @@ def _run_security_check(
             scan_done.set()
             overall = result["overall"]
             color = _GREEN if overall in ("SAFE", "FIXED") else (_YELLOW if overall == "NEEDS_FIXES" else _RED)
-            icon = "✅" if overall in ("SAFE", "FIXED") else "⚠️" if overall == "NEEDS_FIXES" else "🚫"
+            icon = "" if overall in ("SAFE", "FIXED") else "" if overall == "NEEDS_FIXES" else ""
 
             rows.append({"type": "sep"})
             rows.append({"type": "info", "bold": True, "color": color, "text": f"  {icon}  SESSION COMPLETE — {overall}"})
 
             # Insert detailed summary section into rows
             rows.append({"type": "sep"})
-            rows.append({"type": "info", "bold": True, "color": _WHITE, "text": "📊  SECURITY SCAN SUMMARY & FINDINGS"})
+            rows.append({"type": "info", "bold": True, "color": _WHITE, "text": " SECURITY SCAN SUMMARY & FINDINGS"})
             
             res_issues = result.get("issues", [])
             res_fixes = result.get("fixes_required", [])
@@ -421,7 +421,7 @@ def _ask_fix_prompt(issues: list[str], fixes_required: list[str] | None = None) 
     from utim_cli.utim import _run_list_dialog
 
     rows: list[dict] = [
-        {"type": "info", "bold": True, "color": _RED, "text": "⚠️  SECURITY SCAN VULNERABILITY SUMMARY"},
+        {"type": "info", "bold": True, "color": _RED, "text": " SECURITY SCAN VULNERABILITY SUMMARY"},
         {"type": "info", "color": _MUTED, "text": "The extension scan identified issues that prevent immediate publication:"},
         {"type": "spacer"},
     ]
@@ -438,7 +438,7 @@ def _ask_fix_prompt(issues: list[str], fixes_required: list[str] | None = None) 
 
     rows.append({"type": "spacer"})
     rows.append({"type": "sep"})
-    rows.append({"type": "action", "action": "fix", "label": "🔧  FIX Vulnerabilities with AI (Auto-edit source files)",
+    rows.append({"type": "action", "action": "fix", "label": " FIX Vulnerabilities with AI (Auto-edit source files)",
                  "color": _GREEN, "hint": "Enables AI tool calling (edit_file) to automatically refactor source code."})
     rows.append({"type": "action", "action": "cancel", "label": "←  Cancel & Return to Editor",
                  "color": _RED, "hint": "Return to editor to inspect and edit files yourself."})
@@ -525,12 +525,12 @@ def _render_form_row(idx: int, row: dict, selected: bool, form: dict) -> list:
             except ValueError:
                 pv = 0.0
             if pv == 0.0:
-                val = "🎁  Free ($0.00)  ← Enter to change"
+                val = " Free ($0.00)  ← Enter to change"
             else:
                 pt_desc = "Subscription" if form.get("payment_type") == "subscription" else "One-Time"
                 if form.get("sub_interval"):
                     pt_desc += f" ({form['sub_interval'].title()})"
-                val = f"💎  ${pv:.2f} USD — {pt_desc}  ← Enter to change"
+                val = f" ${pv:.2f} USD — {pt_desc}  ← Enter to change"
             val_style = f"bold {_YELLOW}"
         else:
             val = str(form.get(field, ""))
@@ -573,7 +573,7 @@ def _pick_folder(current: str, ext_type: str) -> Optional[str]:
 
     for fp, label in local:
         mark = "  ✓" if fp == current else ""
-        rows.append({"type": "action", "action": fp, "label": f"📦  {label}{mark}", "color": _FG,
+        rows.append({"type": "action", "action": fp, "label": f" {label}{mark}", "color": _FG,
                      "hint": fp})
     rows.append({"type": "sep"})
     rows.append({"type": "action", "action": "cancel", "label": "← Cancel", "color": _RED})
@@ -614,7 +614,7 @@ def _pick_folder(current: str, ext_type: str) -> Optional[str]:
 
     _run_list_dialog(
         rows, _render,
-        title="📁 Pick Source Directory",
+        title="Pick Source Directory",
         legend="UP/DOWN: Move  •  ENTER: Select  •  ESC/Q: Cancel",
         is_selectable_fn=_is_selectable,
         on_enter=_on_enter,
@@ -640,11 +640,11 @@ def _pick_price(current_price: str) -> Optional[dict]:
                      "data": {"price": price, "payment_type": ptype, "sub_interval": sub_int}})
     rows.append({"type": "sep"})
     rows.append({"type": "info", "text": "Custom Pricing Options:", "color": _MUTED})
-    rows.append({"type": "action", "action": "custom_one_time", "label": "✏️   Custom One-Time Price (USD)...", "color": _YELLOW,
+    rows.append({"type": "action", "action": "custom_one_time", "label": "  Custom One-Time Price (USD)...", "color": _YELLOW,
                  "hint": "e.g. 2.50 one-time payment"})
-    rows.append({"type": "action", "action": "custom_monthly",  "label": "🔄   Custom Monthly Subscription (USD)...", "color": _CYAN,
+    rows.append({"type": "action", "action": "custom_monthly",  "label": "  Custom Monthly Subscription (USD)...", "color": _CYAN,
                  "hint": "e.g. 4.99 per month recurring"})
-    rows.append({"type": "action", "action": "custom_yearly",   "label": "📅   Custom Yearly Subscription (USD)...", "color": _MAUVE,
+    rows.append({"type": "action", "action": "custom_yearly",   "label": "  Custom Yearly Subscription (USD)...", "color": _MAUVE,
                  "hint": "e.g. 49.99 per year recurring"})
     rows.append({"type": "sep"})
     rows.append({"type": "action", "action": "cancel", "label": "← Cancel", "color": _RED})
@@ -713,7 +713,7 @@ def _pick_price(current_price: str) -> Optional[dict]:
 
     _run_list_dialog(
         rows, _render,
-        title="💰 Pick Pricing Model",
+        title="Pick Pricing Model",
         legend="UP/DOWN: Move  •  ENTER: Select  •  ESC/Q: Cancel",
         is_selectable_fn=_is_selectable,
         on_enter=_on_enter,
@@ -833,9 +833,9 @@ def dialog_publish(console) -> None:
         rows: list[dict] = []
 
         rows.append({"type": "info", "bold": True, "color": _WHITE,
-                     "text": "📤  PUBLISH NEW EXTENSION TO MARKETPLACE"})
+                     "text": " PUBLISH NEW EXTENSION TO MARKETPLACE"})
         rows.append({"type": "info", "color": _MUTED,
-                     "text": "Fill in the form below, then press 🚀 Upload & Publish."})
+                     "text": "Fill in the form below, then press Upload & Publish."})
         rows.append({"type": "spacer"})
 
         if error_msg:
@@ -853,7 +853,7 @@ def dialog_publish(console) -> None:
         rows.append({"type": "field", "field": "price",       "label": "6. Pricing",      "hint": "Enter opens pricing picker"})
         rows.append({"type": "field", "field": "tags",        "label": "7. Tags",         "hint": "Enter key → type comma-separated tags"})
         rows.append({"type": "sep"})
-        rows.append({"type": "action", "action": "submit", "label": "🚀  Upload & Publish Package to Marketplace",
+        rows.append({"type": "action", "action": "submit", "label": " Upload & Publish Package to Marketplace",
                      "color": _GREEN, "hint": "Zips folder and uploads to marketplace"})
         rows.append({"type": "action", "action": "back",   "label": "←  Cancel & Return to Marketplace",
                      "color": _RED,   "hint": "Discard changes and go back"})
@@ -937,7 +937,7 @@ def dialog_publish(console) -> None:
 
             if overall not in ("SAFE", "FIXED") or user_action == "cancel":
                 issue_lines = "\n  ".join(issues) if issues else "Security verification not passed."
-                error_msg = f"🚫 SECURITY CHECK CANCELLED OR FAILED:\n  {issue_lines}"
+                error_msg = f"SECURITY CHECK CANCELLED OR FAILED:\n  {issue_lines}"
                 continue
 
             # SAFE — proceed to publish compiled zip
@@ -961,7 +961,7 @@ def dialog_publish(console) -> None:
 
             if status in (200, 201):
                 dl = (data or {}).get("zip_url", f"https://api.utim.dev/marketplace/packages/{slug}.zip")
-                success_msg = f"'{form['name']}' is now published! (Security-verified ✅ + Auto-fixed 🔧 + Compiled 🔒)\n  Download: {dl}"
+                success_msg = f"'{form['name']}' is now published! (Security-verified + Auto-fixed + Compiled )\n  Download: {dl}"
                 form["name"] = form["folder"] = form["description"] = ""
             elif status == 401:
                 error_msg = "Not authenticated. Run /login first."

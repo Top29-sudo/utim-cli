@@ -10,6 +10,8 @@ SUBAGENT_DEFAULTS = {
     "generate_image": "nvidia/nemotron-3-nano-30b-a3b:free",
 }
 
+
+
 import sys
 _IS_LEGACY_WIN = (sys.platform == "win32" and "WT_SESSION" not in os.environ)
 PROMPT_SYMBOL = ">" if _IS_LEGACY_WIN else "❯"

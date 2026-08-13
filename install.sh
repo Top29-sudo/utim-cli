@@ -1,7 +1,7 @@
 #!/bin/bash
 # UTIM CLI Auto-Installer for Unix/macOS/Android Termux
 #
-# Uses Pure-Python Architecture on Android Termux to ensure fast 100% Rust-free installation.
+# Uses OS-specific requirement files (requirements_android.txt, requirements_desktop.txt).
 
 set -e
 
@@ -13,18 +13,28 @@ if [ -d "/data/data/com.termux" ] || [ -n "$TERMUX_VERSION" ] || [[ "$PREFIX" ==
     IS_TERMUX=true
 fi
 
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 if [ "$IS_TERMUX" = true ]; then
     echo "[*] Android Termux environment detected."
-    echo "[*] Using Pure-Python Architecture (no Rust compiler or pydantic-core wheel building required)."
-    echo "[*] Installing utim-cli..."
-    pip install utim-cli
+    echo "[*] Using 100% Pure-Python requirements_android.txt (zero Rust/C++ compilation required)."
+    if [ -f "$SCRIPT_DIR/requirements_android.txt" ]; then
+        pip install -r "$SCRIPT_DIR/requirements_android.txt"
+        pip install --no-deps -e "$SCRIPT_DIR"
+    else
+        pip install utim-cli
+    fi
     echo "[✓] UTIM CLI installed successfully on Termux!"
     echo "    Type 'utim' to start."
 else
     # Non-Termux unix environments (Linux, macOS)
     echo "[*] Standard UNIX/macOS environment detected."
-    echo "[*] Installing utim-cli..."
-    pip install utim-cli
+    if [ -f "$SCRIPT_DIR/requirements_desktop.txt" ]; then
+        pip install -r "$SCRIPT_DIR/requirements_desktop.txt"
+        pip install --no-deps -e "$SCRIPT_DIR"
+    else
+        pip install utim-cli
+    fi
     echo "[✓] UTIM CLI installed successfully!"
     echo "    Type 'utim' to start."
 fi

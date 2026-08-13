@@ -22,6 +22,10 @@ def main():
     port = int(os.environ.get("PORT", 8080))
 
     # Warn about missing env vars but DO NOT exit — server must start
+
+
+
+
     required = {
         "DATABASE_URL": os.environ.get("DATABASE_URL"),
         "OPENROUTER_API_KEY": os.environ.get("OPENROUTER_API_KEY"),
@@ -32,7 +36,7 @@ def main():
         print(f"[WARNING] Missing env vars: {', '.join(missing)} — some features will be degraded.")
         print("          Set these in Railway → Service → Variables")
 
-    print(f"🚀  UTIM Production Server")
+    print(f" UTIM Production Server")
     print(f"    http://{host}:{port}")
     print(f"    Docs:   http://{host}:{port}/docs")
 

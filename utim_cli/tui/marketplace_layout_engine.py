@@ -17,12 +17,12 @@ from utim_cli.tui.marketplace_app_state import MarketplaceAppState, SIDEBAR_SECT
 
 def _format_type_tag(itype: str) -> str:
     tags = {
-        "skill": "📚 SKILL",
-        "miniagent": "🤖 MINIAGENT",
-        "tool": "🔧 TOOL",
-        "mcp": "🔌 MCP SERVER",
+        "skill": "SKILL",
+        "miniagent": "MINIAGENT",
+        "tool": "TOOL",
+        "mcp": "MCP SERVER",
     }
-    return tags.get(itype, "📦 EXTENSION")
+    return tags.get(itype, "EXTENSION")
 
 
 def render_marketplace_webapp(state: MarketplaceAppState) -> List[Tuple[str, str]]:
@@ -37,15 +37,15 @@ def render_marketplace_webapp(state: MarketplaceAppState) -> List[Tuple[str, str
     out: List[Tuple[str, str]] = []
 
     # 1. Top Bar
-    out.append(("bold #cba6f7", " 🛍️ UTIM MARKETPLACE "))
+    out.append(("bold #cba6f7", " UTIM MARKETPLACE "))
     out.append(("dim #45475a", " │ "))
     query_display = state.search_query if state.search_query else "Search extensions... ('/' or Tab to focus)"
     q_style = "bold #89dceb" if state.active_panel == "topbar" else "dim #6c7086"
-    out.append((q_style, f" 🔍 [{query_display.ljust(content_w - 20)}] "))
+    out.append((q_style, f" [{query_display.ljust(content_w - 20)}] "))
     out.append(("dim #45475a", " │ "))
-    out.append(("bold #a6e3a1", " 💰 Wallet "))
+    out.append(("bold #a6e3a1", " Wallet "))
     out.append(("dim #45475a", " │ "))
-    out.append(("bold #f5e0dc", " 👤 Profile \n"))
+    out.append(("bold #f5e0dc", " Profile \n"))
     out.append(("dim #45475a", "─" * term_cols + "\n"))
 
     # 2. Main 3-Pane View Body
@@ -83,7 +83,7 @@ def render_marketplace_webapp(state: MarketplaceAppState) -> List[Tuple[str, str
     if state.loading:
         content_rows.append(("bold #89dceb", "\n  ⏳ Connecting to UTIM registry...\n"))
     elif not items:
-        content_rows.append(("bold #f38ba8", "\n  📭 No extensions found.\n"))
+        content_rows.append(("bold #f38ba8", "\n  No extensions found.\n"))
         content_rows.append(("dim #6c7086", "     Try clearing search filter or switching categories.\n"))
     else:
         for idx, item in enumerate(items[:20]):
@@ -116,7 +116,7 @@ def render_marketplace_webapp(state: MarketplaceAppState) -> List[Tuple[str, str
 
             content_rows.append((border_style, f"{ptr}┌── {name}{verified_badge}  [{type_tag}]  [{price_str}]\n"))
             content_rows.append((card_style, f"   │   {desc}\n"))
-            content_rows.append((border_style, f"   └── ⭐ {stars:.1f}  │  ⬇ {dls:,} installs  │  🛡️ SHA-256 Passed  [View]\n\n"))
+            content_rows.append((border_style, f"   └── ⭐ {stars:.1f}  │  ⬇ {dls:,} installs  │  SHA-256 Passed  [View]\n\n"))
 
     # Render Preview Panel
     preview_rows: List[Tuple[str, str]] = []
@@ -134,14 +134,14 @@ def render_marketplace_webapp(state: MarketplaceAppState) -> List[Tuple[str, str
         preview_rows.append(("dim #6c7086", f" Installs: "))
         preview_rows.append(("bold #a6e3a1", f"⬇ {sel_item.get('download_count', 0):,}\n"))
         preview_rows.append(("dim #6c7086", f" Security: "))
-        preview_rows.append(("bold #50fa7b", f"🛡️ SHA-256 Verified\n\n"))
+        preview_rows.append(("bold #50fa7b", f"SHA-256 Verified\n\n"))
 
         desc_wrapped = textwrap.wrap(sel_item.get("description", ""), width=preview_w - 4)
         for dline in desc_wrapped[:6]:
             preview_rows.append(("#cdd6f4", f" {dline}\n"))
 
         preview_rows.append(("\n", "\n"))
-        preview_rows.append(("bold #a6e3a1", f" [ ⚡ Install ]   [ Open Details ]\n"))
+        preview_rows.append(("bold #a6e3a1", f" [ Install ]   [ Open Details ]\n"))
     elif preview_w > 0:
         preview_rows.append(("dim #6c7086", "\n Select an extension\n to preview details.\n"))
 

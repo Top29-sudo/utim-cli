@@ -3,31 +3,31 @@ import time
 CATEGORIES = {
     "Miniagent Tools": {
         "pattern": lambda name: name.startswith("miniagent_"),
-        "icon": "⚡",
+        "icon": "",
     },
     "File Operations & Editing": {
         "pattern": lambda name: name in ("read_file", "write_file", "edit_file", "replace_file_content", "multi_replace_file_content", "move_file", "delete_file", "list_directory", "view_file", "grep_search"),
-        "icon": "📂",
+        "icon": "",
     },
     "Command & System Exec": {
         "pattern": lambda name: name in ("run_command", "get_background_output", "send_background_input", "stop_background_process", "list_background_processes"),
-        "icon": "💻",
+        "icon": "",
     },
     "Web & Image AI": {
         "pattern": lambda name: name in ("web_search", "generate_image", "analyze_image"),
-        "icon": "🌐",
+        "icon": "",
     },
     "Project & Code Semantics": {
         "pattern": lambda name: name in ("plan_project", "manage_todos"),
-        "icon": "🧠",
+        "icon": "",
     },
     "Blender & 3D Tools": {
         "pattern": lambda name: name.startswith("blender_"),
-        "icon": "🎨",
+        "icon": "",
     },
     "Model Context Protocol (MCP)": {
         "pattern": lambda name: False,
-        "icon": "🔌",
+        "icon": "",
     }
 }
 
@@ -89,17 +89,17 @@ def _dialog_tools(orchestrator):
         rows = []
         # Add special action options
         rows.append({
-            "name": "✅ Enable All Tools",
+            "name": "   Enable All Tools",
             "desc": "Turn on all built-in and MCP tools",
             "action": "enable_all"
         })
         rows.append({
-            "name": "⬜ Disable All Tools",
+            "name": "   Disable All Tools",
             "desc": "Turn off all built-in and MCP tools",
             "action": "disable_all"
         })
         rows.append({
-            "name": "❌ Exit and Save Changes",
+            "name": "   Exit and Save Changes",
             "desc": "Return to the chat screen",
             "action": "exit"
         })
@@ -122,13 +122,11 @@ def _dialog_tools(orchestrator):
                 checkbox = "☐"
             else:
                 status = "partially_enabled"
-                checkbox = "◪"
+                checkbox = "☒"
                 
-            icon = CATEGORIES.get(cat_name, {}).get("icon", "⚙️")
-            
             # Category header toggle row
             rows.append({
-                "name": f"{checkbox} {icon} Category: {cat_name} ({enabled_count}/{total_count} enabled)",
+                "name": f"{checkbox}  Category: {cat_name} ({enabled_count}/{total_count} enabled)",
                 "desc": f"Toggle all tools under {cat_name}",
                 "category_name": cat_name,
                 "action": "toggle_category",
@@ -141,47 +139,48 @@ def _dialog_tools(orchestrator):
                 name = t["function"]["name"]
                 desc = t["function"]["description"]
                 is_enabled = name not in disabled_tools
-                name_display = f"   {'☑' if is_enabled else '☐'} {name}"
+                checkbox = "☑" if is_enabled else "☐"
+                name_display = f"   {checkbox}  {name}"
                 rows.append({
                     "name": name_display,
                     "desc": desc,
                     "tool_name": name,
                     "action": "toggle",
-                    "category_name": cat_name
+                    "category_name": cat_name,
+                    "is_enabled": is_enabled
                 })
                 
         def render_row(idx, row, selected):
-            bg = 'bg:#1e1e2e' if selected else ''
+            bg = 'bg:#313244' if selected else ''
             act = row.get("action")
             
             if act == "exit":
-                fg = 'bold #f38ba8' if selected else '#f38ba8'
+                fg = 'bold fg:#b4befe'
                 desc_padding = "      "
-            elif act in ("enable_all", "disable_all"):
-                fg = 'bold #a6e3a1' if selected else '#a6e3a1'
+            elif act == "enable_all":
+                fg = 'bold fg:#a6e3a1'
+                desc_padding = "      "
+            elif act == "disable_all":
+                fg = 'bold fg:#f38ba8'
                 desc_padding = "      "
             elif act == "toggle_category":
-                # Category headers
-                status = row["status"]
-                if status == "all_enabled":
-                    fg = 'bold #a6e3a1' if selected else 'bold #89b4fa'
-                elif status == "partially_enabled":
-                    fg = 'bold #f9e2af' if selected else 'bold #f9e2af'
+                st = row.get("status")
+                if st == "all_enabled":
+                    fg = 'bold fg:#a6e3a1'
+                elif st == "all_disabled":
+                    fg = 'bold fg:#f38ba8'
                 else:
-                    fg = 'bold #f5c2e7' if selected else 'bold #cba6f7'
+                    fg = 'bold fg:#f9e2af'
                 desc_padding = "      "
             else:
                 # Indented tool toggle row
-                is_checked = '☑' in row["name"]
-                fg = 'bold #a6e3a1' if is_checked else 'fg:#a6adc8'
-                if selected:
-                    fg = 'bold #a6e3a1 bg:#313244' if is_checked else 'fg:#cdd6f4 bg:#313244'
+                is_checked = row.get("is_enabled", False)
+                fg = 'bold fg:#a6e3a1' if is_checked else 'fg:#6c7086'
                 desc_padding = "         "
                 
             import textwrap
             import shutil
 
-            # Calculate wrapped description based on terminal width to prevent screen overflow
             term_w = shutil.get_terminal_size().columns
             left_space_len = 4 + len(desc_padding)
             wrap_width = max(20, term_w - left_space_len - 4)
@@ -193,10 +192,11 @@ def _dialog_tools(orchestrator):
             for line in desc_lines:
                 formatted_desc += f"{desc_padding}{line}\n"
 
+            desc_style = 'fg:#9399b2'
             return [
                 (bg, '  ➔ ' if selected else '    '),
-                (bg or fg, f"{row['name']}\n"),
-                (bg or 'class:dim', formatted_desc)
+                (fg, f"{row['name']}\n"),
+                (desc_style, formatted_desc)
             ]
             
         action, idx = _run_list_dialog(

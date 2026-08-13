@@ -102,13 +102,6 @@ const featuresData = [
     color: "#C084FC",
     icon: "🎟️",
     tags: ["/quotashare", "/redeem", "Collaboration"]
-  },
-  {
-    id: "marketplace", number: "11", title: "Creators Ecosystem",
-    desc: "Global marketplace to browse, download, install, purchase, and publish custom skills and script-based miniagents with built-in publisher profiles, wallet earnings, and withdrawal payouts.",
-    color: "#cba6f7",
-    icon: "🏪",
-    tags: ["/marketplace", "Skills", "Miniagents", "Publish & Earn"]
   }
 ];
 
@@ -359,8 +352,6 @@ export const InlineChangelog = () => {
 export const InlinePricing = () => {
   const navigate = useNavigate();
   const { user, getToken, refreshProfile, isAuthenticated } = useAuth();
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [billingPeriod, setBillingPeriod] = useState('monthly');
   const [message, setMessage] = useState('');
   const [activePlanId, setActivePlanId] = useState(null);
   const [isIndian, setIsIndian] = useState(detectIsIndian());
@@ -497,7 +488,7 @@ export const InlinePricing = () => {
       color: "#00F0FF",
       features: [
         "18,000 Monthly Credits (+2,000 bonus credits on first purchase)",
-        "Pro-tier reasoning (claude-3.5, gemini-3.5)",
+        "Pro-tier reasoning (claude-sonnet-4.6, gemini-3.6-flash)",
         "Blender & 3D model tools enabled (Tripo 3D models)",
         "Agentic tools enabled (Analyse Image, Web Search, Codebase)",
         "Custom Model Context Protocol (MCP) servers",
@@ -759,11 +750,6 @@ export const InlinePricing = () => {
                   </div>
                 );
               })()}
-              {billingPeriod === 'yearly' && t.id !== 'free' && (
-                <div style={{ color: '#00FF66', fontSize: '0.75rem', fontFamily: 'monospace', marginBottom: '4px' }}>
-                  {getSavingsText(t)}
-                </div>
-              )}
               <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0 16px 0', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {t.features.map(f => {
                   const isCredits = f.toLowerCase().includes('credits');
@@ -1019,18 +1005,15 @@ export const InlineConnect = () => {
 
 const MODELS_DATA = {
   free: [
-    { id: 'nex-agi/nex-n2-pro:free', input: 0.0002, output: 0.0003, context: '262,144', caps: ['code', 'chat', 'tool_use'] },
     { id: 'poolside/laguna-m.1:free', input: 0.0002, output: 0.0003, context: '262,144', caps: ['code', 'chat', 'tool_use'] },
     { id: 'cohere/north-mini-code:free', input: 0.0002, output: 0.0003, context: '128,000', caps: ['code', 'chat', 'tool_use'] },
-    { id: 'openrouter/free', input: 0.0002, output: 0.0003, context: '200,000', caps: ['chat'] },
     { id: 'google/gemma-4-31b-it:free', input: 0.0002, output: 0.0003, context: '262,144', caps: ['chat'] },
     { id: 'google/gemma-4-26b-a4b-it:free', input: 0.0002, output: 0.0003, context: '262,144', caps: ['chat'] },
     { id: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free', input: 0.0002, output: 0.0003, context: '128,000', caps: ['chat'] },
     { id: 'nvidia/nemotron-nano-12b-v2-vl:free', input: 0.0002, output: 0.0003, context: '128,000', caps: ['chat'] },
     { id: 'openai/gpt-oss-20b:free', input: 0.0002, output: 0.0003, context: '131,072', caps: ['chat'] },
     { id: 'poolside/laguna-xs.2:free', input: 0.0002, output: 0.0003, context: '32,000', caps: ['chat'] },
-    { id: 'poolside/laguna-s-2.1:free', input: 0.0002, output: 0.0003, context: '262,144', caps: ['code', 'chat', 'tool_use'] },
-    { id: 'qwen/qwen3-next-80b-a3b-instruct:free', input: 0.0002, output: 0.0003, context: '262,144', caps: ['chat'] }
+    { id: 'poolside/laguna-s-2.1:free', input: 0.0002, output: 0.0003, context: '262,144', caps: ['code', 'chat', 'tool_use'] }
   ],
   premium: [
     { id: 'inclusionai/ling-2.6-flash', input: 0.0105, output: 0.0315, context: '262,144', caps: ['chat', 'code'] },
@@ -1059,7 +1042,6 @@ const MODELS_DATA = {
     { id: 'minimax/minimax-m2.7', input: 0.2625, output: 1.0500, context: '204,800', caps: ['chat'] },
     { id: 'z-ai/glm-5.1', input: 1.0143, output: 3.1878, context: '202,752', caps: ['chat'] },
     { id: 'xiaomi/mimo-v2.5-pro', input: 0.4567, output: 0.9135, context: '1,048,576', caps: ['chat'] },
-    { id: 'nex-agi/nex-n2-pro', input: 0.2625, output: 1.0500, context: '262,144', caps: ['chat', 'code'] },
     { id: 'x-ai/grok-build-0.1', input: 1.0500, output: 2.1000, context: '256,000', caps: ['chat', 'code'] },
     { id: 'z-ai/glm-5-turbo', input: 1.2600, output: 4.2000, context: '202,752', caps: ['chat', 'code'] },
     { id: 'google/gemini-3.1-pro-preview', input: 2.1000, output: 12.6000, context: '1,048,576', caps: ['chat'] },
@@ -1218,7 +1200,7 @@ const ModelsPricingDoc = () => {
       <div>
         <h1 style={{ color: '#00F0FF', fontSize: '1.25rem', margin: '0 0 4px 0', borderBottom: '1px solid rgba(0,240,255,0.2)', paddingBottom: '6px' }}># Supported Models & Pricing</h1>
         <p style={{ color: '#aaa', fontSize: '0.75rem', lineHeight: '1.4', margin: '6px 0 0 0' }}>
-          UTIM CLI dynamically fetches the latest pricing from OpenRouter daily. Prices show <strong>credits per 1,000 tokens</strong> ($1 USD = 1,000 credits) and include a <strong>5% platform markup fee</strong> (free models are excluded).
+          UTIM CLI dynamically fetches the latest pricing from OpenRouter daily. Free models are priced at <strong>$0.02 in / $0.03 out per 1M tokens</strong> for Free users and <strong>$0.002 in / $0.003 out per 1M tokens</strong> for Paid subscribers (10x discount). Paid models show credits per 1,000 tokens ($1 USD = 1,000 credits) with a 5% platform markup.
         </p>
       </div>
 
@@ -1384,15 +1366,13 @@ Business-ready for beta and early paid validation. Not yet fully enterprise-read
     content: `
 # Supported Models & Pricing
 
-UTIM CLI supports a diverse registry of LLM and image generation models. All prices listed below represent **credits per 1,000 tokens** (1 USD = 1,000 credits) and include the dynamic **5% platform markup fee** over base OpenRouter rates (excluding free models).
+UTIM CLI supports a diverse registry of LLM and image generation models. Free-tier models are priced at **$0.02 in / $0.03 out per 1M tokens** for Free users (**$0.002 in / $0.003 out per 1M tokens** for Paid subscribers with 10x discount). Paid models represent credits per 1,000 tokens (1 USD = 1,000 credits) and include the dynamic 5% platform markup fee.
 
-### A. Free / Standard Models
-| Model ID | Input Cost (credits/1K) | Output Cost (credits/1K) | Context Window | Capabilities |
+### A. Free / Standard Models ($0.02 / $0.03 per 1M for Free; $0.002 / $0.003 for Paid)
+| Model ID | Free Rate (per 1M) | Paid Rate (10x Disc / 1M) | Context Window | Capabilities |
 | :--- | :--- | :--- | :--- | :--- |
-| \`nex-agi/nex-n2-pro:free\` | 0.0002 | 0.0003 | 262,144 | code, chat, tool_use  |
-| \`poolside/laguna-m.1:free\` | 0.0002 | 0.0003 | 262,144 | code, chat, tool_use  |
-| \`cohere/north-mini-code:free\` | 0.0002 | 0.0003 | 128,000 | code, chat, tool_use  |
-| \`openrouter/free\` | 0.0002 | 0.0003 | 200,000 | chat  |
+| \`poolside/laguna-m.1:free\` | $0.02 in / $0.03 out | $0.002 in / $0.003 out | 262,144 | code, chat, tool_use  |
+| \`cohere/north-mini-code:free\` | $0.02 in / $0.03 out | $0.002 in / $0.003 out | 128,000 | code, chat, tool_use  |
 | \`google/gemma-4-31b-it:free\` | 0.0002 | 0.0003 | 262,144 | chat  |
 | \`google/gemma-4-26b-a4b-it:free\` | 0.0002 | 0.0003 | 262,144 | chat  |
 | \`nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free\` | 0.0002 | 0.0003 | 128,000 | chat  |
@@ -1400,7 +1380,6 @@ UTIM CLI supports a diverse registry of LLM and image generation models. All pri
 | \`openai/gpt-oss-20b:free\` | 0.0002 | 0.0003 | 131,072 | chat  |
 | \`poolside/laguna-xs.2:free\` | 0.0002 | 0.0003 | 32,000 | chat  |
 | \`poolside/laguna-s-2.1:free\` | 0.0002 | 0.0003 | 262,144 | code, chat, tool_use  |
-| \`qwen/qwen3-next-80b-a3b-instruct:free\` | 0.0002 | 0.0003 | 262,144 | chat  |
 
 ### B. Premium Text & Code Models
 | Model ID | Input Cost (credits/1K) | Output Cost (credits/1K) | Context Window | Capabilities |
@@ -1431,7 +1410,6 @@ UTIM CLI supports a diverse registry of LLM and image generation models. All pri
 | \`minimax/minimax-m2.7\` | 0.2625 | 1.0500 | 204,800 | chat  |
 | \`z-ai/glm-5.1\` | 1.0143 | 3.1878 | 202,752 | chat  |
 | \`xiaomi/mimo-v2.5-pro\` | 0.4567 | 0.9135 | 1,048,576 | chat  |
-| \`nex-agi/nex-n2-pro\` | 0.2625 | 1.0500 | 262,144 | chat, code  |
 | \`x-ai/grok-build-0.1\` | 1.0500 | 2.1000 | 256,000 | chat, code  |
 | \`z-ai/glm-5-turbo\` | 1.2600 | 4.2000 | 202,752 | chat, code  |
 | \`google/gemini-3.1-pro-preview\` | 2.1000 | 12.6000 | 1,048,576 | chat  |

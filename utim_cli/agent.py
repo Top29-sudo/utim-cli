@@ -7,7 +7,6 @@ from rich.console import Console
 from rich.live import Live
 from rich.spinner import Spinner
 from rich.markdown import Markdown
-from rich.panel import Panel
 from rich.text import Text
 from rich.rule import Rule
 from rich.syntax import Syntax
@@ -19,23 +18,16 @@ BLUE = "#42bcf5"
 YELLOW = "#f9e2af"
 
 TOOL_META = {
-    "read_file":      {"icon": "📄", "verb": "ReadFile",      "color": BLUE},
-    "write_file":     {"icon": "✏️",  "verb": "WriteFile",     "color": YELLOW},
-    "edit_file":      {"icon": "✂️",  "verb": "EditFile",      "color": YELLOW},
-    "move_file":      {"icon": "📦",  "verb": "MoveFile",      "color": BLUE},
-    "delete_file":    {"icon": "🗑️ ", "verb": "DeleteFile",    "color": PURPLE},
-    "run_command":    {"icon": "⚡",  "verb": "RunCommand",    "color": YELLOW},
-    "list_directory": {"icon": "📁",  "verb": "ReadFolder",    "color": PURPLE},
+    "read_file":      {"icon": "", "verb": "Read",     "color": BLUE},
+    "write_file":     {"icon": "", "verb": "Write",    "color": YELLOW},
+    "edit_file":      {"icon": "", "verb": "Edit",     "color": YELLOW},
+    "move_file":      {"icon": "", "verb": "Move",     "color": BLUE},
+    "delete_file":    {"icon": "", "verb": "Delete",   "color": PURPLE},
+    "run_command":    {"icon": "", "verb": "Bash",     "color": YELLOW},
+    "list_directory": {"icon": "", "verb": "ListDir",  "color": PURPLE},
 }
 
-TIPS = [
-    "Tip: Use /help to see all available commands and the help panel",
-    "Tip: Save your current conversation with /resume save <tag>",
-    "Tip: Clear conversation history with /clear",
-    "Tip: Check your quota limits and credit usage with /usage",
-    "Tip: Enable or disable individual tools with /tools",
-    "Tip: Switch models with /model",
-]
+TIPS = []
 
 class ReActAgent:
     """A standalone agent that can reason and execute tools with streaming."""
@@ -48,7 +40,7 @@ class ReActAgent:
 
         api_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENRouter_API_KEY")
         if not api_key:
-            self.console.print("[dim]⚠  Warning: OPENROUTER_API_KEY is not set.[/dim]")
+            self.console.print("[dim]Warning: OPENROUTER_API_KEY is not set.[/dim]")
 
         try:
             from openai import OpenAI
@@ -80,23 +72,23 @@ class ReActAgent:
         return f"{elapsed // 60}m {elapsed % 60}s" if elapsed >= 60 else f"{elapsed}s"
 
     def _next_tip(self):
+        if not TIPS:
+            return ""
         tip = TIPS[self._tip_index % len(TIPS)]
         self._tip_index += 1
         return tip
 
+
     def _render_tool_panel(self, func_name: str, args: dict, result: str):
-        """Render a rich panel for a completed tool call."""
-        meta = TOOL_META.get(func_name, {"icon": "●", "verb": func_name, "color": "white"})
-        icon   = meta["icon"]
-        verb   = meta["verb"]
-        color  = meta["color"]
+        """Render a completed tool call in Antigravity inline style — no box, no border.
 
-        # Header line
-        header = Text()
-        header.append("✓  ", style=f"bold {color}")
-        header.append(verb, style=f"bold {color}")
+        Line 1: \u25cf Verb(path/arg)
+        Line 2:   \u2514 summary
+        """
+        meta  = TOOL_META.get(func_name, {"icon": "\u25cf", "verb": func_name, "color": "white"})
+        verb  = meta["verb"]
+        color = meta["color"]
 
-        # Show the primary argument (filepath or command)
         primary_arg = (
             args.get("filepath")
             or args.get("command")
@@ -104,51 +96,37 @@ class ReActAgent:
             or args.get("src")
             or ""
         )
+
+        # Line 1: \u25cf Verb(arg)
+        header = Text()
+        header.append(verb, style="bold white")
         if primary_arg:
-            header.append(f"  {primary_arg}", style="white")
+            header.append(f"({primary_arg})", style="dim white")
+        header.append(" (ctrl+o to expand)", style="dim #585b70")
 
-        # Body
-        body = Text()
+        # Line 2: \u2514 summary
+        summary = Text()
+        summary.append("  \u2514 ", style="dim #585b70")
 
-        if func_name == "write_file":
-            body.append(result, style="dim")
-
-        elif func_name == "edit_file":
-            body.append(result, style="dim")
-
-        elif func_name == "read_file":
+        if func_name == "read_file":
             lines = result.split("\n")
-            body.append(f"Read {len(lines)} lines", style="dim")
-
+            summary.append(f"{len(lines)} lines", style="dim white")
+        elif func_name in ("write_file", "edit_file"):
+            first = result.strip().splitlines()[0][:80] if result.strip() else "done"
+            summary.append(first, style="dim white")
         elif func_name == "run_command":
             out = str(result).strip()
-            if len(out) > 300:
-                out = out[:300] + "\n[…truncated]"
-            body.append(out, style="dim")
-
+            first = out.splitlines()[0][:80] if out else "(no output)"
+            summary.append(first, style="dim white")
         elif func_name == "list_directory":
             items = [l for l in str(result).split("\n") if l.strip()]
-            body.append(f"Listed {max(0, len(items)-1)} item(s).", style="dim")
-
-        elif func_name == "move_file":
-            body.append(result, style="dim")
-
-        elif func_name == "delete_file":
-            body.append(result, style="dim")
-
+            summary.append(f"{max(0, len(items)-1)} items", style="dim white")
         else:
             out = str(result).strip()
-            if len(out) > 300:
-                out = out[:300] + "\n[…]"
-            body.append(out, style="dim")
+            summary.append((out.splitlines()[0][:80] if out else "done"), style="dim white")
 
-        content = header + "\n" + body
-
-        self.console.print(Panel(
-            content,
-            border_style=color,
-            expand=False,
-        ))
+        self.console.print(header)
+        self.console.print(summary)
 
     def _execute_tool_call(self, tool_call):
         """Execute a single tool call by name."""
@@ -196,23 +174,53 @@ class ReActAgent:
 
         arguments = json.loads(tool_call["function"]["arguments"])
 
-        # Show the tool is running
+        # Show the tool is running - Antigravity style: ● Verb(arg) (ctrl+o to expand)
         meta = TOOL_META.get(tool_name, {"icon": "●", "verb": tool_name, "color": "white"})
-        self.console.print(f"  {meta['icon']}  {meta['verb']} running...", style=f"dim {meta['color']}")
+        _pre = Text()
+        _pre.append(meta['verb'], style="bold white")
+        primary_arg = (
+            arguments.get("filepath")
+            or arguments.get("command")
+            or arguments.get("path")
+            or ""
+        )
+        if primary_arg:
+            _pre.append(f"({primary_arg})", style="dim white")
+        _pre.append(" (ctrl+o to expand)", style="dim #585b70")
+        self.console.print(_pre)
+        pre_plain = f"{meta['verb']}({primary_arg}) (ctrl+o to expand)" if primary_arg else f"{meta['verb']} (ctrl+o to expand)"
+        self._last_running_indicator_len = len(pre_plain)
 
         if "__" in tool_name:
             server_name, actual_tool_name = tool_name.split("__", 1)
             try:
                 from utim_cli.mcp_client import mcp_manager
                 if server_name in mcp_manager.sessions:
-                    self.console.print(f"  🔌  Calling MCP tool {server_name} ➔ {actual_tool_name}...", style="dim #cba6f7")
+                    self.console.print(f"  Calling MCP tool {server_name} ➔ {actual_tool_name}...", style="dim #cba6f7")
                     result = mcp_manager.call_tool(server_name, actual_tool_name, arguments)
                     
                     # Temporarily register metadata for render
-                    TOOL_META[tool_name] = {"icon": "🔌", "verb": f"Calling {server_name} ➔ {actual_tool_name}", "color": "#cba6f7"}
+                    TOOL_META[tool_name] = {"icon": "", "verb": f"Calling {server_name} ➔ {actual_tool_name}", "color": "#cba6f7"}
+                    # Erase the running line first
+                    try:
+                        width = self.console.size.width
+                    except Exception:
+                        width = 80
+                    import math
+                    num_lines = math.ceil(getattr(self, "_last_running_indicator_len", 40) / max(1, width))
+                    for _ in range(num_lines):
+                        self.console.print("\033[F\033[K", end="")
                     self._render_tool_panel(tool_name, arguments, result)
                     return str(result)
             except Exception as e:
+                try:
+                    width = self.console.size.width
+                except Exception:
+                    width = 80
+                import math
+                num_lines = math.ceil(getattr(self, "_last_running_indicator_len", 40) / max(1, width))
+                for _ in range(num_lines):
+                    self.console.print("\033[F\033[K", end="")
                 return f"Error executing MCP tool {tool_name}: {str(e)}"
 
         utim_tools, tool_functions = get_tools()
@@ -224,10 +232,28 @@ class ReActAgent:
             
         try:
             result = tool_functions[tool_name](**arguments)
+            # Erase the running line first
+            try:
+                width = self.console.size.width
+            except Exception:
+                width = 80
+            import math
+            num_lines = math.ceil(getattr(self, "_last_running_indicator_len", 40) / max(1, width))
+            for _ in range(num_lines):
+                self.console.print("\033[F\033[K", end="")
             self._render_tool_panel(tool_name, arguments, result)
             return str(result)
         except Exception as e:
+            try:
+                width = self.console.size.width
+            except Exception:
+                width = 80
+            import math
+            num_lines = math.ceil(getattr(self, "_last_running_indicator_len", 40) / max(1, width))
+            for _ in range(num_lines):
+                self.console.print("\033[F\033[K", end="")
             return f"Error executing {tool_name}: {str(e)}"
+
 
     def run(self, max_iterations: int = 500, show_tools: bool = True):
         """Run the agent loop with streaming."""
@@ -323,17 +349,17 @@ class ReActAgent:
                     "content": result,
                 })
         else:
-            self.console.print(f"\n[bold yellow]⚠ Agent paused after reaching maximum iterations ({max_iterations}).[/bold yellow]")
+            self.console.print(f"\n[bold yellow]Agent paused after reaching maximum iterations ({max_iterations}).[/bold yellow]")
             self.console.print("[dim]You can type 'continue' to resume the task.[/dim]\n")
 
         elapsed = self.get_elapsed_time()
         tip = self._next_tip()
-        self.console.print(Rule(f"[dim]⚙  {elapsed}  •  {tip}[/dim]"))
+        self.console.print(Rule(f"[dim]{elapsed}[/dim]", style="dim"))
 
     def list_tools(self):
         """Display all available tools in a formatted table."""
         self.console.print()
-        self.console.print(Rule("[bold accent]🔧 Available Tools[/bold accent]"))
+        self.console.print(Rule("[bold accent]Available Tools[/bold accent]"))
         self.console.print()
 
         headers = ["Tool", "Description"]
@@ -374,7 +400,7 @@ class ReActAgent:
             desc_str = f"{status_tag} [dim]{desc}[/dim]" if is_disabled else f"[dim]{desc}[/dim]"
             
             if t_type == "mcp":
-                tool_str = f"  🔌  {name.ljust(col_widths[0] - 4)}  {desc_str}"
+                tool_str = f"  {name.ljust(col_widths[0] - 4)}  {desc_str}"
                 self.console.print(f"[#cba6f7]{tool_str}[/#cba6f7]")
             else:
                 meta = TOOL_META.get(name, {"icon": "●", "color": "white"})

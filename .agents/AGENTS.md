@@ -22,3 +22,7 @@ You MUST read the corresponding `SKILL.md` file using the file viewer tool befor
    - *Use when*: Implementing asynchronous background tasks, reading subprocess streams, or thread safety locks.
 8. **Creative Scrollytelling**: [.agents/skills/creative-scrollytelling/SKILL.md](file:///C:/Users/user/Desktop/New%20folder/New%20folder/.agents/skills/creative-scrollytelling/SKILL.md)
    - *Use when*: Coding typography-driven entrance effects, split-door opening screens, and kinetic viewport animations.
+
+## Tool Usage Rules
+
+- **Grep Search Alternation**: Always pass `"IsRegex": true` when executing `grep_search` with multi-keyword pipe (`|`) queries (e.g. `Laguna|Gemma|GPT`). See [.agents/rules/grep_search_rule.md](file:///C:/Users/user/Desktop/New%20folder/New%20folder/.agents/rules/grep_search_rule.md).

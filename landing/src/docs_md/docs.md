@@ -22,15 +22,35 @@ It can:
 
 UTIM is not a browser-only coding assistant. The actual code execution happens locally on the developer machine where the CLI is installed.
 
-## Installation
+## Platform Availability & Installation
 
-The website install path is:
+UTIM CLI is cross-platform and runs natively on Windows, macOS, Linux, and Android devices (via Termux).
 
+### 1. Windows (PowerShell / CMD)
 ```bash
 npm install -g @emend-ai/utim
 ```
+Or via PowerShell installer script:
+```powershell
+iwr https://utim.dev/install.ps1 | iex
+```
 
-The Python source package can also be installed from a checkout:
+### 2. macOS & Linux (zsh / bash)
+```bash
+npm install -g @emend-ai/utim
+```
+Or via cURL installer script:
+```bash
+curl -fsSL https://utim.dev/install.sh | bash
+```
+
+### 3. Android Devices (Termux)
+Install Termux from F-Droid, then run the multi-step installation command flow:
+```bash
+pkg update -y && pkg install nodejs python -y && npm install -g @emend-ai/utim
+```
+
+The Python source package can also be installed from a local checkout:
 
 ```bash
 pip install .
@@ -49,7 +69,7 @@ Optional dependency groups:
 - `parsers`: tree-sitter based code parsing.
 - `full`: search, image, and parser dependencies together.
 
-Python requirement: `>=3.9`.
+Requirements: Node.js 18+ and Python 3.9+.
 
 ## First run
 
@@ -264,7 +284,7 @@ UTIM provides a wide variety of official AI models, including both free and paid
 - `cohere/north-mini-code:free`
 - `google/gemma-4-26b-a4b-it:free`
 - `google/gemma-4-31b-it:free`
-- `nex-agi/nex-n2-pro:free`
+- `inclusionai/ling-3.0-flash:free`
 - `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free`
 - `nvidia/nemotron-nano-12b-v2-vl:free`
 - `openai/gpt-oss-20b:free`
@@ -272,7 +292,6 @@ UTIM provides a wide variety of official AI models, including both free and paid
 - `poolside/laguna-m.1:free`
 - `poolside/laguna-s-2.1:free`
 - `poolside/laguna-xs.2:free`
-- `qwen/qwen3-next-80b-a3b-instruct:free`
 
 ### Paid Tier Models (Hobby / Pro / Max / Ultimate)
 - `aion-labs/aion-3.0`

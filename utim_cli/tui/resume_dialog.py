@@ -32,7 +32,7 @@ def _dialog_resume(orchestrator):
         return str(content or "")
 
     def render_sess(i, s, sel):
-        bg      = 'bg:#1a3a2a bold #cdd6f4' if sel else ''
+        bg      = 'bg:#313244 bold white' if sel else ''
         hi      = 'bold #42bcf5' if sel else 'class:dim fg:#585b70'
         msgs    = s.get('message_count', 0)
         age     = _age(s.get('updated_at', s.get('created_at', '')))

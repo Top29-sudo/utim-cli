@@ -1,20 +1,17 @@
-# Core CLI dependencies (100% Pure-Python, zero Rust compilation needed)
+# UTIM CLI Baseline Core Requirements
+# For OS-tuned lightweight installations, use:
+#   Android / Termux : pip install -r requirements_android.txt
+#   Windows          : pip install -r requirements_windows.txt
+#   Linux / macOS    : pip install -r requirements_desktop.txt
+#   Full Workstation : pip install -r requirements_full.txt
 requests==2.31.0
 aiohttp>=3.9.5
 python-dotenv==1.0.1
 urllib3==1.26.18
 charset-normalizer==3.3.2
 chardet==4.0.0
-typer
-rich
-prompt_toolkit
-nest-asyncio
+typer>=0.9.0
+rich>=13.0.0
+prompt_toolkit>=3.0.0
+nest-asyncio>=1.5.0
 sqlalchemy>=2.0.0
-
-# Optional feature dependencies are available through pyproject extras:
-#   pip install "utim-cli[search]"
-#   pip install "utim-cli[images]"
-#   pip install "utim-cli[parsers]"
-#   pip install "utim-cli[mcp]"
-# On Termux/ARM Linux, OpenAI SDK and MCP stay opt-in to avoid pydantic-core.
-# Server-only dependencies live in utim_cli/server/requirements.txt.

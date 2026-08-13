@@ -1,24 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getApiUrl } from '../../lib/api';
-import '../../components/PowershellUI/PowershellUI.css';
+import ScrollytellingHeaderNav from '../../components/ScrollytellingHeaderNav';
+import ScrollytellingFooter from '../../components/ScrollytellingFooter';
+import SEOHead from '../../components/SEOHead';
+import { Gift, Copy, Check, Users, Award, TrendingUp, Sparkles, ArrowRight } from 'lucide-react';
+import '../../components/ScrollytellingMain.css';
 
 const PLAN_LABELS = {
-  hobby: { name: 'Hobbyist Node', color: '#ec4899', price_usd: '$7', price_inr: 'Rs.700' },
-  pro:   { name: 'Starter Node',  color: '#00F0FF', price_usd: '$25', price_inr: 'Rs.2500' },
-  max:   { name: 'Professional Core',  color: '#e8c97a', price_usd: '$55', price_inr: 'Rs.5500' },
-  ultimate: { name: 'MAX Node',   color: '#00FF66', price_usd: '$110', price_inr: 'Rs.11000' },
+  hobby: { name: 'Hobby Plan', price_usd: '$7', price_inr: '₹700' },
+  pro:   { name: 'Pro Plan', price_usd: '$25', price_inr: '₹2,500' },
+  max:   { name: 'Max Plan', price_usd: '$55', price_inr: '₹5,500' },
+  ultimate: { name: 'Ultimate Plan', price_usd: '$110', price_inr: '₹11,000' },
 };
 
-const ReferralPage = () => {
+export default function ReferralPage() {
   const { user, getToken } = useAuth();
   const navigate = useNavigate();
 
   const [referralInfo, setReferralInfo] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
 
   useEffect(() => {
@@ -48,8 +52,8 @@ const ReferralPage = () => {
   const copyUrl = () => {
     if (!referralInfo) return;
     navigator.clipboard.writeText(referralInfo.referral_url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopiedUrl(true);
+    setTimeout(() => setCopiedUrl(false), 2000);
   };
 
   const copyCode = () => {
@@ -64,242 +68,208 @@ const ReferralPage = () => {
     : 0;
 
   return (
-    <div className="term-wrapper">
-      <div className="term-window" style={{ maxWidth: '900px' }}>
-        {/* Titlebar */}
-        <div className="term-titlebar">
-          <div className="term-tab" onClick={() => navigate('/')}>
-            <span className="term-tab-icon" style={{ color: '#3b78ff' }}>&gt;_</span>
-            <span className="term-tab-title">Home</span>
+    <div className="st-page-root">
+      <SEOHead
+        title="Referral Program — Earn Free UTIM Access"
+        description="Share UTIM with developers and earn 2% perpetual discount per referral, stacking up to 100% free compute access."
+        canonical="https://utim.dev/referral"
+      />
+      
+      <ScrollytellingHeaderNav />
+
+      <div style={{ padding: '60px 24px 100px 24px', maxWidth: 1040, margin: '0 auto' }}>
+        
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: 40 }}>
+          <div className="st-hero-badge" style={{ display: 'inline-flex', marginBottom: 12 }}>
+            <Gift size={14} /> REFERRAL REWARDS PROGRAM
           </div>
-          <div className="term-tab active">
-            <span className="term-tab-icon" style={{ color: '#00FF66' }}>%</span>
-            <span className="term-tab-title">Referral Program</span>
-          </div>
-          <div className="term-window-controls">
-            <div className="term-ctrl">_</div>
-            <div className="term-ctrl">□</div>
-            <div className="term-ctrl close" onClick={() => navigate('/')}>×</div>
-          </div>
+          <h1 style={{ fontSize: 'clamp(2.2rem, 4vw, 3.2rem)', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: 14 }}>
+            Earn Free Compute by Sharing UTIM
+          </h1>
+          <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)', maxWidth: 680, margin: '0 auto', lineHeight: 1.6 }}>
+            Every time a referred developer subscribes to a plan, you automatically earn a <strong>2% perpetual discount</strong> on that plan—stacking up to <strong>100% free</strong>.
+          </p>
         </div>
 
-        <div className="term-content term-markdown-view" style={{ padding: '32px' }}>
-          {/* Header */}
-          <div className="term-md-header" style={{ marginBottom: '24px' }}>
-            <div className="term-md-tag" style={{ color: '#00FF66' }}>[REFERRAL PROTOCOL ACTIVE]</div>
-            <h1 className="term-md-title" style={{ fontSize: '1.6rem', margin: '8px 0' }}>
-              # Earn Free Access by Sharing UTIM
-            </h1>
-            <div className="term-md-subtitle" style={{ color: '#aaa', fontSize: '0.9rem', lineHeight: '1.6' }}>
-              Share your unique referral link. Every time a referred developer buys a plan,
-              you automatically earn a <span style={{ color: '#00FF66', fontWeight: 'bold' }}>2% perpetual discount</span> on
-              that same plan — stacking up to <span style={{ color: '#00FF66', fontWeight: 'bold' }}>100% free</span>.
+        {/* How It Works Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 20, marginBottom: 36 }}>
+          {[
+            { step: '01', title: 'Share Your Link', desc: 'Send your unique referral link or code to colleagues and developers.' },
+            { step: '02', title: 'They Subscribe', desc: 'When your referee purchases any compute tier, discount engines trigger.' },
+            { step: '03', title: 'You Earn 2% Off', desc: 'You earn 2% perpetual discount per referral on that specific tier.' },
+            { step: '04', title: 'Stack to 100% Free', desc: '50 referrals on the same plan = 100% free compute forever.' }
+          ].map((item) => (
+            <div key={item.step} className="st-doc-card" style={{ padding: 20 }}>
+              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>
+                {item.step}
+              </div>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
+                {item.title}
+              </h3>
+              <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                {item.desc}
+              </p>
             </div>
+          ))}
+        </div>
+
+        {!user ? (
+          <div className="st-doc-card" style={{ textAlign: 'center', padding: '48px 24px', marginBottom: 36 }}>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 10 }}>
+              Sign In to View Your Referral Dashboard
+            </h2>
+            <p style={{ fontSize: '0.94rem', color: 'var(--text-muted)', marginBottom: 24 }}>
+              Authenticate with your developer account to access your unique referral code and tracking stats.
+            </p>
+            <Link to="/auth?mode=signup" className="st-nav-primary-btn" style={{ padding: '10px 24px', fontSize: 14 }}>
+              Sign In / Register →
+            </Link>
           </div>
-
-          <div className="term-md-divider">================================================================================</div>
-
-          {/* How It Works */}
-          <div className="term-md-card" style={{ marginBottom: '24px', borderColor: 'rgba(0,255,102,0.2)', background: 'rgba(0,255,102,0.02)' }}>
-            <div style={{ color: '#00FF66', fontWeight: 'bold', fontSize: '0.85rem', padding: '12px 16px', borderBottom: '1px solid rgba(0,255,102,0.1)', fontFamily: 'monospace' }}>
-              [HOW THE REFERRAL ENGINE WORKS]
-            </div>
-            <div style={{ padding: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-              {[
-                { step: '01', title: 'Share Your Link', desc: 'Send your unique referral URL to other developers. They sign up via your link.' },
-                { step: '02', title: 'They Subscribe', desc: 'When a referred user purchases any paid plan, the discount engine triggers.' },
-                { step: '03', title: 'You Earn 2% Off', desc: 'You get a 2% discount on that exact plan. Discount is plan-specific, not global.' },
-                { step: '04', title: 'Stack to 100%', desc: '50 referrals on the same plan = 100% free. Renewals stack the discount again.' },
-              ].map(({ step, title, desc }) => (
-                <div key={step} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                  <div style={{ color: '#00FF66', fontFamily: 'monospace', fontSize: '1.2rem', fontWeight: 'bold', minWidth: '32px' }}>
-                    {step}
-                  </div>
-                  <div>
-                    <div style={{ color: '#fff', fontWeight: 'bold', fontSize: '0.85rem', marginBottom: '4px' }}>{title}</div>
-                    <div style={{ color: '#888', fontSize: '0.8rem', lineHeight: '1.5' }}>{desc}</div>
+        ) : loading ? (
+          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+            Loading referral stats...
+          </div>
+        ) : referralInfo && (
+          <>
+            {/* Credentials Card */}
+            <div className="st-doc-card" style={{ marginBottom: 28 }}>
+              <h2 className="st-doc-card-title">
+                <Gift size={20} /> Your Referral Link & Credentials
+              </h2>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 20, marginTop: 16 }}>
+                {/* Referral Code */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>
+                    Referral Code
+                  </label>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <div style={{ flex: 1, padding: '10px 14px', background: 'var(--bg-cream-alt)', border: '1px solid var(--border-cream)', borderRadius: 8, fontFamily: 'monospace', fontWeight: 800, fontSize: 16, color: 'var(--text-primary)' }}>
+                      {referralInfo.referral_code}
+                    </div>
+                    <button 
+                      onClick={copyCode}
+                      className="st-btn-secondary"
+                      style={{ padding: '10px 16px', borderRadius: 8, fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                    >
+                      {copiedCode ? <><Check size={14} color="#059669" /> Copied</> : <><Copy size={14} /> Copy</>}
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Example breakdown */}
-          <div className="term-md-card" style={{ marginBottom: '24px', borderColor: 'rgba(0,240,255,0.15)', background: 'rgba(0,240,255,0.02)' }}>
-            <div style={{ color: '#00F0FF', fontWeight: 'bold', fontSize: '0.85rem', padding: '10px 16px', borderBottom: '1px solid rgba(0,240,255,0.1)', fontFamily: 'monospace' }}>
-              [EXAMPLE SCENARIO]
-            </div>
-            <div style={{ padding: '14px 16px', color: '#aaa', fontSize: '0.82rem', lineHeight: '1.8', fontFamily: 'monospace' }}>
-              <div><span style={{ color: '#00F0FF' }}>User A</span> refers users B, C, D ...</div>
-              <div>→ B purchases <span style={{ color: '#ec4899' }}>Hobbyist</span> → A gets <span style={{ color: '#00FF66' }}>2% off Hobbyist</span></div>
-              <div>→ C purchases <span style={{ color: '#ec4899' }}>Hobbyist</span> → A now has <span style={{ color: '#00FF66' }}>4% off Hobbyist</span></div>
-              <div>→ D purchases <span style={{ color: '#00F0FF' }}>Starter</span> → A also gets <span style={{ color: '#00FF66' }}>2% off Starter</span></div>
-              <div>→ B <span style={{ color: '#aaa' }}>renews</span> Hobbyist next month → A gets <span style={{ color: '#00FF66' }}>+2% more = 6% off Hobbyist</span></div>
-              <div style={{ marginTop: '8px', color: '#555' }}>Discounts are applied automatically at checkout. Max 100% per plan.</div>
-            </div>
-          </div>
-
-          {/* Auth gate */}
-          {!user ? (
-            <div className="term-md-card" style={{ marginBottom: '24px', textAlign: 'center', padding: '32px' }}>
-              <div style={{ color: '#e74856', fontFamily: 'monospace', marginBottom: '12px' }}>[AUTHENTICATION REQUIRED]</div>
-              <div style={{ color: '#aaa', fontSize: '0.85rem', marginBottom: '20px' }}>Sign in to access your referral dashboard and unique link.</div>
-              <button
-                className="term-btn-action"
-                style={{ borderColor: 'rgba(0,240,255,0.4)', color: '#00F0FF' }}
-                onClick={() => navigate('/auth?mode=signup')}
-              >
-                &gt; AUTHENTICATE()
-              </button>
-            </div>
-          ) : loading ? (
-            <div style={{ textAlign: 'center', color: '#555', padding: '40px', fontFamily: 'monospace' }}>
-              Loading referral data...
-            </div>
-          ) : referralInfo && (
-            <>
-              {/* Referral Link Card */}
-              <div className="term-md-card" style={{ marginBottom: '24px', borderColor: 'rgba(0,255,102,0.25)' }}>
-                <div style={{ color: '#00FF66', fontWeight: 'bold', padding: '12px 16px', borderBottom: '1px solid rgba(0,255,102,0.1)', fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                  [YOUR REFERRAL CREDENTIALS]
-                </div>
-                <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div>
-                    <div style={{ color: '#555', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '6px' }}>Referral Code</div>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <code style={{ background: 'rgba(255,255,255,0.04)', padding: '8px 12px', borderRadius: '6px', color: '#00FF66', fontFamily: 'monospace', fontSize: '1rem', letterSpacing: '2px', border: '1px solid rgba(0,255,102,0.2)' }}>
-                        {referralInfo.referral_code}
-                      </code>
-                      <button
-                        onClick={copyCode}
-                        className="term-btn-action"
-                        style={{ fontSize: '0.8rem', padding: '8px 14px', borderColor: 'rgba(0,255,102,0.3)', color: '#00FF66' }}
-                      >
-                        {copiedCode ? '✓ COPIED' : 'COPY CODE'}
-                      </button>
+                {/* Referral URL */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>
+                    Referral URL
+                  </label>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <div style={{ flex: 1, padding: '10px 14px', background: 'var(--bg-cream-alt)', border: '1px solid var(--border-cream)', borderRadius: 8, fontFamily: 'monospace', fontSize: 13, color: 'var(--text-body)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {referralInfo.referral_url}
                     </div>
-                  </div>
-                  <div>
-                    <div style={{ color: '#555', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '6px' }}>Referral Link</div>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <code style={{ background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: '6px', color: '#aaa', fontFamily: 'monospace', fontSize: '0.82rem', border: '1px solid rgba(255,255,255,0.06)', wordBreak: 'break-all', flex: 1 }}>
-                        {referralInfo.referral_url}
-                      </code>
-                      <button
-                        onClick={copyUrl}
-                        className="term-btn-action"
-                        style={{ fontSize: '0.8rem', padding: '8px 14px', borderColor: 'rgba(0,255,102,0.3)', color: '#00FF66', whiteSpace: 'nowrap' }}
-                      >
-                        {copied ? '✓ COPIED' : 'COPY LINK'}
-                      </button>
-                    </div>
+                    <button 
+                      onClick={copyUrl}
+                      className="st-nav-primary-btn"
+                      style={{ padding: '10px 16px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                    >
+                      {copiedUrl ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
+                    </button>
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Stats */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
-                {[
-                  { label: 'Total Referrals', value: referralInfo.referee_count, color: '#00F0FF' },
-                  { label: 'Plans with Discount', value: Object.keys(referralInfo.discounts || {}).length, color: '#ec4899' },
-                  { label: 'Total Discount %', value: `${Math.min(totalDiscount, 100).toFixed(0)}%`, color: '#00FF66' },
-                ].map(({ label, value, color }) => (
-                  <div key={label} className="term-md-card" style={{ textAlign: 'center', padding: '20px 12px' }}>
-                    <div style={{ color, fontSize: '1.8rem', fontWeight: 'bold', fontFamily: 'monospace' }}>{value}</div>
-                    <div style={{ color: '#555', fontSize: '0.75rem', marginTop: '4px', textTransform: 'uppercase' }}>{label}</div>
-                  </div>
-                ))}
+            {/* Stats Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 20, marginBottom: 28 }}>
+              <div className="st-doc-card" style={{ textAlign: 'center', padding: 24 }}>
+                <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                  {referralInfo.referee_count || 0}
+                </div>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: 4 }}>
+                  Total Referrals
+                </div>
               </div>
 
-              {/* Discount Breakdown */}
-              {Object.keys(referralInfo.discounts || {}).length > 0 && (
-                <div className="term-md-card" style={{ marginBottom: '24px' }}>
-                  <div style={{ color: '#e8c97a', fontWeight: 'bold', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                    [ACTIVE DISCOUNT BREAKDOWN]
-                  </div>
-                  <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {Object.entries(referralInfo.discounts).map(([planId, pct]) => {
-                      const planMeta = PLAN_LABELS[planId] || { name: planId, color: '#aaa', price_usd: '', price_inr: '' };
-                      const barWidth = Math.min(100, pct);
-                      return (
-                        <div key={planId}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                            <span style={{ color: planMeta.color, fontWeight: 'bold', fontSize: '0.85rem' }}>
-                              {planMeta.name}
-                              <span style={{ color: '#555', fontWeight: 'normal', marginLeft: '8px', fontSize: '0.75rem' }}>
-                                ({planMeta.price_usd} / {planMeta.price_inr})
-                              </span>
-                            </span>
-                            <span style={{ color: '#00FF66', fontFamily: 'monospace', fontWeight: 'bold' }}>
-                              {pct >= 100 ? '100% FREE' : `${pct.toFixed(0)}% OFF`}
-                            </span>
-                          </div>
-                          <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '4px', height: '6px', overflow: 'hidden' }}>
-                            <div style={{ width: `${barWidth}%`, height: '100%', background: pct >= 100 ? '#00FF66' : planMeta.color, borderRadius: '4px', transition: 'width 0.5s ease' }} />
-                          </div>
-                          <div style={{ color: '#555', fontSize: '0.72rem', marginTop: '4px', fontFamily: 'monospace' }}>
-                            {Math.round(pct / 2)} referee purchase{Math.round(pct / 2) !== 1 ? 's' : ''} on this plan
-                            {pct < 100 && ` · ${Math.ceil((100 - pct) / 2)} more to make it FREE`}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+              <div className="st-doc-card" style={{ textAlign: 'center', padding: 24 }}>
+                <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                  {Object.keys(referralInfo.discounts || {}).length}
                 </div>
-              )}
-
-              {/* Referred by */}
-              {referralInfo.referred_by && (
-                <div className="term-md-card" style={{ marginBottom: '24px', borderColor: 'rgba(255,255,255,0.05)' }}>
-                  <div style={{ padding: '12px 16px', color: '#555', fontSize: '0.82rem', fontFamily: 'monospace' }}>
-                    [INFO] You were referred by <span style={{ color: '#aaa' }}>{referralInfo.referred_by.display_name}</span> ({referralInfo.referred_by.email_hint})
-                  </div>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: 4 }}>
+                  Discounted Tiers
                 </div>
-              )}
+              </div>
 
-              {/* Leaderboard */}
-              {leaderboard.length > 0 && (
-                <div className="term-md-card" style={{ marginBottom: '24px' }}>
-                  <div style={{ color: '#00F0FF', fontWeight: 'bold', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                    [TOP REFERRERS LEADERBOARD]
-                  </div>
-                  <div style={{ padding: '4px 0' }}>
-                    {leaderboard.map((entry) => (
-                      <div
-                        key={entry.rank}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '12px',
-                          padding: '10px 16px',
-                          borderBottom: '1px solid rgba(255,255,255,0.03)',
-                          background: entry.is_me ? 'rgba(0,255,102,0.04)' : 'transparent'
-                        }}
-                      >
-                        <div style={{ color: entry.rank <= 3 ? ['#FFD700','#C0C0C0','#CD7F32'][entry.rank - 1] : '#555', fontFamily: 'monospace', fontWeight: 'bold', minWidth: '28px', fontSize: '0.9rem' }}>
-                          #{entry.rank}
+              <div className="st-doc-card" style={{ textAlign: 'center', padding: 24 }}>
+                <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#059669' }}>
+                  {Math.min(totalDiscount, 100).toFixed(0)}%
+                </div>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: 4 }}>
+                  Total Discount Power
+                </div>
+              </div>
+            </div>
+
+            {/* Active Discount Breakdown */}
+            {Object.keys(referralInfo.discounts || {}).length > 0 && (
+              <div className="st-doc-card" style={{ marginBottom: 28 }}>
+                <h2 className="st-doc-card-title">
+                  <TrendingUp size={20} /> Active Tier Discounts
+                </h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 14 }}>
+                  {Object.entries(referralInfo.discounts).map(([planId, pct]) => {
+                    const planMeta = PLAN_LABELS[planId] || { name: planId, price_usd: '' };
+                    return (
+                      <div key={planId}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>
+                            {planMeta.name} ({planMeta.price_usd})
+                          </span>
+                          <span style={{ fontWeight: 800, color: '#059669' }}>
+                            {pct >= 100 ? '100% FREE' : `${pct.toFixed(0)}% OFF`}
+                          </span>
                         </div>
-                        <div style={{ color: entry.is_me ? '#00FF66' : '#aaa', flex: 1, fontSize: '0.85rem' }}>
-                          {entry.name}{entry.is_me && ' (you)'}
-                        </div>
-                        <div style={{ color: '#00F0FF', fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                          {entry.referrals} referrals
+                        <div style={{ height: 8, background: 'var(--bg-cream-alt)', borderRadius: 4, overflow: 'hidden' }}>
+                          <div style={{ width: `${Math.min(100, pct)}%`, height: '100%', background: 'var(--accent-black)', borderRadius: 4 }} />
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
-              )}
-            </>
-          )}
+              </div>
+            )}
 
-          {/* Footer note */}
-          <div style={{ color: '#333', fontSize: '0.72rem', textAlign: 'center', marginTop: '16px', fontFamily: 'monospace', lineHeight: '1.6' }}>
-            [SYSTEM NOTE] Discounts apply to the monthly base price at checkout time. Discounts are per-plan and cannot be transferred between plans.
-            The referral system is monitored for abuse. Discount is capped at 100% per plan.
-          </div>
-        </div>
+            {/* Leaderboard */}
+            {leaderboard.length > 0 && (
+              <div className="st-doc-card">
+                <h2 className="st-doc-card-title">
+                  <Award size={20} /> Top Referrers Leaderboard
+                </h2>
+                <table className="st-commands-table" style={{ marginTop: 14 }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg-cream-alt)', textAlign: 'left' }}>
+                      <th style={{ padding: '10px 14px', width: '15%' }}>Rank</th>
+                      <th style={{ padding: '10px 14px' }}>Developer</th>
+                      <th style={{ padding: '10px 14px', textAlign: 'right' }}>Total Referrals</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leaderboard.map((entry) => (
+                      <tr key={entry.rank} style={{ background: entry.is_me ? 'rgba(16,185,129,0.06)' : 'transparent' }}>
+                        <td style={{ fontWeight: 800 }}>#{entry.rank}</td>
+                        <td style={{ fontWeight: 600 }}>{entry.name}{entry.is_me && ' (You)'}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 800 }}>{entry.referrals}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+
       </div>
+
+      <ScrollytellingFooter />
     </div>
   );
-};
-
-export default ReferralPage;
+}

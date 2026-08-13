@@ -1,6 +1,6 @@
 {
   "name": "@emend-ai/utim",
-  "version": "2.1.0",
+  "version": "2.2.1",
   "description": "UTIM AI CLI \u2013 Universal Terminal Intelligence Manager. An agentic AI coding assistant for your terminal.",
   "keywords": [
     "ai",
@@ -20,16 +20,18 @@
     "type": "git",
     "url": "https://github.com/emendai/utim.git"
   },
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "author": "Emendai <support@emendai.com>",
   "bin": {
-    "utim": "bin/utim.js"
+    "utim": "bin/utim.js",
+    "utimlite": "bin/utimlite.js"
   },
   "scripts": {
     "postinstall": "node scripts/postinstall.js"
   },
   "files": [
     "bin/utim.js",
+    "bin/utimlite.js",
     "scripts/postinstall.js",
     "README.md",
     "LICENSE"

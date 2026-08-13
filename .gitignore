@@ -133,3 +133,6 @@ Thumbs.db
 *.jpeg
 *.gif
 *.log
+
+# Local Netlify folder
+.netlify

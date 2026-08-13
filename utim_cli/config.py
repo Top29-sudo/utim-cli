@@ -492,9 +492,11 @@ class Config:
         if models:
             return [m.strip() for m in models.split(",")]
         return [
-            "poolside/laguna-m.1:free",
-            "openrouter/free"
+            "cohere/north-mini-code:free",
+            "openrouter/free",
+            "inclusionai/ling-3.0-flash:free",
         ]
+
 
     @property
     def keep_full_turns(self) -> int:

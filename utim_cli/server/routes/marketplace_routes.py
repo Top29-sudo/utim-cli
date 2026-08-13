@@ -691,13 +691,13 @@ def get_public_seller_profile(
             raise HTTPException(status_code=404, detail="Seller profile not found")
         display_name = u.email.split("@")[0]
         bio = "UTIM Extension Publisher"
-        avatar_emoji = "🧑‍💻"
+        avatar_emoji = "‍"
         is_verified = True
         user_id = u.id
     else:
         display_name = profile.display_name or profile.user.email.split("@")[0]
         bio = profile.bio or "UTIM Extension Publisher"
-        avatar_emoji = profile.avatar_emoji or "🧑‍💻"
+        avatar_emoji = profile.avatar_emoji or "‍"
         is_verified = profile.is_verified
         user_id = profile.user_id
 

@@ -128,6 +128,7 @@ def proxy_openrouter_request(json_data: dict, stream: bool = False, timeout=None
     server_url = get_server_url()
     llm_key = os.getenv("OPENROUTER_API_KEY")
 
+
     if llm_key:
         # Direct path to OpenRouter — must always carry canonical attribution
         # headers so OpenRouter shows "UTIM CLI Agent" (NOT "unknown") in its
@@ -199,9 +200,25 @@ def proxy_openrouter_request(json_data: dict, stream: bool = False, timeout=None
         if "reasoning" in json_data:
             payload["reasoning"] = json_data["reasoning"]
         
-        # UTIM server completions is a streaming endpoint
-        resp = requests.post(f"{server_url}/completions", json=payload, headers=headers, stream=True, timeout=timeout, verify=config.verify_ssl)
-        resp.raise_for_status()
+        # UTIM server completions is a streaming endpoint with retry & connection protection
+        import time as _timemod
+        max_http_retries = 2
+        last_http_err = None
+        resp = None
+
+        for attempt in range(max_http_retries + 1):
+            try:
+                resp = requests.post(f"{server_url}/completions", json=payload, headers=headers, stream=True, timeout=timeout, verify=config.verify_ssl)
+                resp.raise_for_status()
+                last_http_err = None
+                break
+            except (requests.exceptions.ConnectionError, requests.exceptions.ChunkedEncodingError, requests.exceptions.Timeout) as _conn_err:
+                last_http_err = _conn_err
+                if attempt < max_http_retries:
+                    _timemod.sleep(1.0 * (attempt + 1))
+                    continue
+                else:
+                    raise RuntimeError(f"Connection to UTIM server failed: {str(_conn_err)}")
 
         if stream or json_data.get("stream"):
             def line_generator():

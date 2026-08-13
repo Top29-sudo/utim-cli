@@ -1106,85 +1106,85 @@
 }
 
 /* =====================================================
-/* =====================================================
-   CLI INSTALLATION SECTION STYLES - Terminal Aesthetic
+   CLI INSTALLATION SECTION STYLES
    ===================================================== */
 .tw-install-section {
-  margin: 28px 0 36px;
-  font-family: 'Cascadia Code', 'JetBrains Mono', 'Consolas', monospace;
+  margin: 32px 0 40px;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
 }
 
 .tw-install-banner {
-  background: #08080e;
-  border: 1px solid rgba(0, 240, 255, 0.25);
-  border-radius: 6px;
-  padding: 24px;
-  box-shadow: 0 0 30px rgba(0, 240, 255, 0.08), 0 12px 36px rgba(0, 0, 0, 0.7);
+  background: radial-gradient(ellipse at 50% 0%, rgba(0, 240, 255, 0.08) 0%, rgba(10, 10, 15, 0.98) 75%);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
   position: relative;
   overflow: hidden;
 }
 
+.tw-install-banner::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00F0FF, #00FF66, transparent);
+}
+
 .tw-install-header {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 
 .tw-install-tag {
   display: inline-block;
   font-family: 'Cascadia Code', monospace;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: #00F0FF;
-  letter-spacing: 1.5px;
-  margin-bottom: 6px;
-  background: rgba(0, 240, 255, 0.08);
-  border: 1px solid rgba(0, 240, 255, 0.25);
-  padding: 3px 10px;
-  border-radius: 4px;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
 }
 
 .tw-install-title {
   color: #ffffff;
-  font-family: 'Cascadia Code', monospace;
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 8px 0 8px 0;
-  letter-spacing: -0.3px;
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin: 0 0 10px 0;
+  letter-spacing: -0.5px;
 }
 
 .tw-install-subtitle {
-  color: #8b92a5;
-  font-family: 'Cascadia Code', monospace;
-  font-size: 0.85rem;
+  color: #9ca3af;
+  font-size: 0.95rem;
   max-width: 680px;
   margin: 0 auto;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 /* Main NPM Copy Card */
 .tw-install-main-card {
-  background: #0d0d14;
-  border: 1px solid rgba(0, 240, 255, 0.25);
-  border-radius: 6px;
-  padding: 18px 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  background: rgba(17, 17, 24, 0.9);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 32px;
+  box-shadow: 0 8px 30px rgba(0, 240, 255, 0.08);
 }
 
 .tw-install-badge-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   font-size: 0.75rem;
-  font-family: 'Cascadia Code', monospace;
 }
 
 .tw-install-recommended {
-  background: rgba(16, 185, 129, 0.12);
-  color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.35);
-  padding: 3px 8px;
+  background: rgba(0, 255, 102, 0.15);
+  color: #00FF66;
+  border: 1px solid rgba(0, 255, 102, 0.4);
+  padding: 2px 8px;
   border-radius: 4px;
   font-weight: 700;
   letter-spacing: 0.5px;
@@ -1193,81 +1193,159 @@
 .tw-install-env {
   color: #6b7280;
   font-family: 'Cascadia Code', monospace;
-  font-size: 0.75rem;
 }
 
 .tw-install-cmd-box {
   display: flex;
   align-items: center;
-  gap: 12px;
-  background: #050509;
+  gap: 14px;
+  background: #09090e;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 10px 14px;
-  border-radius: 4px;
+  padding: 12px 18px;
+  border-radius: 8px;
   overflow-x: auto;
 }
 
 .tw-install-prompt {
-  color: #10b981;
+  color: #00FF66;
   font-family: 'Cascadia Code', monospace;
   font-weight: bold;
-  font-size: 1rem;
+  font-size: 1.1rem;
 }
 
 .tw-install-code {
-  font-family: 'Cascadia Code', monospace;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
   color: #00F0FF;
-  font-size: 0.98rem;
+  font-size: 1.1rem;
   font-weight: 700;
   flex-grow: 1;
   letter-spacing: 0.3px;
 }
 
 .tw-install-copy-btn {
-  background: rgba(0, 240, 255, 0.12);
-  color: #00F0FF;
-  border: 1px solid #00F0FF;
-  padding: 7px 14px;
-  border-radius: 4px;
-  font-family: 'Cascadia Code', monospace;
+  background: linear-gradient(135deg, #00F0FF 0%, #0080FF 100%);
+  color: #000;
+  border: none;
+  padding: 9px 18px;
+  border-radius: 6px;
   font-weight: 700;
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(0, 240, 255, 0.3);
 }
 
 .tw-install-copy-btn:hover {
-  background: #00F0FF;
-  color: #050509;
-  box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+  transform: scale(1.03);
+  box-shadow: 0 6px 20px rgba(0, 240, 255, 0.5);
 }
 
 .tw-install-copy-btn:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
+}
+
+/* 4-Step Setup Grid */
+.tw-install-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.tw-install-step-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.tw-install-step-card:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(0, 240, 255, 0.3);
+}
+
+.tw-step-num {
+  font-family: 'Cascadia Code', monospace;
+  font-size: 0.7rem;
+  color: #e8c97a;
+  font-weight: 700;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+.tw-install-step-card h3 {
+  color: #f3f4f6;
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+}
+
+.tw-install-step-card p {
+  color: #9ca3af;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin: 0 0 16px 0;
+  flex-grow: 1;
+}
+
+.tw-step-code-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #0c0c12;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.tw-step-code-pill:hover {
+  background: #141420;
+  border-color: rgba(0, 240, 255, 0.4);
+}
+
+.tw-step-code-pill code {
+  font-family: 'Cascadia Code', monospace;
+  font-size: 0.78rem;
+  color: #00F0FF;
+}
+
+.tw-step-code-pill span {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.tw-step-code-pill:hover span {
+  color: #00F0FF;
 }
 
 /* Notice Callout Box */
 .tw-notice-callout-box {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  background: #0c0d14;
-  border: 1px solid rgba(232, 201, 122, 0.3);
-  border-radius: 4px;
-  padding: 12px 16px;
-  margin-bottom: 20px;
-  font-family: 'Cascadia Code', monospace;
+  gap: 14px;
+  background: rgba(232, 201, 122, 0.06);
+  border: 1px solid rgba(232, 201, 122, 0.25);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
 }
 
 .tw-notice-icon {
-  font-size: 1rem;
-  line-height: 1.3;
+  font-size: 1.2rem;
+  line-height: 1;
 }
 
 .tw-notice-content {
-  color: #9ca3af;
-  font-size: 0.8rem;
+  color: #d1d5db;
+  font-size: 0.86rem;
   line-height: 1.5;
 }
 
@@ -1279,108 +1357,22 @@
   font-family: 'Cascadia Code', monospace;
   color: #00F0FF;
   background: rgba(0, 240, 255, 0.1);
-  padding: 1px 5px;
-  border-radius: 3px;
-}
-
-/* 4-Step Setup Grid */
-.tw-install-steps-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.tw-install-step-card {
-  background: #090910;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  transition: all 0.15s ease;
-  font-family: 'Cascadia Code', monospace;
-}
-
-.tw-install-step-card:hover {
-  background: #0d0e16;
-  border-color: rgba(0, 240, 255, 0.3);
-}
-
-.tw-step-num {
-  font-family: 'Cascadia Code', monospace;
-  font-size: 0.68rem;
-  color: #e8c97a;
-  font-weight: 700;
-  margin-bottom: 6px;
-  letter-spacing: 1px;
-}
-
-.tw-install-step-card h3 {
-  color: #ffffff;
-  font-family: 'Cascadia Code', monospace;
-  font-size: 0.9rem;
-  font-weight: 700;
-  margin: 0 0 6px 0;
-}
-
-.tw-install-step-card p {
-  color: #8b92a5;
-  font-family: 'Cascadia Code', monospace;
-  font-size: 0.78rem;
-  line-height: 1.45;
-  margin: 0 0 12px 0;
-  flex-grow: 1;
-}
-
-.tw-step-code-pill {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #050508;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 6px 10px;
+  padding: 2px 6px;
   border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.tw-step-code-pill:hover {
-  background: #0e0e18;
-  border-color: rgba(0, 240, 255, 0.4);
-}
-
-.tw-step-code-pill code {
-  font-family: 'Cascadia Code', monospace;
-  font-size: 0.75rem;
-  color: #00F0FF;
-}
-
-.tw-step-code-pill span {
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: #6b7280;
-  font-family: 'Cascadia Code', monospace;
-}
-
-.tw-step-code-pill:hover span {
-  color: #00F0FF;
 }
 
 /* Alt Package Managers */
 .tw-install-alt-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  font-family: 'Cascadia Code', monospace;
+  gap: 14px;
 }
 
 .tw-alt-card {
-  background: #090910;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
-  padding: 10px 14px;
+  background: rgba(10, 10, 15, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 12px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1388,36 +1380,36 @@
 }
 
 .tw-alt-label {
-  font-size: 0.75rem;
-  color: #8b92a5;
+  font-size: 0.78rem;
+  color: #6b7280;
   font-weight: 600;
 }
 
 .tw-alt-cmd {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: #050508;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 5px 10px;
-  border-radius: 4px;
+  gap: 10px;
+  background: #08080d;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 6px 12px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background 0.2s;
 }
 
 .tw-alt-cmd:hover {
-  background: #0e0e18;
+  background: #12121a;
   border-color: rgba(0, 240, 255, 0.3);
 }
 
 .tw-alt-cmd code {
   font-family: 'Cascadia Code', monospace;
   color: #e5e7eb;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
 }
 
 .tw-alt-btn {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: bold;
   color: #00F0FF;
 }

@@ -1,0 +1,21 @@
+{
+  "name": "UTIM AI - Best CLI Coding Agent",
+  "short_name": "UTIM AI",
+  "description": "UTIM AI is the high-agency CLI coding assistant with Creators Ecosystem marketplace, dynamic context scaling, and miniagents.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d0f18",
+  "theme_color": "#0d0f18",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

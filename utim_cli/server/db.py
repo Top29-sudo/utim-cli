@@ -18,7 +18,16 @@ from sqlalchemy.orm import DeclarativeBase, relationship, backref, sessionmaker
 
 # ── Connection ────────────────────────────────────────────────────────────────
 
-_raw_url = os.environ.get("DATABASE_URL", "sqlite:///utim_production.db")
+# Anchor SQLite database file to absolute project root directory
+_dir = os.path.dirname(os.path.abspath(__file__))
+_project_root = os.path.dirname(os.path.dirname(_dir))
+
+_raw_url = os.environ.get("DATABASE_URL")
+if not _raw_url:
+    _db_path = os.path.join(_project_root, "utim_production.db")
+    _abs_path = os.path.abspath(_db_path).replace("\\", "/")
+    _raw_url = f"sqlite:///{_abs_path}"
+
 # Railway exports postgres:// but SQLAlchemy 1.4+ requires postgresql://
 DATABASE_URL = _raw_url.replace("postgres://", "postgresql://", 1)
 
@@ -247,6 +256,31 @@ class Feedback(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
 
     user = relationship("User", back_populates="feedbacks")
+
+
+
+class SharedPackage(Base):
+    """Persistent share metadata stored in PostgreSQL.
+
+    Replaces the ephemeral server_shares/meta.json approach which was lost
+    on every Railway container restart/redeploy.
+    """
+    __tablename__ = "shared_packages"
+
+    id = Column(String(50), primary_key=True)               # e.g. "share_3724ec6251fb"
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    filename = Column(String(512), nullable=True)
+    node_id = Column(String(64), nullable=False, default="node-1")
+    drive_file_id = Column(String(256), nullable=False)
+    size_bytes = Column(BigInteger, default=0, nullable=False)
+    sha256 = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=False, index=True)
+
+    @property
+    def is_expired(self) -> bool:
+        now = datetime.datetime.utcnow()
+        return now > self.expires_at
 
 
 class DeviceAuthCode(Base):
@@ -533,6 +567,67 @@ class RedeemCode(Base):
     redeemed_by = relationship("User", foreign_keys=[redeemed_by_id], backref="redeemed_codes")
 
 
+class RewardSnapshot(Base):
+    __tablename__ = "reward_snapshots"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    plan_id = Column(String(50), nullable=False)
+    omitted_models_json = Column(Text, default="[]", nullable=False)
+    category_probs_json = Column(Text, default="{}", nullable=False)
+    model_probs_json = Column(Text, default="[]", nullable=False)
+    status = Column(String(20), default="AVAILABLE", nullable=False, index=True) # "AVAILABLE", "LOCKED", "COMPLETED"
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+    user = relationship("User", backref=backref("reward_snapshots", cascade="all, delete-orphan"))
+
+
+class RewardSpin(Base):
+    __tablename__ = "reward_spins"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    plan_id = Column(String(50), nullable=False)
+    snapshot_id = Column(String(36), ForeignKey("reward_snapshots.id", ondelete="SET NULL"), nullable=True)
+    winning_model_id = Column(String(100), nullable=False)
+    winning_model_name = Column(String(200), nullable=False)
+    category = Column(String(50), nullable=False)
+    probability_percent = Column(Float, nullable=False)
+    provider = Column(String(100), default="OpenRouter")
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+    user = relationship("User", backref=backref("reward_spins", cascade="all, delete-orphan"))
+
+
+class RewardActivation(Base):
+    __tablename__ = "reward_activations"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    model_id = Column(String(100), nullable=False, index=True)
+    reward_start = Column(DateTime, nullable=False)
+    reward_end = Column(DateTime, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+    user = relationship("User", backref=backref("reward_activations", cascade="all, delete-orphan"))
+
+
+class UserSpinCycle(Base):
+    __tablename__ = "user_spin_cycles"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    cycle_start = Column(DateTime, nullable=False)
+    cycle_end = Column(DateTime, nullable=False)
+    spins_granted = Column(Integer, default=4, nullable=False)
+    spins_used = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+    user = relationship("User", backref=backref("spin_cycles", cascade="all, delete-orphan"))
+
+
+
 # ── Bootstrap ─────────────────────────────────────────────────────────────────
 
 def init_db(silent: bool = True) -> None:
@@ -798,6 +893,41 @@ def init_db(silent: bool = True) -> None:
             except Exception as node_exc:
                 _print(f"[DB INIT] Storage node seeding warning: {node_exc}")
 
+            # Seed and sync all models into model_registry table
+            try:
+                from .models import sync_models_to_db
+                sync_models_to_db()
+                _print("[DB INIT] Model registry sync completed.")
+            except Exception as model_sync_exc:
+                _print(f"[DB INIT] Model registry sync warning: {model_sync_exc}")
+
+            # Seed guest user and guest subscription for persistent rewards preview
+            try:
+                guest_user = db.query(User).filter(User.id == "guest").first()
+                if not guest_user:
+                    guest_user = User(
+                        id="guest",
+                        email="guest@utim.ai",
+                        display_name="Guest User",
+                        is_active=True
+                    )
+                    db.add(guest_user)
+                    db.commit()
+                
+                guest_sub = db.query(UserSubscription).filter(UserSubscription.user_id == "guest").first()
+                if not guest_sub:
+                    guest_sub = UserSubscription(
+                        user_id="guest",
+                        plan_id="pro",
+                        status="active",
+                        current_period_start=datetime.datetime.utcnow(),
+                        current_period_end=datetime.datetime.utcnow() + datetime.timedelta(days=365)
+                    )
+                    db.add(guest_sub)
+                    db.commit()
+            except Exception as guest_exc:
+                _print(f"[DB INIT] Guest user seeding warning: {guest_exc}")
+
             db.commit()
     except Exception as exc:
         db.rollback()
@@ -845,7 +975,7 @@ class MarketplaceListing(Base):
     description = Column(Text, nullable=False)
     readme = Column(Text, nullable=True)  # full readme/docs markdown
     tags = Column(JSON, nullable=True)  # ["python", "gpt", ...]
-    icon_emoji = Column(String(8), nullable=True)  # e.g. "🔧"
+    icon_emoji = Column(String(8), nullable=True)  # e.g. ""
     price_usd = Column(Float, default=0.0)  # 0 = free
     is_paid = Column(Boolean, default=False)
     is_published = Column(Boolean, default=False)
@@ -954,7 +1084,7 @@ class SellerProfile(Base):
     user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False, index=True)
     display_name = Column(String(128), nullable=True)
     bio = Column(Text, nullable=True)
-    avatar_emoji = Column(String(8), default="🧑💻", nullable=True)
+    avatar_emoji = Column(String(8), default="", nullable=True)
     is_verified = Column(Boolean, default=False)
     razorpay_contact_id = Column(String(128), nullable=True)  # Razorpay Fund Account Contact ID
     razorpay_fund_account_id = Column(String(128), nullable=True)  # Razorpay Fund Account ID

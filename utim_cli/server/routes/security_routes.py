@@ -415,7 +415,7 @@ Please inspect the extension files using your tools (read_file, grep_search, web
 
                         elif fn_name == "web_search":
                             q = fn_args.get("query", "")
-                            yield json.dumps({"event": "thinking", "message": f"🔍 Web Search: '{q}'"}) + "\n"
+                            yield json.dumps({"event": "thinking", "message": f"Web Search: '{q}'"}) + "\n"
                             tool_result = _perform_web_search(q)
 
                         elif fn_name == "edit_file" and is_fix_mode:

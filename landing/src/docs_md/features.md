@@ -40,11 +40,7 @@ Auto-embed local SKILL.md guidelines into your context via local ChromaDB RAG. S
 Share your rollover Quota Bank and regular subscription credits with your referred teammates directly from the CLI, or generate non-expiring, secure redeem codes to distribute or claim later.
 - **Tags:** /quotashare, /redeem, Collaboration
 
-## 11 Creators Ecosystem
-Global marketplace to browse, download, install, purchase, and publish custom skills and script-based miniagents with built-in publisher profiles, wallet earnings, and withdrawal payouts.
-- **Tags:** /marketplace, Skills, Miniagents, Publish & Earn
-
-## 12 Models and Providers
+## 11 Models and Providers
 
 UTIM provides a wide variety of official AI models, including both free and paid-tier options, optimized for autonomous workflows, code generation, and chat.
 
@@ -54,7 +50,7 @@ UTIM provides a wide variety of official AI models, including both free and paid
 - `cohere/north-mini-code:free`
 - `google/gemma-4-26b-a4b-it:free`
 - `google/gemma-4-31b-it:free`
-- `nex-agi/nex-n2-pro:free`
+- `inclusionai/ling-3.0-flash:free`
 - `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free`
 - `nvidia/nemotron-nano-12b-v2-vl:free`
 - `openai/gpt-oss-20b:free`
@@ -62,7 +58,6 @@ UTIM provides a wide variety of official AI models, including both free and paid
 - `poolside/laguna-m.1:free`
 - `poolside/laguna-s-2.1:free`
 - `poolside/laguna-xs.2:free`
-- `qwen/qwen3-next-80b-a3b-instruct:free`
 
 ### Paid Tier Models (Hobby / Pro / Max / Ultimate)
 - `aion-labs/aion-3.0`

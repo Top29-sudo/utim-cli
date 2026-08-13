@@ -85,6 +85,14 @@ def test_experience_reflection():
 
 def test_orchestrator_experience_injection():
     from utim_cli.reflection import experience_manager
+    experience_manager.add_experience(
+        pattern_id="stool_wall_relationship",
+        description="Stool + wall = simulated chair experience",
+        pattern_type="relationship",
+        objects=["stool", "wall"],
+        relationships={"simulates_chair_back": True, "provides_back_support": True},
+        strength=0.7
+    )
     analysis = experience_manager.analyze_pattern(
         ["stool", "wall"], 
         {"provides_back_support": True, "simulates_chair_back": True}

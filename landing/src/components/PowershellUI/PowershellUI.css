@@ -37,13 +37,13 @@
 
 /* ---------- Web Support Disclaimer Banner ---------- */
 .term-support-disclaimer {
-  background: linear-gradient(90deg, rgba(232, 201, 122, 0.08) 0%, rgba(91, 163, 201, 0.08) 100%);
-  border-bottom: 1px solid rgba(232, 201, 122, 0.2);
-  padding: 10px 24px;
+  background: linear-gradient(90deg, rgba(0, 240, 255, 0.08) 0%, rgba(138, 43, 226, 0.08) 100%);
+  border-bottom: 1px solid rgba(0, 240, 255, 0.25);
+  padding: 12px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 14px;
   font-family: 'Segoe UI', -apple-system, sans-serif;
   font-size: 13px;
   color: #d1d5db;
@@ -51,19 +51,18 @@
   z-index: 10;
 }
 
-.ts-badge {
+.ts-badge-hero {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(232, 201, 122, 0.15);
-  border: 1px solid rgba(232, 201, 122, 0.35);
-  color: #fce7f3;
-  color: #e8c97a;
-  padding: 3px 10px;
+  background: rgba(0, 240, 255, 0.12);
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  color: #00F0FF;
+  padding: 4px 12px;
   border-radius: 20px;
   font-weight: 700;
   font-size: 11px;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.6px;
   white-space: nowrap;
 }
 
@@ -78,50 +77,77 @@
   50% { opacity: 1; transform: scale(1.2); }
 }
 
-.ts-text {
+.ts-text-hero {
   flex-grow: 1;
   line-height: 1.4;
   color: #9ca3af;
+  font-size: 13px;
 }
 
-.ts-text strong {
-  color: #f3f4f6;
-  font-weight: 600;
+.ts-text-hero strong {
+  color: #ffffff;
+  font-weight: 700;
 }
 
-.ts-npm-pill {
+.ts-install-pills-group {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ts-npm-pill, .ts-pip-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   background: #111116;
-  border: 1px solid rgba(91, 163, 201, 0.3);
-  padding: 5px 14px;
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  padding: 4px 12px;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
 }
 
-.ts-npm-pill:hover {
+.ts-npm-pill:hover, .ts-pip-pill:hover {
   border-color: #00F0FF;
   background: #181822;
-  box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.25);
   transform: translateY(-1px);
 }
 
-.ts-npm-pill code {
+.ts-npm-pill code, .ts-pip-pill code {
   font-family: 'Cascadia Code', 'Consolas', monospace;
   color: #00F0FF;
   font-weight: 600;
-  font-size: 12.5px;
+  font-size: 12px;
+}
+
+.ts-pip-pill code {
+  color: #a78bfa;
 }
 
 .ts-copy-btn-label {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 600;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
   color: #eee;
-  padding: 2px 8px;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.ts-os-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.ts-os-badges span {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 7px;
   border-radius: 4px;
 }
 
@@ -144,6 +170,7 @@
   background: rgba(255, 255, 255, 0.1);
   color: #fff;
 }
+
 
 /* ---------- Title / Tab Bar ---------- */
 .term-titlebar {
@@ -455,119 +482,44 @@
 }
 .term-codeblock-pre code { font-family: inherit; }
 
-/* ---------- Termux Mobile Extra Keys Bar ---------- */
-.termux-keys-bar {
-  display: none;
-}
-
-/* ---------- Mobile Overrides (Termux Theme) ---------- */
+/* ---------- Mobile Overrides ---------- */
 @media (max-width: 768px) {
   .term-wrapper {
     width: 100%;
     height: 100dvh;
     min-height: 100dvh;
     overflow: hidden;
-    background: #000000;
   }
 
   .term-window {
     width: 100%;
     height: 100dvh;
     min-height: 100dvh;
-    background: #000000;
   }
 
+  .term-wrapper {
+    align-items: stretch;
+    justify-content: stretch;
+  }
   .term-titlebar {
-    height: 38px;
-    min-height: 38px;
-    background: #0c0d12;
-    border-bottom: 1px solid rgba(0, 255, 102, 0.2);
+    height: 40px;
+    min-height: 40px;
     overflow-x: auto;
     white-space: nowrap;
-    scrollbar-width: none;
+    scrollbar-width: none; /* Firefox */
     align-items: flex-end;
   }
   .term-titlebar::-webkit-scrollbar {
-    display: none;
+    display: none; /* Safari/Chrome */
   }
   .term-tab {
-    height: 29px;
+    height: 31px;
     min-width: 78px;
     max-width: 108px;
     flex-shrink: 0;
     margin-left: 2px;
     padding: 0 7px;
     font-size: 11px;
-    color: #8b92a5;
-  }
-  .term-tab.active {
-    background: #000000;
-    color: #00ff66;
-    border-top: 2px solid #00ff66;
-  }
-  .term-prompt-arrow {
-    color: #00ff66;
-    font-weight: bold;
-  }
-  .term-input {
-    color: #00ff66;
-  }
-
-  /* Termux Touch Extra Keys Bar */
-  .termux-keys-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-around;
-    gap: 4px;
-    background: #0d0f14;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 5px 6px;
-    margin-bottom: 6px;
-    user-select: none;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .termux-keys-bar::-webkit-scrollbar {
-    display: none;
-  }
-
-  .tk-btn {
-    background: #181b24;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: #d1d5db;
-    font-family: 'Cascadia Code', 'Consolas', monospace;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 5px 9px;
-    border-radius: 4px;
-    cursor: pointer;
-    white-space: nowrap;
-    flex-shrink: 0;
-    transition: all 0.1s ease;
-  }
-
-  .tk-btn:active, .tk-btn:hover {
-    background: rgba(0, 255, 102, 0.2);
-    color: #00ff66;
-    border-color: #00ff66;
-  }
-
-  .tk-btn.tk-accent {
-    color: #00ff66;
-    border-color: rgba(0, 255, 102, 0.4);
-    background: rgba(0, 255, 102, 0.08);
-  }
-
-  .tk-btn.tk-enter {
-    background: rgba(0, 255, 102, 0.18);
-    color: #00ff66;
-    border-color: #00ff66;
-  }
-
-  .term-wrapper {
-    align-items: stretch;
-    justify-content: stretch;
   }
   .term-tab-icon {
     margin-right: 5px;
@@ -725,32 +677,3 @@
   border-radius: 4px;
   font-family: 'Cascadia Code', 'Consolas', monospace;
 }
-
-/* ---------- Termux Mobile Override regardless of screen width (Android Detection) ---------- */
-body.termux-mode .term-wrapper { width: 100%; height: 100dvh; min-height: 100dvh; overflow: hidden; background: #000000; align-items: stretch; justify-content: stretch; }
-body.termux-mode .term-window { width: 100%; height: 100dvh; min-height: 100dvh; background: #000000; border: none; border-radius: 0; box-shadow: none; }
-body.termux-mode .term-titlebar { display: none !important; }
-body.termux-mode .term-prompt-arrow { color: #00ff66; font-weight: bold; margin-right: 6px; }
-body.termux-mode .term-input { color: #00ff66; }
-body.termux-mode .termux-keys-bar { display: flex; align-items: center; justify-content: space-around; gap: 4px; background: rgba(30, 34, 45, 0.4); border-top: 1px solid rgba(255, 255, 255, 0.05); padding: 6px; margin-bottom: 0px; user-select: none; overflow-x: auto; scrollbar-width: none; }
-body.termux-mode .termux-keys-bar::-webkit-scrollbar { display: none; }
-body.termux-mode .tk-btn { background: rgba(50, 56, 70, 0.6); border: none; color: #d1d5db; font-family: 'Roboto Mono', 'Cascadia Code', 'Consolas', monospace; font-size: 11px; font-weight: 500; padding: 6px 12px; border-radius: 4px; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: all 0.1s ease; }
-body.termux-mode .tk-btn:active, body.termux-mode .tk-btn:hover { background: rgba(0, 255, 102, 0.2); color: #00ff66; }
-body.termux-mode .tk-btn.tk-accent { color: #00ff66; background: rgba(0, 255, 102, 0.15); }
-body.termux-mode .tk-btn.tk-enter { background: rgba(0, 255, 102, 0.25); color: #00ff66; }
-body.termux-mode .term-content { padding: 12px 10px; font-size: 13px; line-height: 1.45; overflow-x: hidden; font-family: 'Roboto Mono', 'Cascadia Code', 'Consolas', monospace; }
-body.termux-mode .term-input-area { padding: 4px 8px calc(4px + env(safe-area-inset-bottom)); flex-shrink: 0; background: #000000; }
-body.termux-mode .term-ascii { font-size: 8px; line-height: 1.1; overflow-x: auto; white-space: pre; letter-spacing: 0px; margin: 4px 0; }
-body.termux-mode .term-box { white-space: pre-wrap; font-size: 12px; padding: 10px 12px; width: 100%; box-sizing: border-box; }
-body.termux-mode .term-prompt-row { margin-bottom: 8px; }
-body.termux-mode .term-input { font-size: 13.5px; min-width: 0; }
-body.termux-mode .term-status-row { display: none; }
-body.termux-mode .term-status-bottom { gap: 10px; font-size: 10.5px; line-height: 1.3; }
-body.termux-mode .tsb-left, body.termux-mode .tsb-right { min-width: 0; }
-body.termux-mode .tsb-left div, body.termux-mode .tsb-right div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 44vw; }
-body.termux-mode .term-dropdown { width: calc(100% - 28px); min-width: unset; bottom: 78px; left: 14px; max-height: 52vh; overflow-y: auto; }
-body.termux-mode .term-dropdown-item { align-items: flex-start; gap: 10px; }
-body.termux-mode .td-desc { text-align: right; line-height: 1.3; }
-body.termux-mode .term-content > div[style*="display: flex"] { flex-direction: column !important; gap: 12px !important; }
-body.termux-mode .term-md-card-content { flex-direction: column !important; align-items: flex-start !important; gap: 16px !important; }
-body.termux-mode .tw-pricing-select-grid { grid-template-columns: repeat(2, 1fr) !important; }

@@ -8,8 +8,13 @@ import {
     signInWithGoogle,
     signOut,
     getUserProfile,
+    createUserProfile,
+    updateProfile,
     updateLastLogin,
-    getIdToken
+    getIdToken,
+    sendResetEmail,
+    verifyResetCode,
+    confirmResetPassword
 } from '../lib/firebase';
 import { getApiUrl } from '../lib/api';
 
@@ -32,9 +37,8 @@ export const AuthProvider = ({ children }) => {
     // Fallback timeout to ensure loading state doesn't get stuck
     useEffect(() => {
         const timeout = setTimeout(() => {
-            console.log('[AuthContext] Timeout - setting loading to false');
             setLoading(false);
-        }, 10000); // 10 second timeout
+        }, 3000); // 3 second safe fallback timeout
 
         return () => clearTimeout(timeout);
     }, []);
@@ -51,7 +55,6 @@ export const AuthProvider = ({ children }) => {
                         // If profile doesn't exist or we got permission error, create it
                         if (!profile) {
                             try {
-                                const { createUserProfile } = await import('../lib/firebase');
                                 await createUserProfile(firebaseUser, { 
                                     displayName: firebaseUser.displayName || '' 
                                 });
@@ -123,8 +126,6 @@ export const AuthProvider = ({ children }) => {
             } catch (err) {
                 console.error('Auth state change error:', err);
             } finally {
-                // Always set loading to false - THIS IS CRITICAL
-                console.log('[AuthContext] Setting loading to false');
                 setLoading(false);
             }
         });
@@ -155,7 +156,6 @@ export const AuthProvider = ({ children }) => {
                 // Set displayName on the Firebase Auth profile since signUp was skipped
                 if (signedInUser && displayName) {
                     try {
-                        const { updateProfile, createUserProfile } = await import('../lib/firebase');
                         await updateProfile(signedInUser, { displayName });
                         // Also sync to Firestore profile
                         await createUserProfile(signedInUser, { displayName });
@@ -226,6 +226,18 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const parseErrorDetail = (detail) => {
+        if (!detail) return null;
+        if (typeof detail === 'string') return detail;
+        if (Array.isArray(detail)) {
+            return detail.map(d => d.msg || JSON.stringify(d)).join(', ');
+        }
+        if (typeof detail === 'object') {
+            return detail.message || detail.msg || JSON.stringify(detail);
+        }
+        return String(detail);
+    };
+
     const sendOTP = async (email) => {
         const apiUrl = getApiUrl();
         const res = await fetch(`${apiUrl}/auth/code/request`, {
@@ -235,7 +247,7 @@ export const AuthProvider = ({ children }) => {
         });
         const data = await res.json();
         if (!res.ok) {
-            throw new Error(data.detail || 'Failed to send verification code.');
+            throw new Error(parseErrorDetail(data.detail) || 'Failed to send verification code.');
         }
         return data;
     };
@@ -249,7 +261,7 @@ export const AuthProvider = ({ children }) => {
         });
         const data = await res.json();
         if (!res.ok) {
-            throw new Error(data.detail || 'Invalid or expired verification code.');
+            throw new Error(parseErrorDetail(data.detail) || 'Invalid or expired verification code.');
         }
         return data;
     };
@@ -263,9 +275,16 @@ export const AuthProvider = ({ children }) => {
         });
         const data = await res.json();
         if (!res.ok) {
-            throw new Error(data.detail || 'Failed to send password reset code.');
+            throw new Error(parseErrorDetail(data.detail) || 'Failed to send password reset code.');
         }
-        return data;
+        
+        // Directly trigger the Firebase password reset email flow
+        await sendResetEmail(email);
+        
+        return {
+            success: true,
+            message: `Password reset instructions have been dispatched to ${email}. Check your inbox!`
+        };
     };
 
     const resetPasswordWithOTP = async (email, otpCode, newPassword) => {
@@ -277,7 +296,7 @@ export const AuthProvider = ({ children }) => {
         });
         const data = await res.json();
         if (!res.ok) {
-            throw new Error(data.detail || 'Failed to reset password.');
+            throw new Error(parseErrorDetail(data.detail) || 'Failed to reset password.');
         }
         return data;
     };
@@ -293,6 +312,8 @@ export const AuthProvider = ({ children }) => {
         verifyOTP,
         sendResetOTP,
         resetPasswordWithOTP,
+        verifyResetCode,
+        confirmResetPassword,
         resendVerificationEmail,
         loginWithGoogle,
         logout,
