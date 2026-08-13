@@ -134,5 +134,14 @@ Thumbs.db
 *.gif
 *.log
 
+# Node modules
+node_modules/
+**/node_modules/
+
+# Scratch & temporary test files
+scratch/
+scripts/
+_grep_diag.txt
+
 # Local Netlify folder
 .netlify
