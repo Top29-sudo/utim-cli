@@ -103,4 +103,5 @@ markers = [
     "smoke: fast install validation tests (no live credentials required)",
     "slow: tests that make network calls or take more than 10 seconds",
     "integration: tests requiring live credentials or a running UTIM account",
+    "benchmark: UTIM benchmark suite — tests all 9 agent benchmark families",
 ]
