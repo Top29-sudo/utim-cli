@@ -2,7 +2,7 @@
 UTIM CLI — Comprehensive Agent Benchmark Suite
 ================================================
 
-Covers all 9 benchmark families with a free model (cohere/north-mini-code:free).
+Covers all 9 benchmark families with a free model (poolside/laguna-s-2.1:free).
 
 Benchmark families:
   1. Terminal / environment operation
@@ -27,7 +27,7 @@ Each test case:
   - Prints a summary scorecard table at the end via a session fixture
   - Writes results to tests/benchmark_results.json for CI/CD integration
 
-Model: cohere/north-mini-code:free  (OpenRouter free tier — no credits consumed)
+Model: poolside/laguna-s-2.1:free  (OpenRouter free tier — no credits consumed)
 """
 
 from __future__ import annotations
@@ -52,8 +52,16 @@ ROOT = pathlib.Path(__file__).parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+# Load .env from root or tests/.env
+try:
+    from dotenv import load_dotenv
+    load_dotenv(ROOT / ".env")
+    load_dotenv(ROOT / "tests" / ".env")
+except ImportError:
+    pass
+
 # ── Benchmark model (free, no credits) ────────────────────────────────────────
-BENCH_MODEL = "cohere/north-mini-code:free"
+BENCH_MODEL = "poolside/laguna-s-2.1:free"
 
 # ── Result storage ─────────────────────────────────────────────────────────────
 RESULTS_FILE = ROOT / "tests" / "benchmark_results.json"
