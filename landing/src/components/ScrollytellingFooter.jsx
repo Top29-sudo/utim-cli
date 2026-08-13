@@ -48,6 +48,7 @@ export default function ScrollytellingFooter() {
             <ul className="st-footer-links">
               <li><Link to="/about">About UTIM & Team</Link></li>
               <li><Link to="/support">Support Channels</Link></li>
+              <li><a href="https://github.com/Top29-sudo/utim-cli" target="_blank" rel="noreferrer">GitHub Repository</a></li>
               <li><a href="https://discord.com/invite/wGB7M8pMEy" target="_blank" rel="noreferrer">Discord Server</a></li>
               <li><Link to="/terms">Terms of Service</Link></li>
               <li><Link to="/privacy">Privacy Policy</Link></li>

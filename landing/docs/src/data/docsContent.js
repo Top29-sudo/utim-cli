@@ -90,7 +90,7 @@ export const platformInstallCommands = {
     { title: "Step 3: Grant Termux Storage Permission & Launch", cmd: "termux-setup-storage && utim", shell: "bash" }
   ],
   source: [
-    { title: "Standard CLI Installation from Source Checkout", cmd: "git clone https://github.com/emend-ai/utim.git && cd utim && pip install .", shell: "bash" },
+    { title: "Standard CLI Installation from Source Checkout", cmd: "git clone https://github.com/Top29-sudo/utim-cli.git && cd utim-cli && pip install .", shell: "bash" },
     { title: "Full Extra Package Suite (Search, Vision, Tree-Sitter Parsers)", cmd: 'pip install ".[full]"', shell: "bash" }
   ]
 };

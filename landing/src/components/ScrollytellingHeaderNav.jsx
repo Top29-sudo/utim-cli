@@ -48,7 +48,7 @@ export default function ScrollytellingHeaderNav() {
             <img src="/logo.png" alt="UTIM AI logo" className="st-brand-logo-img" />
             <div className="st-brand-text-group">
               <span className="st-brand-name">UTIM AI</span>
-              <span className="st-brand-pill">CLI v2.1.3</span>
+              <span className="st-brand-pill">v2.2.1</span>
             </div>
           </Link>
 
