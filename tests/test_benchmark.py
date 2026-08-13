@@ -141,14 +141,27 @@ class HeadlessRunner:
     # ── Internal helpers ───────────────────────────────────────────────────
 
     def _make_session(self) -> Any:
-        """Create an isolated Orchestrator with a silent console."""
+        """Create an isolated Orchestrator with a silent console routing through UTIM server."""
         os.environ["UTIM_HEADLESS"] = "1"
+        os.environ["UTIM_DISABLE_MCP"] = "1"
+        try:
+            if hasattr(sys.stdout, "reconfigure"):
+                sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+            if hasattr(sys.stderr, "reconfigure"):
+                sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
         from rich.console import Console
         from utim_cli.orchestrator import Orchestrator
 
         silent = Console(file=io.StringIO(), highlight=False, markup=True)
         session = Orchestrator(console=silent)
         session.model_id = self.model
+        # Force routing through UTIM server (https://api.utim.dev/completions)
+        session.model_source = "utim"
+        session._local_api_key = None
+        session._local_client = False
+        session._get_configured_model_source = lambda *args, **kwargs: "utim"
 
         if self.system_prompt:
             session.messages = [{"role": "system", "content": self.system_prompt}]
@@ -177,35 +190,27 @@ class HeadlessRunner:
             os.chdir(self.workdir)
             session = self._make_session()
 
-            def _run():
-                try:
-                    session.run_task(
-                        user_message=task,
-                        max_iterations=self.max_iterations,
-                    )
-                    for m in reversed(session.messages):
-                        if m.get("role") == "assistant" and m.get("content"):
-                            result_holder["output"] = m["content"]
-                            break
-                    result_holder["iterations"] = (
-                        getattr(session, "current_iteration", 0) + 1
-                    )
-                    result_holder["tool_calls"] = len(
-                        getattr(session, "tool_results", [])
-                    )
-                    # Token counts from last response metadata if available
-                    last_usage = getattr(session, "_last_usage", {}) or {}
-                    result_holder["tokens_in"]  = last_usage.get("prompt_tokens", 0)
-                    result_holder["tokens_out"] = last_usage.get("completion_tokens", 0)
-                except Exception as exc:
-                    result_holder["error"] = str(exc)
-
-            t = threading.Thread(target=_run, daemon=True)
-            t.start()
-            t.join(timeout=self.timeout)
-
-            if t.is_alive():
-                result_holder["error"] = f"Timed out after {self.timeout}s"
+            try:
+                session.run_task(
+                    user_message=task,
+                    max_iterations=self.max_iterations,
+                )
+                for m in reversed(session.messages):
+                    if m.get("role") == "assistant" and m.get("content"):
+                        result_holder["output"] = m["content"]
+                        break
+                result_holder["iterations"] = (
+                    getattr(session, "current_iteration", 0) + 1
+                )
+                result_holder["tool_calls"] = len(
+                    getattr(session, "tool_results", [])
+                )
+                # Token counts from last response metadata if available
+                last_usage = getattr(session, "_last_usage", {}) or {}
+                result_holder["tokens_in"]  = last_usage.get("prompt_tokens", 0)
+                result_holder["tokens_out"] = last_usage.get("completion_tokens", 0)
+            except Exception as exc:
+                result_holder["error"] = str(exc)
 
         except Exception as exc:
             result_holder["error"] = str(exc)

@@ -3191,8 +3191,15 @@ class Orchestrator:
                 self.console.print(bl)
         rendered_text = capture.get()
         if print_to_console:
-            sys.stdout.write(rendered_text)
-            sys.stdout.flush()
+            try:
+                sys.stdout.write(rendered_text)
+                sys.stdout.flush()
+            except Exception:
+                try:
+                    sys.stdout.buffer.write(rendered_text.encode("utf-8", errors="replace"))
+                    sys.stdout.buffer.flush()
+                except Exception:
+                    pass
         return rendered_text
 
     # Tool execution

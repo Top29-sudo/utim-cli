@@ -175,7 +175,8 @@ class MCPManager:
         return future.result()
 
     def start(self):
-        if self._started:
+        if self._started or os.getenv("UTIM_DISABLE_MCP") == "1":
+            self._started = True
             return
         
         from utim_cli.config import get_utim_dir
@@ -189,6 +190,10 @@ class MCPManager:
         self.run_coro(self._start_async())
 
     async def _start_async(self):
+        if os.getenv("UTIM_DISABLE_MCP") == "1":
+            self._started = True
+            return
+
         from utim_cli.config import get_utim_dir
         config_path = os.path.abspath(os.path.join(get_utim_dir(), "mcp.json"))
         if not os.path.exists(config_path):
