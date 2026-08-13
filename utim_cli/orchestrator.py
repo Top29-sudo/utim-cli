@@ -3540,10 +3540,10 @@ class Orchestrator:
         # Dispatched here (not via the generic tool table) because it needs
         # session context: model_id, console, cancel_event, current depth.
         #
-        # Nesting is now SUPPORTED up to MAX_NEST_DEPTH (default 4).
-        # Each subagent can have its own:
-        #   model, context window, system prompt, tools, permissions,
-        #   MCP servers, and persistent ChromaDB memory collection.
+        # Nesting supported up to MAX_NEST_DEPTH = 10.
+        # Each subagent is a genuine Orchestrator with the same:
+        #   context pruner, compression, ReAct loop, skills, MCP, memory.
+        # Parent controls what each subagent can access via capability grants.
         if func_name == "invoke_subagents":
             from utim_cli.subagent_manager import (
                 SubAgentTask, SubAgentManager, format_subagent_results, MAX_NEST_DEPTH
@@ -3552,7 +3552,7 @@ class Orchestrator:
             current_depth = getattr(self, "_subagent_depth", 0)
             max_depth     = getattr(self, "_subagent_max_depth", MAX_NEST_DEPTH)
 
-            # Hard ceiling guard
+            # Hard global ceiling guard
             if current_depth >= MAX_NEST_DEPTH:
                 return (
                     f"[invoke_subagents blocked] Maximum nesting depth ({MAX_NEST_DEPTH}) reached. "
@@ -3575,21 +3575,22 @@ class Orchestrator:
                 if not isinstance(t, dict):
                     continue
                 tasks.append(SubAgentTask(
-                    task_id           = str(t.get("task_id", f"task-{len(tasks)+1}")),
-                    role              = str(t.get("role", "Subagent")),
-                    system_prompt     = str(t.get("system_prompt", "")),
-                    user_prompt       = str(t.get("user_prompt", "")),
-                    model_id          = str(t.get("model_id", "") or self.model_id),
-                    max_iterations    = int(t.get("max_iterations", 20)),
-                    timeout_seconds   = int(t.get("timeout_seconds", 300)),
-                    # Per-agent capabilities (new in v2.3.0)
-                    allowed_tools     = list(t.get("allowed_tools", [])),
-                    blocked_tools     = list(t.get("blocked_tools", [])),
-                    permission        = str(t.get("permission", "full")),
-                    mcp_servers       = list(t.get("mcp_servers", [])),
-                    memory_collection = str(t.get("memory_collection", "")),
-                    max_depth         = int(t.get("max_depth", MAX_NEST_DEPTH)),
-                    context_limit     = int(t.get("context_limit", 0)),
+                    task_id             = str(t.get("task_id", f"task-{len(tasks)+1}")),
+                    role                = str(t.get("role", "Subagent")),
+                    system_prompt       = str(t.get("system_prompt", "")),
+                    user_prompt         = str(t.get("user_prompt", "")),
+                    model_id            = str(t.get("model_id", "") or self.model_id),
+                    max_iterations      = int(t.get("max_iterations", 20)),
+                    timeout_seconds     = int(t.get("timeout_seconds", 300)),
+                    # Capability grants (controlled by the parent agent)
+                    allowed_tools       = list(t.get("allowed_tools", [])),
+                    blocked_tools       = list(t.get("blocked_tools", [])),
+                    permission          = str(t.get("permission", "full")),
+                    allowed_mcp_servers = list(t.get("allowed_mcp_servers", [])),
+                    allowed_skills      = list(t.get("allowed_skills", [])),
+                    memory_collection   = str(t.get("memory_collection", "")),
+                    max_depth           = int(t.get("max_depth", MAX_NEST_DEPTH)),
+                    context_limit       = int(t.get("context_limit", 0)),
                 ))
 
             if not tasks:
